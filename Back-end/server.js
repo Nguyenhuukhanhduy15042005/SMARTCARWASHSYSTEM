@@ -22,4 +22,11 @@ app.post('/api/login', (req, res) => {
     res.status(401).json({ message: "Sai tài khoản hoặc mật khẩu" });
 });
 
+// =========================================================
+// CODE DO TRỌNG THÊM VÀO ĐỂ MOUNT ROUTER ĐẶT LỊCH (TASK 6 & 7)
+// =========================================================
+const bookingRouter = require('./bookingRouter');
+app.use(bookingRouter.router);
+// =========================================================
+
 app.listen(5000, () => console.log("Server đang chạy tại http://localhost:5000"));
