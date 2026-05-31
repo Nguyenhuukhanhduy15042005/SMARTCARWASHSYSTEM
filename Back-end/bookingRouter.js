@@ -535,46 +535,62 @@ const schedulerInterval = setInterval(async () => {
 
     // BR-12: Hủy tự động nếu quá hạn thanh toán 5 phút (Status = 1)
     const limitPending = new Date(now.getTime() - 5 * 60 * 1000);
-    const pendingToCancel = await pool.request()
+    
+    // 1. Giải phóng các khoang máy (Machine) cho các booking bị hủy (Status = 1)
+    await pool.request()
       .input('limitTime', sql.DateTime, limitPending)
       .query(`
-        SELECT b.BookingID, bd.MachineID FROM BOOKING b
-        LEFT JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
-        WHERE b.Status = 1 AND b.BookingDate <= @limitTime
+        UPDATE MACHINE 
+        SET Status = 1 
+        WHERE MachineID IN (
+          SELECT bd.MachineID 
+          FROM BOOKING b
+          JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
+          WHERE b.Status = 1 AND b.BookingDate <= @limitTime
+        )
       `);
 
-    for (let b of pendingToCancel.recordset) {
-      await pool.request()
-        .input('id', sql.Int, b.BookingID)
-        .query('UPDATE BOOKING SET Status = 5 WHERE BookingID = @id');
-      if (b.MachineID) {
-        await pool.request()
-          .input('mid', sql.Int, b.MachineID)
-          .query('UPDATE MACHINE SET Status = 1 WHERE MachineID = @mid');
-      }
-      console.log(`[Scheduler] Auto-cancelled Pending Booking ID ${b.BookingID} (payment timeout).`);
+    // 2. Chuyển đổi trạng thái các booking quá hạn sang Đã hủy (Status = 5)
+    const pendingResult = await pool.request()
+      .input('limitTime', sql.DateTime, limitPending)
+      .query(`
+        UPDATE BOOKING 
+        SET Status = 5 
+        WHERE Status = 1 AND BookingDate <= @limitTime
+      `);
+      
+    if (pendingResult.rowsAffected[0] > 0) {
+      console.log(`[Scheduler] Đã tự động hủy ${pendingResult.rowsAffected[0]} booking quá hạn thanh toán (Chờ thanh toán > 5 phút).`);
     }
 
     // BR-02: Hủy tự động nếu khách trễ check-in quá 30 phút (Status = 2)
     const limitConfirmed = new Date(now.getTime() - 30 * 60 * 1000);
-    const confirmedToCancel = await pool.request()
+
+    // 1. Giải phóng các khoang máy (Machine) cho các booking bị hủy (Status = 2)
+    await pool.request()
       .input('limitTime', sql.DateTime, limitConfirmed)
       .query(`
-        SELECT b.BookingID, bd.MachineID FROM BOOKING b
-        LEFT JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
-        WHERE b.Status = 2 AND b.BookingDate <= @limitTime
+        UPDATE MACHINE 
+        SET Status = 1 
+        WHERE MachineID IN (
+          SELECT bd.MachineID 
+          FROM BOOKING b
+          JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
+          WHERE b.Status = 2 AND b.BookingDate <= @limitTime
+        )
       `);
 
-    for (let b of confirmedToCancel.recordset) {
-      await pool.request()
-        .input('id', sql.Int, b.BookingID)
-        .query('UPDATE BOOKING SET Status = 5 WHERE BookingID = @id');
-      if (b.MachineID) {
-        await pool.request()
-          .input('mid', sql.Int, b.MachineID)
-          .query('UPDATE MACHINE SET Status = 1 WHERE MachineID = @mid');
-      }
-      console.log(`[Scheduler] Auto-cancelled Confirmed Booking ID ${b.BookingID} (no-show > 30 mins).`);
+    // 2. Chuyển đổi trạng thái các booking quá hạn sang Đã hủy (Status = 5)
+    const confirmedResult = await pool.request()
+      .input('limitTime', sql.DateTime, limitConfirmed)
+      .query(`
+        UPDATE BOOKING 
+        SET Status = 5 
+        WHERE Status = 2 AND BookingDate <= @limitTime
+      `);
+
+    if (confirmedResult.rowsAffected[0] > 0) {
+      console.log(`[Scheduler] Đã tự động hủy ${confirmedResult.rowsAffected[0]} booking quá hạn check-in (Quá 30 phút).`);
     }
   } catch (err) {
     console.error("[Scheduler Error]:", err.message);
