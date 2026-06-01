@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+require('./db'); // Khởi tạo kết nối SQL Server ngay khi chạy ứng dụng
 
 const app = express();
 app.use(express.json());
