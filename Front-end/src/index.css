@@ -1,17 +1,169 @@
-/* Basic Reset and Root Styles */
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Inter", sans-serif;
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  /* Nền gradient tối hiện đại */
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Khung chứa Auth căn giữa màn hình */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  /* Thêm đốm sáng mờ ảo ở 2 góc */
+  background-image:
+    radial-gradient(
+      circle at top right,
+      rgba(0, 210, 255, 0.1),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at bottom left,
+      rgba(58, 123, 213, 0.1),
+      transparent 40%
+    );
+}
+
+/* Hiệu ứng kính mờ (Glassmorphism) cho thẻ Form */
+.auth-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 40px;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-card h2 {
+  margin-bottom: 30px;
+  font-size: 28px;
+  font-weight: 700;
+  /* Chữ gradient */
+  background: linear-gradient(to right, #00d2ff, #3a7bd5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.input-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.input-group input::placeholder {
+  color: #64748b;
+}
+
+/* Hiệu ứng viền sáng khi click vào ô nhập */
+.input-group input:focus {
+  border-color: #00d2ff;
+  box-shadow: 0 0 0 4px rgba(0, 210, 255, 0.15);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+/* Nút bấm nổi bật */
+.btn-primary {
+  background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+  color: white;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(0, 210, 255, 0.6);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Đường gạch ngang "Hoặc tiếp tục với" */
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 25px 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.divider::before {
+  margin-right: 15px;
+}
+.divider::after {
+  margin-left: 15px;
+}
+
+/* Thông báo lỗi bo góc, màu nền nhạt */
+.error-msg {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 14px;
 }
