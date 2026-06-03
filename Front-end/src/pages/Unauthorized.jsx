@@ -1,14 +1,22 @@
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 
 const Unauthorized = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleBack = () => {
-    if (user?.role === 'admin') navigate('/admin');
-    else navigate('/dashboard');
+    const saved = localStorage.getItem('LOGIN_USER');
+    if (saved) {
+      const user = JSON.parse(saved);
+      if (user.role === 'admin') navigate('/admin/dashboard');
+      else if (user.role === 'staff') navigate('/staff/dashboard');
+      else navigate('/dashboard');
+    } else {
+      navigate('/login');
+    }
   };
+
+  const savedUser = localStorage.getItem('LOGIN_USER');
+  const user = savedUser ? JSON.parse(savedUser) : null;
 
   return (
     <div style={styles.page}>
