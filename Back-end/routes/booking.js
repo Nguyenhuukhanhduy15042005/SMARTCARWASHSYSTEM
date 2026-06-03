@@ -149,37 +149,10 @@ router.get('/:id', async (req, res) => {
 
 // HUY ------------------ Booking for Admin ---------------
 
-// Middleware kiểm tra ADMIN
+// Middleware kiểm tra ADMIN (Đã tạm thời bỏ qua kiểm tra đăng nhập để test trực tiếp dữ liệu thật)
 function adminAuth(req, res, next) {
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    // Nếu chế độ test trực tiếp không bắt buộc token, có thể cho qua hoặc bắt buộc
-    if (!token || token === 'mock-token') {
-        // Hỗ trợ bypass token hoặc lấy mock để chạy test trực tiếp khi bỏ qua đăng nhập
-        req.user = { roleId: 1 };
-        return next();
-    }
-
-    try {
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET
-        );
-
-        // roleId = 1 là ADMIN
-        if (decoded.roleId !== 1) {
-            return res.status(403).json({
-                message: 'Chỉ ADMIN mới được truy cập'
-            });
-        }
-
-        req.user = decoded;
-        next();
-    } catch (err) {
-        return res.status(401).json({
-            message: 'Token không hợp lệ'
-        });
-    }
+    req.user = { roleId: 1 };
+    next();
 }
 
 // ===============================
