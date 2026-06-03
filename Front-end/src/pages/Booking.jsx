@@ -297,7 +297,7 @@ export default function Booking() {
 
               <p className="text-center text-xs text-gray-400 mt-4">
                 Bằng việc xác nhận, bạn đồng ý với điều khoản dịch vụ của
-                AutoWash Pro.
+                Moto Shine.
               </p>
             </div>
           </div>

@@ -21,14 +21,14 @@ const Home = () => {
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full overflow-hidden shadow-sm bg-gray-200">
             <img
-              src="https://placehold.co/400x400/2C387E/FFFFFF?text=AW\nPro&font=Montserrat"
-              alt="AutoWash Pro Logo"
+              src="/logo.png"
+              alt="Moto Shine Logo"
               className="w-full h-full object-cover"
             />
           </div>
           <div className="flex flex-col">
             <h1 className="text-[1.7rem] font-extrabold text-[#192b4d] leading-none mb-1">
-              AutoWash Pro
+              Moto Shine
             </h1>
             <p className="text-lg font-bold text-[#192b4d] opacity-90 leading-none">
               Smart Car Wash System
@@ -128,7 +128,7 @@ const Home = () => {
             tiện lợi
           </h2>
           <p className="text-xl text-gray-600 leading-relaxed max-w-2xl pr-4">
-            AutoWash Pro giúp bạn đặt lịch dễ dàng, theo dõi quá trình rửa xe và
+            Moto Shine giúp bạn đặt lịch dễ dàng, theo dõi quá trình rửa xe và
             tích điểm thành viên để nhận nhiều ưu đãi hấp dẫn.
           </p>
           <div className="flex items-center gap-6 pt-2">
@@ -154,7 +154,7 @@ const Home = () => {
           <div className="rounded-[2rem] overflow-hidden shadow-2xl h-[550px] relative">
             <img
               src="https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1200&q=80"
-              alt="AutoWash Pro"
+              alt="Moto Shine"
               className="w-full h-full object-cover"
             />
           </div>

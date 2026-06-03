@@ -15,7 +15,7 @@ const HeroSection = () => {
             tiện lợi
           </h2>
           <p className="text-xl text-gray-700 leading-relaxed max-w-2xl">
-            AutoWash Pro giúp bạn đặt lịch dễ dàng, theo dõi quá trình rửa xe và
+            Moto Shine giúp bạn đặt lịch dễ dàng, theo dõi quá trình rửa xe và
             tích điểm thành viên để nhận nhiều ưu đãi hấp dẫn.
           </p>
 
@@ -51,7 +51,7 @@ const HeroSection = () => {
             className="w-full rounded-3xl shadow-2xl"
           />
           <div className="absolute top-4 right-4 bg-white/70 px-4 py-2 rounded-full text-xs font-bold text-blue-900 backdrop-blur-sm shadow">
-            AutoWash Pro
+            Moto Shine
           </div>
         </div>
       </div>

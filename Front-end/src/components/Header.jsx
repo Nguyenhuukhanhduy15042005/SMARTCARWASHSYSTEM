@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom"; // Sử dụng Link để điều hướng
 
 const Header = () => {
-  const logoUrl = "/assets/logo_recreated.png"; // Thay thế bằng đường dẫn thực tế đến logo của bạn
+  const logoUrl = "/logo.png"; // Thay thế bằng đường dẫn thực tế đến logo của bạn
 
   return (
     <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-sm border-b border-gray-100">
@@ -16,7 +16,7 @@ const Header = () => {
           />
           <div>
             <h1 className="text-2xl font-extrabold text-blue-900 tracking-tight">
-              AutoWash Pro
+              Moto Shine
             </h1>
             <p className="text-xs font-semibold text-blue-900 opacity-90">
               Smart Car Wash System
