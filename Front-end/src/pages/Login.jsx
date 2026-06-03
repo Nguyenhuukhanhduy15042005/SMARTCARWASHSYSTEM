@@ -16,6 +16,19 @@ export default function Login({ setUser }) {
     }
   }, [location]);
 
+  // Nếu đã đăng nhập rồi thì không cho vào trang login nữa
+  useEffect(() => {
+    const savedUser = localStorage.getItem("LOGIN_USER");
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+      if (user.role === "admin" || user.role === "staff") {
+        navigate("/admin/dashboard", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
+    }
+  }, []);
+
   // ============================================
   // 1. ĐĂNG NHẬP BẰNG TÀI KHOẢN & MẬT KHẨU
   // ============================================
@@ -33,10 +46,13 @@ export default function Login({ setUser }) {
         localStorage.setItem("TOKEN", data.token);
         localStorage.setItem("LOGIN_USER", JSON.stringify(data.user));
         setUser(data.user);
-        if (data.user.roleId === 1 || data.user.roleId === 2) {
-          navigate("/admin");
+        const role = data.user.role;
+        if (role === "admin") {
+          navigate("/admin/dashboard");
+        } else if (role === "staff") {
+          navigate("/staff/dashboard");
         } else {
-          navigate("/");
+          navigate("/dashboard");
         }
       } else {
         setErrorMsg(data.message || "Sai tài khoản hoặc mật khẩu!");
