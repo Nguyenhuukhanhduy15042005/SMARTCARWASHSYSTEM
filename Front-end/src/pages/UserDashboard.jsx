@@ -222,8 +222,8 @@ export default function UserDashboard() {
       {/* Header bar */}
       <header className="user-header">
         <div className="user-header-brand">
-          <i className="fa-solid fa-soap"></i>
-          <span>AutoWash Pro</span>
+          <img src="/logo.png" alt="Moto Shine Logo" className="header-logo-img" />
+          <span>Moto Shine</span>
         </div>
         <div className="user-header-profile">
           <a href="/dashboard" className="nav-link active">Thành viên</a>
