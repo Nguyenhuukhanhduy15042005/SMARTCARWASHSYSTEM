@@ -1,73 +1,104 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 const { sql, poolPromise } = require("../db");
+const verifyToken = require("../middleware/verifyToken");
 const router = express.Router();
 
-const SECRET_KEY = "smartcarwash_secret_key"; // Phải khớp với bên file auth.js
-
-// Middleware xác thực Token (Chặn các request không có quyền)
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Format yêu cầu: "Bearer <token>"
-
-  if (!token) return res.status(401).json({ message: "Vui lòng đăng nhập!" });
-
-  jwt.verify(token, SECRET_KEY, (err, decodedUser) => {
-    if (err)
-      return res
-        .status(403)
-        .json({ message: "Token không hợp lệ hoặc đã hết hạn!" });
-    req.user = decodedUser; // Lưu cục data { userId, roleId } lấy từ token vào request
-    next();
-  });
-};
-
-// Lấy thông tin cá nhân (Task 2 & 3)
-// Phải đi qua authenticateToken trước
-router.get("/profile", authenticateToken, async (req, res) => {
+router.get("/me", verifyToken, async (req, res) => {
   try {
     const pool = await poolPromise;
-    // Dùng LEFT JOIN để phòng trường hợp user chưa có record trong bảng MEMBER_PROFILE
     const result = await pool
       .request()
-      .input("userId", sql.Int, req.user.userId).query(`
-                SELECT u.UserID, u.FullName, u.Email, u.PhoneNumber, u.RoleID,
-                       ISNULL(m.CurrentPoints, 0) AS LoyaltyPoints
-                FROM [USER] u
-                LEFT JOIN MEMBER_PROFILE m ON u.UserID = m.UserID
-                WHERE u.UserID = @userId
-            `);
+      .input("userId", sql.Int, req.user.userId)
+      .query(`
+        SELECT UserID, FullName, Email, PhoneNumber, RoleID
+        FROM [USER]
+        WHERE UserID = @userId
+      `);
 
-    if (result.recordset.length > 0) {
-      res.json(result.recordset[0]);
-    } else {
-      res.status(404).json({ message: "Không tìm thấy người dùng" });
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng!" });
     }
+
+    res.json(result.recordset[0]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Lỗi server: " + err.message });
   }
 });
 
-// Cập nhật profile (Task 2 & 3)
-router.put("/profile", authenticateToken, async (req, res) => {
-  const { fullName, phone, email } = req.body;
+router.put("/me", verifyToken, async (req, res) => {
+  const { fullName, phone, email, newPassword } = req.body;
 
   try {
     const pool = await poolPromise;
-    await pool
-      .request()
-      .input("userId", sql.Int, req.user.userId)
-      .input("fullName", sql.NVarChar, fullName)
-      .input("phone", sql.VarChar, phone)
-      .input("email", sql.VarChar, email).query(`
-                UPDATE [USER] 
-                SET FullName = @fullName, PhoneNumber = @phone, Email = @email
-                WHERE UserID = @userId
-            `);
 
-    res.json({ message: "Cập nhật profile thành công!" });
+    const checkDuplicate = await pool
+      .request()
+      .input("phone", sql.VarChar, phone)
+      .input("email", sql.VarChar, email)
+      .input("userId", sql.Int, req.user.userId)
+      .query(`
+        SELECT UserID FROM [USER]
+        WHERE (PhoneNumber = @phone OR Email = @email)
+        AND UserID != @userId
+      `);
+
+    if (checkDuplicate.recordset.length > 0) {
+      return res.status(400).json({ message: "Email hoặc Số điện thoại đã được người khác sử dụng!" });
+    }
+
+    if (newPassword) {
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await pool
+        .request()
+        .input("fullName", sql.NVarChar, fullName)
+        .input("phone", sql.VarChar, phone)
+        .input("email", sql.VarChar, email)
+        .input("password", sql.NVarChar, hashedPassword)
+        .input("userId", sql.Int, req.user.userId)
+        .query(`
+          UPDATE [USER]
+          SET FullName = @fullName, PhoneNumber = @phone, Email = @email, Password = @password
+          WHERE UserID = @userId
+        `);
+    } else {
+      await pool
+        .request()
+        .input("fullName", sql.NVarChar, fullName)
+        .input("phone", sql.VarChar, phone)
+        .input("email", sql.VarChar, email)
+        .input("userId", sql.Int, req.user.userId)
+        .query(`
+          UPDATE [USER]
+          SET FullName = @fullName, PhoneNumber = @phone, Email = @email
+          WHERE UserID = @userId
+        `);
+    }
+
+    res.json({ message: "Cập nhật thông tin thành công!" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Lỗi server: " + err.message });
+  }
+});
+
+router.get("/", verifyToken, async (req, res) => {
+  if (req.user.roleId !== 1) {
+    return res.status(403).json({ message: "Chỉ admin mới được xem danh sách người dùng!" });
+  }
+
+  try {
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .query(`
+        SELECT UserID, FullName, Email, PhoneNumber, RoleID
+        FROM [USER]
+        ORDER BY UserID DESC
+      `);
+
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server: " + err.message });
   }
 });
 

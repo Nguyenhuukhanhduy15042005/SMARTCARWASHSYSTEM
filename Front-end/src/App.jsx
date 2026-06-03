@@ -1,9 +1,7 @@
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// ========================================================
-// IMPORT PAGES
-// ========================================================
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -15,36 +13,45 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Unauthorized from "./pages/Unauthorized";
 
 function App() {
+  // ✅ Lấy user từ localStorage nếu đã đăng nhập trước đó
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem("LOGIN_USER");
+    return saved ? JSON.parse(saved) : null;
+  });
+
   return (
     <BrowserRouter>
       <Routes>
-        {/* =========================================
-            PUBLIC ROUTES (Không yêu cầu đăng nhập)
-        ========================================= */}
+        {/* PUBLIC ROUTES */}
         <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<Login setUser={setUser} />} />
         <Route path="/register" element={<Register />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
-        {/* Nếu có thêm trang dịch vụ, mở comment dòng dưới: */}
-        {/* <Route path="/services" element={<Services />} /> */}
-
-        {/* =========================================
-            USER ROUTES (Đăng nhập mới xem được)
-        ========================================= */}
+        {/* USER ROUTES */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole="user">
               <UserDashboard />
             </ProtectedRoute>
           }
         />
         <Route
+          path="/booking"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <Booking />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* SHARED ROUTES */}
+        <Route
           path="/profile"
           element={
             <ProtectedRoute>
-              <Profile />
+              <Profile setUser={setUser} />
             </ProtectedRoute>
           }
         />
@@ -56,18 +63,8 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/booking"
-          element={
-            <ProtectedRoute>
-              <Booking />
-            </ProtectedRoute>
-          }
-        />
 
-        {/* =========================================
-            ADMIN/STAFF ROUTES 
-        ========================================= */}
+        {/* ADMIN ROUTES */}
         <Route
           path="/admin/dashboard"
           element={
@@ -77,7 +74,6 @@ function App() {
           }
         />
 
-        {/* Bắt lỗi URL: Nếu người dùng nhập sai, đẩy về trang chủ */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -1,7 +1,13 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-require("./db"); // Khởi tạo kết nối SQL Server ngay khi chạy ứng dụng
+require("./db");
+
+// [FIX] Kiểm tra JWT_SECRET bắt buộc phải có trong .env
+if (!process.env.JWT_SECRET) {
+  console.error("FATAL: Thiếu JWT_SECRET trong file .env. Dừng server.");
+  process.exit(1);
+}
 
 const app = express();
 app.use(express.json());
@@ -9,22 +15,22 @@ app.use(
   cors({
     origin: "http://localhost:5173",
     credentials: true,
-  }),
+  })
 );
 
 // ========================================================
-// IMPORT ROUTERS (Mỗi thành viên sẽ viết code ở file route riêng)
+// IMPORT ROUTERS
 // ========================================================
-const authRouter = require("./routes/auth"); // Thắng: Đăng ký / Đăng nhập
-const userRouter = require("./routes/user"); // Duy: Quản lý Profile / Phân quyền
+const authRouter    = require("./routes/auth");    // Thắng: Đăng ký / Đăng nhập
+const userRouter    = require("./routes/user");    // Duy: Quản lý Profile / Phân quyền
 const vehicleRouter = require("./routes/vehicle"); // Thái: Quản lý phương tiện
 const bookingRouter = require("./routes/booking"); // Trọng & Huy: Đặt lịch & Lịch sử & FSM
 
 // ========================================================
 // MOUNT ROUTERS
 // ========================================================
-app.use("/api/auth", authRouter);
-app.use("/api/users", userRouter);
+app.use("/api/auth",     authRouter);
+app.use("/api/users",    userRouter);
 app.use("/api/vehicles", vehicleRouter);
 app.use("/api/bookings", bookingRouter);
 
