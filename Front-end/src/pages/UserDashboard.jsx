@@ -229,6 +229,7 @@ export default function UserDashboard() {
           <a href="/dashboard" className="nav-link active">Dashboard</a>
           <a href="/booking" className="nav-link">Đặt Lịch Ngay</a>
           <a href="/vehicles" className="nav-link">Xe của tôi</a>
+          <a href="/profile" className="nav-link">Hồ sơ cá nhân</a>
           <div className="user-header-actions">
             <a href="/login" className="btn-logout" onClick={() => localStorage.clear()}>
               <i className="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất
