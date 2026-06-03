@@ -9,11 +9,11 @@ import Profile from "./pages/Profile";
 import VehicleManagement from "./pages/VehicleManagement";
 import Booking from "./pages/Booking";
 import UserDashboard from "./pages/UserDashboard";
+import StaffDashboard from "./pages/StaffDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Unauthorized from "./pages/Unauthorized";
 
 function App() {
-  // ✅ Lấy user từ localStorage nếu đã đăng nhập trước đó
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem("LOGIN_USER");
     return saved ? JSON.parse(saved) : null;
@@ -60,6 +60,16 @@ function App() {
           element={
             <ProtectedRoute>
               <VehicleManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* STAFF ROUTES */}
+        <Route
+          path="/staff/dashboard"
+          element={
+            <ProtectedRoute requiredRole="staff">
+              <StaffDashboard />
             </ProtectedRoute>
           }
         />
