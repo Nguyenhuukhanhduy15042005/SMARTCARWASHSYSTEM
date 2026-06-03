@@ -26,10 +26,10 @@ const Home = ({ user, setUser }) => {
           </div>
           <div className="flex flex-col">
             <h1 className="text-[1.7rem] font-extrabold text-[#192b4d] leading-none mb-1">
-              AutoWash Pro
+              Tự động rửa
             </h1>
             <p className="text-lg font-bold text-[#192b4d] opacity-90 leading-none">
-              Smart Car Wash System
+              hệ thống rửa xe thông minh
             </p>
           </div>
         </div>
@@ -103,13 +103,13 @@ const Home = ({ user, setUser }) => {
                 to="/login"
                 className="px-8 py-3.5 text-lg font-bold text-gray-800 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
               >
-                Login
+                Đăng nhập
               </Link>
               <Link
                 to="/register"
                 className="px-8 py-3.5 text-lg font-bold text-white bg-[#F58607] rounded-full shadow-md hover:bg-orange-600 transition-all"
               >
-                Sign Up
+                Đăng ký
               </Link>
             </>
           )}
@@ -120,9 +120,10 @@ const Home = ({ user, setUser }) => {
       <main className="container mx-auto px-6 pt-16 pb-24 flex flex-col lg:flex-row items-center gap-16">
         <div className="flex-1 space-y-8">
           <h2 className="text-[3.5rem] lg:text-[4rem] font-extrabold text-[#293563] leading-[1.2] tracking-tight">
-            Đặt lịch rửa xe thông minh <br />
-            Trải nghiệm nhanh chóng, <br />
-            tiện lợi
+            Đặt lịch rửa xe
+            <br />
+            Trải nghiệm nhanh chóng,tiện lợi
+            <br />
           </h2>
           <p className="text-xl text-gray-600 leading-relaxed max-w-2xl pr-4">
             AutoWash Pro giúp bạn đặt lịch dễ dàng, theo dõi quá trình rửa xe và
@@ -146,7 +147,7 @@ const Home = ({ user, setUser }) => {
                 </svg>
               </div>
               <span className="text-xl font-medium text-[#192b4d] group-hover:text-[#F58607] transition-colors">
-                Watch how it works
+                Xem cách hoạt động
               </span>
             </button>
           </div>
