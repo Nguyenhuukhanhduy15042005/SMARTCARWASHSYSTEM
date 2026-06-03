@@ -14,6 +14,7 @@ const authRouter = require('./routes/auth');       // Thắng: Đăng ký / Đă
 const userRouter = require('./routes/user');       // Duy: Quản lý Profile / Phân quyền
 const vehicleRouter = require('./routes/vehicle'); // Thái: Quản lý phương tiện
 const bookingRouter = require('./routes/booking'); // Trọng & Huy: Đặt lịch & Lịch sử & FSM
+const timeslotRouter = require('./routes/timeslot'); //Thái: Booking TimeSlot
 
 // ========================================================
 // MOUNT ROUTERS 
@@ -22,6 +23,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
 app.use('/api/vehicles', vehicleRouter);
 app.use('/api/bookings', bookingRouter);
+app.use('/api/timeslots', timeslotRouter);
 
 // Test Endpoint
 app.get('/api/test', (req, res) => {

@@ -8,6 +8,7 @@ import Login from "./pages/Login";                         // Thắng
 import Profile from "./pages/Profile";                     // Duy
 import VehicleManagement from "./pages/VehicleManagement"; // Thái
 import Booking from "./pages/Booking";                     // Thắng
+import TimeslotValidation from "./pages/TimeslotValidation"; // Thái
 import UserDashboard from "./pages/UserDashboard";         // Trọng
 import AdminDashboard from "./pages/AdminDashboard";       // Huy, Trọng
 import Unauthorized from "./pages/Unauthorized";           // Trang lỗi 403
@@ -41,6 +42,11 @@ function App() {
             <Booking />
           </ProtectedRoute>
         } />
+        <Route path="/timeslots" element={
+            <ProtectedRoute>
+              <TimeslotValidation />
+            </ProtectedRoute>
+        }/>
 
         {/* Admin/Staff Routes (Đăng nhập + Đúng vai trò mới xem được) */}
         <Route path="/admin/dashboard" element={
