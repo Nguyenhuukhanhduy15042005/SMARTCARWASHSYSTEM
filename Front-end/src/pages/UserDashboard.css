@@ -1,0 +1,512 @@
+/* UserDashboard.css - Premium Member Dashboard Aesthetics */
+
+:root {
+  --bg-primary: #0b0f19;
+  --bg-secondary: #111827;
+  --bg-card: rgba(17, 24, 39, 0.7);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --color-accent: #06b6d4;
+  --color-accent-hover: #0891b2;
+  --color-accent-glow: rgba(6, 182, 212, 0.15);
+  --color-success: #10b981;
+  --color-success-bg: rgba(16, 185, 129, 0.1);
+  --color-warning: #f59e0b;
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-danger: #ef4444;
+  --color-danger-bg: rgba(239, 68, 68, 0.1);
+  --color-info: #3b82f6;
+  --color-info-bg: rgba(59, 130, 246, 0.1);
+  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --header-height: 70px;
+}
+
+/* Base Layout */
+.user-dashboard-container {
+  min-height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.user-dashboard-container * {
+  box-sizing: border-box;
+}
+
+/* Header */
+.user-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: var(--header-height);
+  padding: 0 40px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.user-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 800;
+  color: white;
+}
+
+.user-header-brand i {
+  color: var(--color-accent);
+}
+
+.user-header-profile {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.nav-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.nav-link:hover, .nav-link.active {
+  color: var(--color-accent);
+}
+
+.user-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-logout {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--color-danger);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.btn-logout:hover {
+  background: var(--color-danger);
+  color: white;
+}
+
+/* Main Content Wrapper */
+.user-main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.welcome-section h1 {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.welcome-section p {
+  color: var(--text-secondary);
+  font-size: 15px;
+  margin: 6px 0 0 0;
+}
+
+/* Account Info Cards Grid */
+.user-profile-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 30px;
+}
+
+@media (max-width: 768px) {
+  .user-profile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Membership Card Styling */
+.membership-card-glow {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 240px;
+}
+
+/* Card Glow Effect based on Tier */
+.membership-card-glow::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 1;
+}
+
+/* Platinum Tier Color Glow */
+.membership-card-glow.tier-platinum::before {
+  background: rgba(226, 232, 240, 0.25);
+}
+.membership-card-glow.tier-platinum {
+  border-color: rgba(226, 232, 240, 0.2);
+  box-shadow: 0 20px 40px rgba(226, 232, 240, 0.05);
+}
+
+/* Gold Tier Color Glow */
+.membership-card-glow.tier-gold::before {
+  background: rgba(212, 175, 55, 0.25);
+}
+.membership-card-glow.tier-gold {
+  border-color: rgba(212, 175, 55, 0.2);
+  box-shadow: 0 20px 40px rgba(212, 175, 55, 0.05);
+}
+
+/* Silver Tier Color Glow */
+.membership-card-glow.tier-silver::before {
+  background: rgba(192, 192, 192, 0.2);
+}
+.membership-card-glow.tier-silver {
+  border-color: rgba(192, 192, 192, 0.15);
+  box-shadow: 0 20px 40px rgba(192, 192, 192, 0.03);
+}
+
+/* Standard Tier Color Glow */
+.membership-card-glow.tier-standard::before {
+  background: rgba(6, 182, 212, 0.15);
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 2;
+}
+
+.card-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 1.5px;
+}
+
+.card-chip {
+  width: 40px;
+  height: 30px;
+  background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+  border-radius: 6px;
+  position: relative;
+}
+
+.card-chip::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  right: 10px;
+  bottom: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.card-middle {
+  z-index: 2;
+  margin: 15px 0;
+}
+
+.points-display {
+  display: flex;
+  flex-direction: column;
+}
+
+.points-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.points-value {
+  font-size: 36px;
+  font-weight: 800;
+  color: white;
+  margin-top: 4px;
+}
+
+.points-value span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin-left: 6px;
+}
+
+.card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  z-index: 2;
+}
+
+.member-info h4 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: white;
+}
+
+.member-info p {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.member-tier-badge {
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tier-platinum .member-tier-badge {
+  background: rgba(226, 232, 240, 0.1);
+  color: #e2e8f0;
+  border: 1px solid rgba(226, 232, 240, 0.2);
+}
+
+.tier-gold .member-tier-badge {
+  background: rgba(250, 204, 21, 0.1);
+  color: #facc15;
+  border: 1px solid rgba(250, 204, 21, 0.2);
+}
+
+.tier-silver .member-tier-badge {
+  background: rgba(203, 213, 225, 0.1);
+  color: #cbd5e1;
+  border: 1px solid rgba(203, 213, 225, 0.2);
+}
+
+.tier-standard .member-tier-badge {
+  background: rgba(6, 182, 212, 0.1);
+  color: #06b6d4;
+  border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+/* User Profile Details Card */
+.user-profile-details {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  padding: 28px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.user-profile-details h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 20px 0;
+}
+
+.profile-fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.profile-field-row {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+.profile-field-row:last-child {
+  border-bottom: none;
+}
+
+.profile-field-row span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.profile-field-row strong {
+  font-size: 14px;
+  color: white;
+}
+
+/* Spend Metrics cards */
+.spend-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.user-metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.user-metric-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.metric-spend .user-metric-icon {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.metric-active-count .user-metric-icon {
+  background: rgba(6, 182, 212, 0.1);
+  color: #06b6d4;
+}
+
+.metric-completed-count .user-metric-icon {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+}
+
+.user-metric-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-metric-details span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.user-metric-details h4 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 4px 0 0 0;
+  color: white;
+}
+
+/* User Filter Bar */
+.user-filters-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 16px 24px;
+  border-radius: 16px;
+}
+
+.user-status-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+/* Booking Card Layout (Table style) */
+.user-table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.user-table-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-table-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.btn-book-nav {
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.btn-book-nav:hover {
+  background-color: var(--color-accent-hover);
+}
+
+/* Actions in row */
+.btn-user-cancel {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.btn-user-cancel:hover {
+  background: var(--color-danger);
+  color: white;
+}
+
+.btn-user-delete {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.btn-user-delete:hover {
+  background: #ef4444;
+  color: white;
+}
+

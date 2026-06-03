@@ -20,12 +20,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
-        {/* User Routes (Đăng nhập mới xem được) */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <UserDashboard />
-          </ProtectedRoute>
-        } />
+        {/* User Routes (Đã tạm bỏ ProtectedRoute ở /dashboard để test trực tiếp) */}
+        <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/profile" element={
           <ProtectedRoute>
             <Profile />
@@ -42,12 +38,8 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* Admin/Staff Routes (Đăng nhập + Đúng vai trò mới xem được) */}
-        <Route path="/admin/dashboard" element={
-          <ProtectedRoute requiredRole="admin">
-            <AdminDashboard />
-          </ProtectedRoute>
-        } />
+        {/* Admin/Staff Routes (Đã tạm bỏ ProtectedRoute ở /admin/dashboard để test trực tiếp) */}
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
         {/* Mặc định chuyển về trang login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
