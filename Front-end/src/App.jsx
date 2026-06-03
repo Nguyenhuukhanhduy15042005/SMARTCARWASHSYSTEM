@@ -2,12 +2,16 @@ import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// ========================================================
+// IMPORT PAGES (Mỗi người code ở một file trang riêng biệt)
+// ========================================================
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import VehicleManagement from "./pages/VehicleManagement";
 import Booking from "./pages/Booking";
+import TimeslotValidation from "./pages/TimeslotValidation";
 import UserDashboard from "./pages/UserDashboard";
 import StaffDashboard from "./pages/StaffDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -22,13 +26,11 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* PUBLIC ROUTES */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login setUser={setUser} />} />
         <Route path="/register" element={<Register />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
-        {/* USER ROUTES */}
         <Route
           path="/dashboard"
           element={
@@ -37,16 +39,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/booking"
-          element={
-            <ProtectedRoute requiredRole="user">
-              <Booking />
-            </ProtectedRoute>
-          }
-        />
 
-        {/* SHARED ROUTES */}
         <Route
           path="/profile"
           element={
@@ -55,6 +48,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/vehicles"
           element={
@@ -64,7 +58,24 @@ function App() {
           }
         />
 
-        {/* STAFF ROUTES */}
+        <Route
+          path="/booking"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <Booking />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/timeslots"
+          element={
+            <ProtectedRoute>
+              <TimeslotValidation />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/staff/dashboard"
           element={
@@ -74,7 +85,6 @@ function App() {
           }
         />
 
-        {/* ADMIN ROUTES */}
         <Route
           path="/admin/dashboard"
           element={

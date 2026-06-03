@@ -18,22 +18,19 @@ app.use(
   })
 );
 
-// ========================================================
 // IMPORT ROUTERS
-// ========================================================
-const authRouter    = require("./routes/auth");    // Thắng: Đăng ký / Đăng nhập
-const userRouter    = require("./routes/user");    // Duy: Quản lý Profile / Phân quyền
-const vehicleRouter = require("./routes/vehicle"); // Thái: Quản lý phương tiện
-const bookingRouter = require("./routes/booking"); // Trọng & Huy: Đặt lịch & Lịch sử & FSM
+const authRouter = require('./routes/auth');
+const userRouter = require('./routes/user');
+const vehicleRouter = require('./routes/vehicle');
+const bookingRouter = require('./routes/booking');
+const timeslotRouter = require('./routes/timeslot');
 
-// ========================================================
 // MOUNT ROUTERS
-// ========================================================
-app.use("/api/auth",     authRouter);
-app.use("/api/users",    userRouter);
-app.use("/api/vehicles", vehicleRouter);
-app.use("/api/bookings", bookingRouter);
-
+app.use('/api/auth', authRouter);
+app.use('/api/users', userRouter);
+app.use('/api/vehicles', vehicleRouter);
+app.use('/api/bookings', bookingRouter);
+app.use('/api/timeslots', timeslotRouter);
 // Test Endpoint
 app.get("/api/test", (req, res) => {
   res.json({ message: "API Car Wash System hoạt động tốt!" });
