@@ -54,9 +54,9 @@ export default function StaffDashboard() {
 
   const calculateStats = (data) => {
     const total = data.length;
-    const pending = data.filter(b => b.Status === "Pending").length;
-    const active = data.filter(b => b.Status === "In Service" || b.Status === "Confirmed").length;
-    const completed = data.filter(b => b.Status === "Completed").length;
+    const pending = data.filter(b => String(b.Status) === "1").length;
+    const active = data.filter(b => String(b.Status) === "3" || String(b.Status) === "2").length;
+    const completed = data.filter(b => String(b.Status) === "4").length;
     setStats({ total, pending, active, completed });
   };
 
@@ -69,7 +69,7 @@ export default function StaffDashboard() {
     if (selectedStatus === "All") {
       setFilteredBookings(bookings);
     } else {
-      setFilteredBookings(bookings.filter(b => b.Status === selectedStatus));
+      setFilteredBookings(bookings.filter(b => String(b.Status) === selectedStatus));
     }
   }, [selectedStatus, bookings]);
 
@@ -96,19 +96,20 @@ export default function StaffDashboard() {
   };
 
   const getStatusDetails = (status) => {
-    switch (status) {
-      case "Pending":
-        return { bg: "rgba(245, 158, 11, 0.1)", text: "#f59e0b", dotBg: "#f59e0b", shadow: "0 0 12px rgba(245, 158, 11, 0.3)" };
-      case "Confirmed":
-        return { bg: "rgba(59, 130, 246, 0.1)", text: "#3b82f6", dotBg: "#3b82f6", shadow: "0 0 12px rgba(59, 130, 246, 0.3)" };
-      case "In Service":
-        return { bg: "rgba(6, 182, 212, 0.1)", text: "#06b6d4", dotBg: "#06b6d4", shadow: "0 0 12px rgba(6, 182, 212, 0.3)" };
-      case "Completed":
-        return { bg: "rgba(16, 185, 129, 0.1)", text: "#10b981", dotBg: "#10b981", shadow: "0 0 12px rgba(16, 185, 129, 0.3)" };
-      case "Cancelled":
-        return { bg: "rgba(239, 68, 68, 0.1)", text: "#ef4444", dotBg: "#ef4444", shadow: "0 0 12px rgba(239, 68, 68, 0.3)" };
+    const statusStr = String(status);
+    switch (statusStr) {
+      case "1":
+        return { bg: "rgba(245, 158, 11, 0.1)", text: "Chờ duyệt", dotBg: "#f59e0b", shadow: "0 0 12px rgba(245, 158, 11, 0.3)" };
+      case "2":
+        return { bg: "rgba(59, 130, 246, 0.1)", text: "Đã nhận", dotBg: "#3b82f6", shadow: "0 0 12px rgba(59, 130, 246, 0.3)" };
+      case "3":
+        return { bg: "rgba(6, 182, 212, 0.1)", text: "Đang rửa", dotBg: "#06b6d4", shadow: "0 0 12px rgba(6, 182, 212, 0.3)" };
+      case "4":
+        return { bg: "rgba(16, 185, 129, 0.1)", text: "Hoàn tất", dotBg: "#10b981", shadow: "0 0 12px rgba(16, 185, 129, 0.3)" };
+      case "5":
+        return { bg: "rgba(239, 68, 68, 0.1)", text: "Đã hủy", dotBg: "#ef4444", shadow: "0 0 12px rgba(239, 68, 68, 0.3)" };
       default:
-        return { bg: "rgba(107, 114, 128, 0.1)", text: "#6b7280", dotBg: "#6b7280", shadow: "none" };
+        return { bg: "rgba(107, 114, 128, 0.1)", text: status, dotBg: "#6b7280", shadow: "none" };
     }
   };
 
@@ -166,7 +167,7 @@ export default function StaffDashboard() {
         {/* Filters and Search segment */}
         <div style={styles.filterSection}>
           <div style={styles.filterBar}>
-            {["All", "Pending", "Confirmed", "In Service", "Completed", "Cancelled"].map(status => (
+            {["All", "1", "2", "3", "4", "5"].map(status => (
               <button
                 key={status}
                 style={{
@@ -176,11 +177,11 @@ export default function StaffDashboard() {
                 onClick={() => setSelectedStatus(status)}
               >
                 {status === "All" && "Tất cả"}
-                {status === "Pending" && "Chờ duyệt"}
-                {status === "Confirmed" && "Đã nhận"}
-                {status === "In Service" && "Đang rửa"}
-                {status === "Completed" && "Hoàn tất"}
-                {status === "Cancelled" && "Đã hủy"}
+                {status === "1" && "Chờ duyệt"}
+                {status === "2" && "Đã nhận"}
+                {status === "3" && "Đang rửa"}
+                {status === "4" && "Hoàn tất"}
+                {status === "5" && "Đã hủy"}
               </button>
             ))}
           </div>
@@ -251,7 +252,7 @@ export default function StaffDashboard() {
                           boxShadow: badge.shadow
                         }}>
                           <span style={{ ...styles.statusDot, backgroundColor: badge.dotBg }}></span>
-                          {booking.Status}
+                          {badge.text}
                         </span>
                       </td>
                       <td style={styles.td}>
@@ -261,23 +262,23 @@ export default function StaffDashboard() {
                           </button>
                           
                           {/* FSM Actions */}
-                          {booking.Status === "Pending" && (
-                            <button style={styles.btnConfirm} onClick={() => handleTransition(booking.BookingID, "Confirmed")}>
+                          {String(booking.Status) === "1" && (
+                            <button style={styles.btnConfirm} onClick={() => handleTransition(booking.BookingID, 2)}>
                               <i className="fa-solid fa-circle-check"></i> Nhận lịch
                             </button>
                           )}
-                          {booking.Status === "Confirmed" && (
-                            <button style={styles.btnStart} onClick={() => handleTransition(booking.BookingID, "In Service")}>
+                          {String(booking.Status) === "2" && (
+                            <button style={styles.btnStart} onClick={() => handleTransition(booking.BookingID, 3)}>
                               <i className="fa-solid fa-play"></i> Bắt đầu rửa
                             </button>
                           )}
-                          {booking.Status === "In Service" && (
-                            <button style={styles.btnComplete} onClick={() => handleTransition(booking.BookingID, "Completed")}>
+                          {String(booking.Status) === "3" && (
+                            <button style={styles.btnComplete} onClick={() => handleTransition(booking.BookingID, 4)}>
                               <i className="fa-solid fa-flag-checkered"></i> Hoàn thành
                             </button>
                           )}
-                          {(booking.Status === "Pending" || booking.Status === "Confirmed") && (
-                            <button style={styles.btnCancel} onClick={() => handleTransition(booking.BookingID, "Cancelled")}>
+                          {(String(booking.Status) === "1" || String(booking.Status) === "2") && (
+                            <button style={styles.btnCancel} onClick={() => handleTransition(booking.BookingID, 5)}>
                               <i className="fa-solid fa-ban"></i> Hủy
                             </button>
                           )}
@@ -345,7 +346,7 @@ export default function StaffDashboard() {
                       border: `1px solid ${getStatusDetails(selectedBooking.Status).text}`
                     }}>
                       <span style={{ ...styles.statusDot, backgroundColor: getStatusDetails(selectedBooking.Status).dotBg }}></span>
-                      {selectedBooking.Status}
+                      {getStatusDetails(selectedBooking.Status).text}
                     </span>
                   </div>
                 </div>
