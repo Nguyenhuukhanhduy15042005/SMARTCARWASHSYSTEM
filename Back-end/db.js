@@ -6,7 +6,7 @@ const dbConfig = {
   user: process.env.DB_USER || 'sa',
   password: process.env.DB_PASSWORD || '12345', // Đổi mật khẩu này cho khớp với máy của bạn
   server: process.env.DB_SERVER || 'localhost',
-  database: process.env.DB_DATABASE || 'AUTOMATIC_CARWASH1',
+  database: process.env.DB_DATABASE || 'SMARTCARWASHSYSTEM',
   options: {
     encrypt: false, // Đặt true nếu deploy lên Azure
     trustServerCertificate: true // Quan trọng để kết nối dưới localhost không bị lỗi SSL
