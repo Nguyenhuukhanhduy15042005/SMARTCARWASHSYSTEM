@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
-import { jwtDecode } from "jwt-decode"; // Lưu ý: Nếu báo lỗi ở đây, đổi thành: import jwtDecode from 'jwt-decode';
+import { jwtDecode } from "jwt-decode";
 
 export default function Login({ setUser }) {
   const [account, setAccount] = useState("");
@@ -93,7 +93,47 @@ export default function Login({ setUser }) {
   // ============================================
   return (
     <div className="auth-container">
-      <div className="auth-card">
+      <div className="auth-card" style={{ position: "relative" }}>
+        {/* NÚT QUAY VỀ TRANG CHỦ */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-start",
+            marginBottom: "15px",
+          }}
+        >
+          <Link
+            to="/"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              textDecoration: "none",
+              color: "#475569", // Màu xám đậm
+              fontSize: "14px",
+              fontWeight: "600",
+              transition: "color 0.2s ease",
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.color = "#F58607")} // Hover thành màu cam
+            onMouseOut={(e) => (e.currentTarget.style.color = "#475569")}
+          >
+            {/* Icon mũi tên sang trái */}
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Quay lại
+          </Link>
+        </div>
+
         <h2>Đăng Nhập</h2>
 
         {/* Hiện dòng chữ lỗi màu đỏ nếu có lỗi */}
@@ -154,7 +194,7 @@ export default function Login({ setUser }) {
           <Link
             to="/register"
             style={{
-              color: "var(--primary-color)",
+              color: "#F58607" /* Màu cam đồng bộ với thiết kế */,
               fontWeight: 600,
               textDecoration: "none",
             }}

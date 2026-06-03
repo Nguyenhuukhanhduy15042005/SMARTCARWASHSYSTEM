@@ -2,27 +2,36 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // ========================================================
-// IMPORT PAGES (Mỗi người code ở một file trang riêng biệt)
+// IMPORT PAGES
 // ========================================================
-import Login from "./pages/Login"; // Thắng
-import Register from "./pages/Register"; // Thêm dòng import này cho trang Đăng ký
-import Profile from "./pages/Profile"; // Duy
-import VehicleManagement from "./pages/VehicleManagement"; // Thái
-import Booking from "./pages/Booking"; // Thắng
-import UserDashboard from "./pages/UserDashboard"; // Trọng
-import AdminDashboard from "./pages/AdminDashboard"; // Huy, Trọng
-import Unauthorized from "./pages/Unauthorized"; // Trang lỗi 403
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Profile from "./pages/Profile";
+import VehicleManagement from "./pages/VehicleManagement";
+import Booking from "./pages/Booking";
+import UserDashboard from "./pages/UserDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import Unauthorized from "./pages/Unauthorized";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Routes */}
+        {/* =========================================
+            PUBLIC ROUTES (Không yêu cầu đăng nhập)
+        ========================================= */}
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />{" "}
-        {/* Thêm Route này để truy cập được /register */}
+        <Route path="/register" element={<Register />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
-        {/* User Routes (Đăng nhập mới xem được) */}
+
+        {/* Nếu có thêm trang dịch vụ, mở comment dòng dưới: */}
+        {/* <Route path="/services" element={<Services />} /> */}
+
+        {/* =========================================
+            USER ROUTES (Đăng nhập mới xem được)
+        ========================================= */}
         <Route
           path="/dashboard"
           element={
@@ -55,7 +64,10 @@ function App() {
             </ProtectedRoute>
           }
         />
-        {/* Admin/Staff Routes (Đăng nhập + Đúng vai trò mới xem được) */}
+
+        {/* =========================================
+            ADMIN/STAFF ROUTES 
+        ========================================= */}
         <Route
           path="/admin/dashboard"
           element={
@@ -64,8 +76,9 @@ function App() {
             </ProtectedRoute>
           }
         />
-        {/* Mặc định chuyển về trang login */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+
+        {/* Bắt lỗi URL: Nếu người dùng nhập sai, đẩy về trang chủ */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
