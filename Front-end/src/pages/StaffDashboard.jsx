@@ -347,7 +347,7 @@ export default function StaffDashboard() {
                 </div>
                 <div style={styles.modalField}>
                   <label style={styles.modalLabel}>Biển số xe</label>
-                  <div style={styles.modalValue} style={{ color: "#3b82f6", fontWeight: "700" }}>{selectedBooking.LicensePlate || "N/A"}</div>
+                  <div style={{ ...styles.modalValue, color: "#3b82f6", fontWeight: "700" }}>{selectedBooking.LicensePlate || "N/A"}</div>
                 </div>
                 <div style={styles.modalField}>
                   <label style={styles.modalLabel}>Dòng xe / Loại xe</label>
