@@ -119,6 +119,29 @@ export default function StaffDashboard() {
       <div style={styles.glowSphereLeft}></div>
       <div style={styles.glowSphereRight}></div>
 
+      {/* TOP HEADER NAVIGATION BAR */}
+      <nav style={styles.navbar}>
+        <div style={styles.navLogo}><i className="fa-solid fa-car-wash"></i> AutoWash Pro</div>
+        <div style={styles.navLinks}>
+          <button style={{...styles.navLink, ...styles.activeNavLink}}><i className="fa-solid fa-house"></i> Trang chủ</button>
+          <button style={styles.navLink}><i className="fa-solid fa-bell-concierge"></i> Dịch vụ</button>
+          <button style={styles.navLink}><i className="fa-solid fa-id-card"></i> Thành viên</button>
+        </div>
+        <div style={styles.navUser}>
+          <div style={styles.avatar}><i className="fa-solid fa-user-tie"></i></div>
+          <div style={styles.userInfo}>
+            <div style={styles.userName}>Trọng Staff</div>
+            <div style={styles.userRole}>Staff Account</div>
+          </div>
+          <button style={styles.logoutBtn} onClick={() => {
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+          }}>
+            <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất
+          </button>
+        </div>
+      </nav>
+
       {/* Main glass card wrapper */}
       <div style={styles.dashboardCard}>
         <header style={styles.header}>
@@ -382,7 +405,7 @@ export default function StaffDashboard() {
 }
 
 // ========================================================
-// STYLES SYSTEM
+// PREMIUM UI CSS SYSTEM (Pure Javascript Objects)
 // ========================================================
 const styles = {
   container: {
@@ -390,10 +413,104 @@ const styles = {
     backgroundImage: "radial-gradient(at 0% 0%, rgba(17, 24, 39, 0.8) 0, transparent 50%), radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.05) 0, transparent 50%)",
     color: "#f3f4f6",
     minHeight: "100vh",
-    padding: "60px 20px",
+    padding: "40px 20px",
     fontFamily: "'Plus Jakarta Sans', sans-serif",
     position: "relative",
     overflow: "hidden"
+  },
+  navbar: {
+    maxWidth: "1280px",
+    margin: "0 auto 25px auto",
+    backgroundColor: "rgba(17, 24, 39, 0.6)",
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
+    borderRadius: "16px",
+    border: "1px solid rgba(255, 255, 255, 0.06)",
+    padding: "15px 30px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4)",
+    zIndex: 2,
+    position: "relative"
+  },
+  navLogo: {
+    fontSize: "18px",
+    fontWeight: "800",
+    color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px"
+  },
+  navLinks: {
+    display: "flex",
+    gap: "10px"
+  },
+  navLink: {
+    backgroundColor: "transparent",
+    border: "none",
+    color: "#9ca3af",
+    padding: "10px 16px",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "600",
+    transition: "all 0.2s ease",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px"
+  },
+  activeNavLink: {
+    backgroundColor: "rgba(99, 102, 241, 0.15)",
+    color: "#818cf8"
+  },
+  navUser: {
+    display: "flex",
+    alignItems: "center",
+    gap: "15px"
+  },
+  avatar: {
+    width: "36px",
+    height: "36px",
+    borderRadius: "50%",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    color: "#818cf8"
+  },
+  userInfo: {
+    display: "flex",
+    flexDirection: "column"
+  },
+  userName: {
+    fontSize: "13px",
+    fontWeight: "700",
+    color: "#ffffff"
+  },
+  userRole: {
+    fontSize: "10px",
+    color: "#9ca3af",
+    marginTop: "2px"
+  },
+  logoutBtn: {
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    border: "1px solid rgba(239, 68, 68, 0.2)",
+    color: "#ef4444",
+    padding: "8px 14px",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "700",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    transition: "all 0.2s ease",
+    ":hover": {
+      backgroundColor: "rgba(239, 68, 68, 0.2)",
+      boxShadow: "0 0 10px rgba(239, 68, 68, 0.2)"
+    }
   },
   glowSphereLeft: {
     position: "absolute",
