@@ -328,6 +328,12 @@ export default function UserDashboard() {
           </div>
         </section>
 
+        {/* Section Divider */}
+        <div className="section-divider-title">
+          <h2>Quản Lý Lịch Hẹn & Lịch Sử</h2>
+          <div className="divider-line"></div>
+        </div>
+
         {/* Filters Tabs Bar */}
         <section className="user-filters-bar">
           <div className="user-status-tabs">
