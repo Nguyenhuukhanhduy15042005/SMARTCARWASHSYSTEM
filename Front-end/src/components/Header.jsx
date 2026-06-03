@@ -42,6 +42,18 @@ const Header = () => {
             Đặt lịch
           </Link>
           <Link
+            to="/vehicles"
+            className="text-lg font-medium text-gray-700 hover:text-blue-900 transition-colors"
+          >
+            Quản lý xe
+          </Link>
+          <Link
+            to="/timeslots"
+            className="text-lg font-medium text-gray-700 hover:text-blue-900 transition-colors"
+          >
+            Booking Timeslot
+          </Link>
+          <Link
             to="/profile"
             className="text-lg font-medium text-gray-700 hover:text-blue-900 transition-colors"
           >
