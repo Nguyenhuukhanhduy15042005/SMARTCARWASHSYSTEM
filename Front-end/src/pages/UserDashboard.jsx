@@ -156,7 +156,7 @@ export default function UserDashboard() {
                   <th style={styles.th}>Loại Xe</th>
                   <th style={styles.th}>Thời Gian</th>
                   <th style={styles.th}>Trạng Thái</th>
-                  <th style={styles.th} style={{ textAlign: "right" }}>Theo Dõi</th>
+                  <th style={{ ...styles.th, textAlign: "right" }}>Theo Dõi</th>
                 </tr>
               </thead>
               <tbody>
@@ -191,7 +191,7 @@ export default function UserDashboard() {
                           {details.text}
                         </span>
                       </td>
-                      <td style={styles.td} style={{ textAlign: "right" }}>
+                      <td style={{ ...styles.td, textAlign: "right" }}>
                         <button style={styles.trackBtn} onClick={() => setSelectedBooking(booking)}>
                           <i className="fa-solid fa-route"></i> Tiến độ
                         </button>

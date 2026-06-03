@@ -121,7 +121,10 @@ export default function StaffDashboard() {
 
       {/* TOP HEADER NAVIGATION BAR */}
       <nav style={styles.navbar}>
-        <div style={styles.navLogo}><i className="fa-solid fa-car-wash"></i> AutoWash Pro</div>
+        <div style={styles.navLogo}>
+          <img src="/logo.png" alt="Moto Shine Logo" style={styles.logoImg} />
+          <span>Moto Shine</span>
+        </div>
         <div style={styles.navLinks}>
           <button style={{...styles.navLink, ...styles.activeNavLink}}><i className="fa-solid fa-house"></i> Trang chủ</button>
           <button style={styles.navLink}><i className="fa-solid fa-bell-concierge"></i> Dịch vụ</button>
@@ -232,7 +235,7 @@ export default function StaffDashboard() {
                   <th style={styles.th}>Thông tin xe</th>
                   <th style={styles.th}>Thời gian đặt</th>
                   <th style={styles.th}>Trạng thái</th>
-                  <th style={styles.th} style={{ textAlign: "right" }}>Thao tác điều phối</th>
+                  <th style={{ ...styles.th, textAlign: "right" }}>Thao tác điều phối</th>
                 </tr>
               </thead>
               <tbody>
@@ -441,6 +444,13 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "8px"
+  },
+  logoImg: {
+    height: "38px",
+    width: "38px",
+    objectFit: "cover",
+    borderRadius: "50%",
+    border: "1px solid rgba(255, 255, 255, 0.15)"
   },
   navLinks: {
     display: "flex",
