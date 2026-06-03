@@ -1,5 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
 @import "tailwindcss";
+
 * {
   margin: 0;
   padding: 0;
@@ -8,7 +9,6 @@
 }
 
 body {
-  /* Nền kem đồng bộ với trang chủ */
   background-color: #fcf7f0;
   color: #1e293b;
   min-height: 100vh;
@@ -16,7 +16,44 @@ body {
   flex-direction: column;
 }
 
-/* Khung chứa Auth căn giữa màn hình */
+/* =========================================
+   TÙY CHỈNH THANH CUỘN (SCROLLBAR) CHO ĐẸP
+========================================= */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* =========================================
+   HIỆU ỨNG TRANG BOOKING
+========================================= */
+.booking-fade-in {
+  animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================
+   CSS TRANG AUTH (GIỮ NGUYÊN CỦA BẠN)
+========================================= */
 .auth-container {
   display: flex;
   justify-content: center;
@@ -25,7 +62,6 @@ body {
   padding: 20px;
 }
 
-/* Thẻ Form: Chuyển sang nền trắng, đổ bóng mềm mại */
 .auth-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -33,7 +69,7 @@ body {
   border-radius: 24px;
   width: 100%;
   max-width: 420px;
-  box-shadow: 0 20px 40px -15px rgba(44, 56, 126, 0.15); /* Bóng tone xanh navy */
+  box-shadow: 0 20px 40px -15px rgba(44, 56, 126, 0.15);
   text-align: center;
   animation: fadeIn 0.5s ease-out;
 }
@@ -53,7 +89,7 @@ body {
   margin-bottom: 30px;
   font-size: 28px;
   font-weight: 800;
-  color: #2c387e; /* Xanh Navy của thương hiệu */
+  color: #2c387e;
 }
 
 .input-group {
@@ -85,14 +121,12 @@ body {
   color: #94a3b8;
 }
 
-/* Hiệu ứng viền sáng màu Cam khi click vào ô nhập */
 .input-group input:focus {
   border-color: #f58607;
   box-shadow: 0 0 0 4px rgba(245, 134, 7, 0.15);
   background: #ffffff;
 }
 
-/* Nút bấm màu Cam đồng bộ với nút "Đặt lịch ngay" */
 .btn-primary {
   background: #f58607;
   color: white;
@@ -108,7 +142,7 @@ body {
 }
 
 .btn-primary:hover {
-  background: #ea580c; /* Cam đậm hơn khi hover */
+  background: #ea580c;
   transform: translateY(-2px);
   box-shadow: 0 10px 20px -10px rgba(245, 134, 7, 0.6);
 }
@@ -117,7 +151,6 @@ body {
   transform: translateY(0);
 }
 
-/* Đường gạch ngang "Hoặc tiếp tục với" */
 .divider {
   display: flex;
   align-items: center;
@@ -141,7 +174,6 @@ body {
   margin-left: 15px;
 }
 
-/* Thông báo lỗi */
 .error-msg {
   background: #fef2f2;
   color: #dc2626;
@@ -153,7 +185,6 @@ body {
   font-weight: 500;
 }
 
-/* Nút Google (nếu cần style thêm để hợp với nền trắng) */
 .nsm7Vb-HzV7m-LgbsSe {
   border-radius: 12px !important;
   border: 1px solid #e2e8f0 !important;

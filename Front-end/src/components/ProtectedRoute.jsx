@@ -1,23 +1,31 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 
 export default function ProtectedRoute({ children, requiredRole }) {
-  const token = localStorage.getItem("token");
+  const location = useLocation();
+
+  // 1. SỬA: Đổi thành "TOKEN" (viết hoa) cho khớp với bên Login.jsx
+  const token = localStorage.getItem("TOKEN");
 
   if (!token) {
-    return <Navigate to="/login" replace />;
+    // Trả về trang login và kèm theo tín hiệu để hiện thông báo lỗi
+    return <Navigate to="/login" state={{ error: "unauthorized" }} replace />;
   }
 
   try {
     const decoded = jwtDecode(token);
-    if (requiredRole && decoded.role !== requiredRole) {
+
+    // 2. SỬA: Đổi decoded.role thành decoded.roleId cho khớp với Backend tạo ra
+    if (requiredRole && decoded.roleId !== requiredRole) {
       return <Navigate to="/unauthorized" replace />;
     }
   } catch (err) {
-    localStorage.removeItem("token");
-    return <Navigate to="/login" replace />;
+    // Nếu token bị lỗi hoặc hết hạn thì xóa đi và bắt đăng nhập lại
+    localStorage.removeItem("TOKEN");
+    return <Navigate to="/login" state={{ error: "unauthorized" }} replace />;
   }
 
+  // Hợp lệ toàn bộ -> Cho phép vào trang
   return children;
 }
