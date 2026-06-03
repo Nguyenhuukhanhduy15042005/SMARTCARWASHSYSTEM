@@ -21,12 +21,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
-        {/* User Routes (Đăng nhập mới xem được) */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <UserDashboard />
-          </ProtectedRoute>
-        } />
+        {/* User Routes (Bỏ tạm ProtectedRoute để vào trực tiếp test) */}
+        <Route path="/dashboard" element={<UserDashboard />} />
 
         <Route path="/profile" element={
           <ProtectedRoute>
@@ -44,12 +40,8 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* Staff Routes (Đăng nhập + Vai trò staff mới xem được) */}
-        <Route path="/staff/dashboard" element={
-          <ProtectedRoute requiredRole="staff">
-            <StaffDashboard />
-          </ProtectedRoute>
-        } />
+        {/* Staff Routes (Bỏ tạm ProtectedRoute để vào trực tiếp test) */}
+        <Route path="/staff/dashboard" element={<StaffDashboard />} />
 
         {/* Admin Routes (Đăng nhập + Vai trò admin mới xem được) */}
         <Route path="/admin/dashboard" element={
