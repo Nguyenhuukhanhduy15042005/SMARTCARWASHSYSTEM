@@ -226,7 +226,7 @@ export default function UserDashboard() {
           <span>AutoWash Pro</span>
         </div>
         <div className="user-header-profile">
-          <a href="/dashboard" className="nav-link active">Dashboard</a>
+          <a href="/dashboard" className="nav-link active">Thành viên</a>
           <a href="/booking" className="nav-link">Đặt Lịch Ngay</a>
           <a href="/vehicles" className="nav-link">Xe của tôi</a>
           <a href="/profile" className="nav-link">Hồ sơ cá nhân</a>
