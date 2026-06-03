@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom"; // Import Link để điều hướng
 
 export default function Booking() {
   // State quản lý dữ liệu đặt lịch
@@ -31,8 +32,31 @@ export default function Booking() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDF8F0] font-sans text-[#192b4d] py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#FDF8F0] font-sans text-[#192b4d] py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
+        {/* THANH ĐIỀU HƯỚNG QUAY LẠI */}
+        <div className="mb-6">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-[#F58607] font-semibold text-sm transition-colors duration-200"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+            Quay lại trang chủ
+          </Link>
+        </div>
+
         {/* Tiêu đề trang */}
         <div className="text-center mb-10">
           <h2 className="text-3xl md:text-4xl font-extrabold text-[#192b4d] tracking-tight">
