@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./AdminDashboard.css";
 import axios from "axios";
 
-const API_BASE = "http://localhost:5000/api/bookings/admin";
+const API_BASE = "http://127.0.0.1:5000/api/bookings/admin";
 
 const MOCK_BOOKINGS = [
   { id: 101, customerName: "Nguyễn Văn A", phone: "0901234567", vehicleType: "SUV", licensePlate: "30A-123.45", servicePackage: "Rửa xe bọt tuyết & Hút bụi", time: "09:00", price: 150000, status: 1, date: "2026-06-03" },
@@ -78,7 +78,8 @@ export default function AdminDashboard() {
       setBookings(MOCK_BOOKINGS);
       calculateStats(MOCK_BOOKINGS);
       setIsSimulation(true);
-      showToast("Kết nối API thất bại. Đang chạy ở chế độ mô phỏng!", "error");
+      const errMsg = err.response?.data?.message || err.message;
+      showToast(`Kết nối API thất bại: ${errMsg}. Chạy chế độ mô phỏng!`, "error");
     } finally {
       setLoading(false);
     }
