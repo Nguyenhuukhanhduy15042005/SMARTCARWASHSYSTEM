@@ -137,7 +137,8 @@ export default function StaffDashboard() {
             <div style={styles.userRole}>Staff Account</div>
           </div>
           <button style={styles.logoutBtn} onClick={() => {
-            localStorage.removeItem("token");
+            localStorage.removeItem("TOKEN");
+            localStorage.removeItem("LOGIN_USER");
             window.location.href = "/login";
           }}>
             <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất
