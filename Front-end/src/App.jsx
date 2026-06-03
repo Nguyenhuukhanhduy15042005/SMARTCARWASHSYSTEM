@@ -42,12 +42,8 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* Admin/Staff Routes (Đăng nhập + Đúng vai trò mới xem được) */}
-        <Route path="/admin/dashboard" element={
-          <ProtectedRoute requiredRole="admin">
-            <AdminDashboard />
-          </ProtectedRoute>
-        } />
+        {/* Admin/Staff Routes (Đã tạm thời bỏ ProtectedRoute để test trực tiếp) */}
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
         {/* Mặc định chuyển về trang login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
