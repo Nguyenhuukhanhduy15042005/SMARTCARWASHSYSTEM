@@ -1,18 +1,26 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-const Home = () => {
+const Home = ({ user, setUser }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("TOKEN");
+    localStorage.removeItem("LOGIN_USER");
+    setUser(null);
+    navigate("/");
+  };
+
   return (
     <div className="min-h-screen bg-[#FDF8F0] font-sans text-[#192b4d]">
       {/* Header / Navbar */}
       <header className="container mx-auto px-6 py-6 flex items-center justify-between">
-        {/* Logo Section */}
+        {/* Logo */}
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full overflow-hidden shadow-sm bg-gray-200">
-            {/* Thay thế src bằng ảnh logo thực tế */}
             <img
               src="https://placehold.co/400x400/2C387E/FFFFFF?text=AW\nPro&font=Montserrat"
-              alt="Moto Shine Logo"
+              alt="AutoWash Pro Logo"
               className="w-full h-full object-cover"
             />
           </div>
@@ -26,7 +34,7 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Navigation Links */}
+        {/* Navigation */}
         <nav className="flex items-center gap-10">
           <Link to="/" className="text-xl font-extrabold text-[#192b4d]">
             Trang chủ
@@ -53,36 +61,73 @@ const Home = () => {
 
         {/* Auth Buttons */}
         <div className="flex items-center gap-5">
-          <Link
-            to="/login"
-            className="px-8 py-3.5 text-lg font-bold text-gray-800 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
-          >
-            Login
-          </Link>
-          <Link
-            to="/register"
-            className="px-8 py-3.5 text-lg font-bold text-white bg-[#F58607] rounded-full shadow-md hover:bg-orange-600 transition-all"
-          >
-            Sign Up
-          </Link>
+          {user ? (
+            // ĐÃ ĐĂNG NHẬP: hiện tên + nút Logout
+            <>
+              <span
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  color: "#192b4d",
+                }}
+              >
+                Xin chào, {user.fullName}!
+              </span>
+              <button
+                onClick={handleLogout}
+                style={{
+                  padding: "10px 24px",
+                  fontSize: "16px",
+                  fontWeight: "700",
+                  color: "#fff",
+                  backgroundColor: "#e53e3e",
+                  border: "none",
+                  borderRadius: "9999px",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s",
+                }}
+                onMouseOver={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#c53030")
+                }
+                onMouseOut={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#e53e3e")
+                }
+              >
+                Đăng xuất
+              </button>
+            </>
+          ) : (
+            // CHƯA ĐĂNG NHẬP: hiện Login + Sign Up
+            <>
+              <Link
+                to="/login"
+                className="px-8 py-3.5 text-lg font-bold text-gray-800 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="px-8 py-3.5 text-lg font-bold text-white bg-[#F58607] rounded-full shadow-md hover:bg-orange-600 transition-all"
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
       {/* Hero Section */}
       <main className="container mx-auto px-6 pt-16 pb-24 flex flex-col lg:flex-row items-center gap-16">
-        {/* Left Content */}
         <div className="flex-1 space-y-8">
           <h2 className="text-[3.5rem] lg:text-[4rem] font-extrabold text-[#293563] leading-[1.2] tracking-tight">
             Đặt lịch rửa xe thông minh <br />
             Trải nghiệm nhanh chóng, <br />
             tiện lợi
           </h2>
-
           <p className="text-xl text-gray-600 leading-relaxed max-w-2xl pr-4">
             AutoWash Pro giúp bạn đặt lịch dễ dàng, theo dõi quá trình rửa xe và
             tích điểm thành viên để nhận nhiều ưu đãi hấp dẫn.
           </p>
-
           <div className="flex items-center gap-6 pt-2">
             <Link
               to="/booking"
@@ -90,10 +135,8 @@ const Home = () => {
             >
               Đặt lịch ngay
             </Link>
-
             <button className="flex items-center gap-4 group">
               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300">
-                {/* Play Icon */}
                 <svg
                   className="w-6 h-6 text-[#38BDF8] ml-1.5"
                   fill="currentColor"
@@ -109,13 +152,11 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Right Image */}
         <div className="flex-1 w-full relative">
           <div className="rounded-[2rem] overflow-hidden shadow-2xl h-[550px] relative">
-            {/* Thay thế src bằng ảnh trạm rửa xe/nhân viên thực tế */}
             <img
               src="https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1200&q=80"
-              alt="AutoWash Pro Attendant"
+              alt="AutoWash Pro"
               className="w-full h-full object-cover"
             />
           </div>

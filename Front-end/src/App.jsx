@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -15,19 +16,22 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Unauthorized from "./pages/Unauthorized";
 
 function App() {
+  // Lấy user từ localStorage nếu đã đăng nhập trước đó
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem("LOGIN_USER");
+    return saved ? JSON.parse(saved) : null;
+  });
+
   return (
     <BrowserRouter>
       <Routes>
         {/* =========================================
             PUBLIC ROUTES (Không yêu cầu đăng nhập)
         ========================================= */}
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Home user={user} setUser={setUser} />} />
+        <Route path="/login" element={<Login setUser={setUser} />} />
         <Route path="/register" element={<Register />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
-
-        {/* Nếu có thêm trang dịch vụ, mở comment dòng dưới: */}
-        {/* <Route path="/services" element={<Services />} /> */}
 
         {/* =========================================
             USER ROUTES (Đăng nhập mới xem được)
@@ -77,7 +81,7 @@ function App() {
           }
         />
 
-        {/* Bắt lỗi URL: Nếu người dùng nhập sai, đẩy về trang chủ */}
+        {/* Bắt lỗi URL */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
