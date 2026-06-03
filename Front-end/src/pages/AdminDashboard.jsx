@@ -102,6 +102,32 @@ export default function AdminDashboard() {
     }
   };
 
+  // Delete booking permanently from DB
+  const handleDeleteBooking = async (id) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa vĩnh viễn lịch đặt xe này khỏi cơ sở dữ liệu?")) {
+      return;
+    }
+
+    const token = localStorage.getItem("token") || "mock-token";
+    const headers = { Authorization: `Bearer ${token}` };
+
+    try {
+      await axios.delete(`${API_BASE}/${id}`, { headers });
+      showToast("Xóa lịch đặt xe thành công!", "success");
+      
+      // Close details modal if open on the deleted booking
+      if (selectedBooking && selectedBooking.id === id) {
+        setSelectedBooking(null);
+      }
+      
+      fetchData(); // Reload live database records
+    } catch (err) {
+      console.error("Failed to delete booking from DB:", err);
+      const errMsg = err.response?.data?.message || err.message;
+      showToast(`Lỗi xóa lịch đặt xe trong CSDL: ${errMsg}`, "error");
+    }
+  };
+
   // Mapping text status to pill colors
   const getStatusPill = (status) => {
     switch (status) {
@@ -356,6 +382,11 @@ export default function AdminDashboard() {
                           {b.status === 3 && (
                             <button className="action-icon-btn btn-complete" title="Hoàn thành rửa" onClick={() => handleStatusUpdate(b.id, 4)}>
                               <i className="fa-solid fa-circle-check"></i>
+                            </button>
+                          )}
+                          {(b.status === 4 || b.status === 5) && (
+                            <button className="action-icon-btn btn-cancel" title="Xóa lịch đặt" onClick={() => handleDeleteBooking(b.id)}>
+                              <i className="fa-regular fa-trash-can"></i>
                             </button>
                           )}
                           <button className="action-icon-btn btn-details" title="Chi tiết" onClick={() => setSelectedBooking(b)}>

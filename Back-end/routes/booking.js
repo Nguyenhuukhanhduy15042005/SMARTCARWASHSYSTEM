@@ -368,21 +368,33 @@ router.put('/admin/:id/status', adminAuth, async (req, res) => {
 });
 
 // ===============================
-// ADMIN - Hủy booking
+// ADMIN - Xóa vĩnh viễn booking khỏi CSDL (Có kèm xóa các bảng quan hệ)
 // ===============================
 router.delete('/admin/:id', adminAuth, async (req, res) => {
     try {
         const pool = await poolPromise;
-        await pool.request()
-            .input('id', sql.Int, req.params.id)
-            .query(`
-                UPDATE BOOKING 
-                SET Status = 5 
-                WHERE BookingID = @id
-            `);
-        res.json({
-            message: 'Hủy booking thành công'
-        });
+        const transaction = new sql.Transaction(pool);
+        
+        await transaction.begin();
+        try {
+            const request = new sql.Request(transaction);
+            request.input('id', sql.Int, req.params.id);
+            
+            // Xóa các dòng liên quan trước để thỏa mãn ràng buộc khóa ngoại (Foreign Key)
+            await request.query("DELETE FROM FEEDBACK WHERE BookingID = @id");
+            await request.query("DELETE FROM LOYALTY_TRANSACTION WHERE BookingID = @id");
+            await request.query("DELETE FROM PAYMENT WHERE BookingID = @id");
+            await request.query("DELETE FROM BOOKING_DETAIL WHERE BookingID = @id");
+            
+            // Cuối cùng xóa bản ghi Booking chính
+            await request.query("DELETE FROM BOOKING WHERE BookingID = @id");
+            
+            await transaction.commit();
+            res.json({ message: 'Xóa lịch đặt khỏi CSDL thành công' });
+        } catch (innerErr) {
+            await transaction.rollback();
+            throw innerErr;
+        }
     } catch (err) {
         res.status(500).json({
             message: err.message
