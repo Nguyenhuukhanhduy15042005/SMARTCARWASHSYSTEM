@@ -4,14 +4,6 @@ import axios from "axios";
 
 const API_BASE = "http://127.0.0.1:5000/api/bookings/admin";
 
-const MOCK_BOOKINGS = [
-  { id: 101, customerName: "Nguyễn Văn A", phone: "0901234567", vehicleType: "SUV", licensePlate: "30A-123.45", servicePackage: "Rửa xe bọt tuyết & Hút bụi", time: "09:00", price: 150000, status: 1, date: "2026-06-03" },
-  { id: 102, customerName: "Trần Thị B", phone: "0912345678", vehicleType: "Sedan", licensePlate: "29C-543.21", servicePackage: "Vệ sinh khoang máy chuyên sâu", time: "10:30", price: 350000, status: 2, date: "2026-06-03" },
-  { id: 103, customerName: "Lê Hoàng C", phone: "0987654321", vehicleType: "Xe máy", licensePlate: "29A-999.99", servicePackage: "Rửa xe máy cơ bản", time: "11:15", price: 50000, status: 3, date: "2026-06-03" },
-  { id: 104, customerName: "Phạm Minh D", phone: "0934567890", vehicleType: "SUV", licensePlate: "30E-888.88", servicePackage: "Dọn nội thất chi tiết", time: "13:00", price: 250000, status: 4, date: "2026-06-03" },
-  { id: 105, customerName: "Vũ Tiến E", phone: "0977665544", vehicleType: "Sedan", licensePlate: "30F-111.11", servicePackage: "Rửa xe bọt tuyết", time: "14:30", price: 150000, status: 5, date: "2026-06-03" }
-];
-
 export default function AdminDashboard() {
   const [bookings, setBookings] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, active: 0, completed: 0, revenue: 0 });
@@ -20,7 +12,6 @@ export default function AdminDashboard() {
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [toast, setToast] = useState(null);
-  const [isSimulation, setIsSimulation] = useState(false);
 
   // Load Google Fonts & FontAwesome icons dynamically
   useEffect(() => {
@@ -42,10 +33,10 @@ export default function AdminDashboard() {
     setToast({ message, type });
     setTimeout(() => {
       setToast(null);
-    }, 3000);
+    }, 4000);
   };
 
-  // Main fetch function trying API with fallback to Mocks
+  // Main fetch function targeting SQL server API directly
   const fetchData = async () => {
     setLoading(true);
     const token = localStorage.getItem("token") || "mock-token";
@@ -60,7 +51,6 @@ export default function AdminDashboard() {
       const apiStats = statsRes.data;
       const apiBookings = bookingsRes.data;
 
-      // Handle raw DB output arrays if formatted differently
       const list = Array.isArray(apiBookings) ? apiBookings : (apiBookings.data || []);
       
       setBookings(list);
@@ -71,30 +61,18 @@ export default function AdminDashboard() {
         completed: apiStats.completed || list.filter(b => b.status === 4).length,
         revenue: apiStats.revenue || list.reduce((acc, curr) => curr.status === 4 ? acc + (curr.price || 0) : acc, 0)
       });
-      setIsSimulation(false);
     } catch (err) {
-      console.warn("Backend API not reachable or authentication failed. Switching to Local Demo Mode.", err);
-      // Fallback simulation mode
-      setBookings(MOCK_BOOKINGS);
-      calculateStats(MOCK_BOOKINGS);
-      setIsSimulation(true);
+      console.error("Backend API connection failed:", err);
       const errMsg = err.response?.data?.message || err.message;
-      showToast(`Kết nối API thất bại: ${errMsg}. Chạy chế độ mô phỏng!`, "error");
+      showToast(`Không thể kết nối đến cơ sở dữ liệu: ${errMsg}. Vui lòng kiểm tra Server!`, "error");
+      setBookings([]);
+      setStats({ total: 0, pending: 0, active: 0, completed: 0, revenue: 0 });
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateStats = (list) => {
-    const total = list.length;
-    const pending = list.filter(b => b.status === 1).length;
-    const active = list.filter(b => b.status === 3).length;
-    const completed = list.filter(b => b.status === 4).length;
-    const revenue = list.reduce((acc, b) => b.status === 4 ? acc + b.price : acc, 0);
-    setStats({ total, pending, active, completed, revenue });
-  };
-
-  // Status transitions
+  // Status transitions triggering live API PUT requests
   const handleStatusUpdate = async (id, newStatus) => {
     const token = localStorage.getItem("token") || "mock-token";
     const headers = { Authorization: `Bearer ${token}` };
@@ -107,36 +85,20 @@ export default function AdminDashboard() {
       5: "Đã hủy"
     };
 
-    if (isSimulation) {
-      // Simulate state transition locally
-      const updatedList = bookings.map(b => {
-        if (b.id === id) {
-          return { ...b, status: newStatus };
-        }
-        return b;
-      });
-      setBookings(updatedList);
-      calculateStats(updatedList);
+    try {
+      await axios.put(`${API_BASE}/${id}/status`, { status: newStatus }, { headers });
+      showToast(`Cập nhật trạng thái thành [${statusMap[newStatus]}] thành công!`, "success");
+      
+      // Update local detailed modal if open
       if (selectedBooking && selectedBooking.id === id) {
         setSelectedBooking({ ...selectedBooking, status: newStatus });
       }
-      showToast(`Cập nhật trạng thái thành [${statusMap[newStatus]}] (Mô phỏng)!`, "success");
-    } else {
-      try {
-        await axios.put(`${API_BASE}/${id}/status`, { status: newStatus }, { headers });
-        showToast(`Cập nhật trạng thái thành [${statusMap[newStatus]}] thành công!`);
-        fetchData(); // Reload live data
-      } catch (err) {
-        console.error("Failed to update status", err);
-        // Fallback local update if API fails during session
-        const updatedList = bookings.map(b => (b.id === id ? { ...b, status: newStatus } : b));
-        setBookings(updatedList);
-        calculateStats(updatedList);
-        if (selectedBooking && selectedBooking.id === id) {
-          setSelectedBooking({ ...selectedBooking, status: newStatus });
-        }
-        showToast(`Cập nhật trạng thái thất bại trên máy chủ. Đã cập nhật trên giao diện!`, "warning");
-      }
+      
+      fetchData(); // Reload live database records
+    } catch (err) {
+      console.error("Failed to update status in DB:", err);
+      const errMsg = err.response?.data?.message || err.message;
+      showToast(`Lỗi cập nhật trạng thái trong CSDL: ${errMsg}`, "error");
     }
   };
 
@@ -224,11 +186,6 @@ export default function AdminDashboard() {
             <p>Hệ thống Smart Car Wash System điều phối thời gian thực</p>
           </div>
           <div className="admin-header-actions">
-            {isSimulation && (
-              <span style={{ fontSize: "12px", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)", padding: "4px 10px", borderRadius: "20px", fontWeight: 600 }}>
-                <i className="fa-solid fa-triangle-exclamation"></i> Chế độ mô phỏng
-              </span>
-            )}
             <div className="admin-user-profile">
               <div className="admin-avatar">AD</div>
               <div className="admin-user-info">
