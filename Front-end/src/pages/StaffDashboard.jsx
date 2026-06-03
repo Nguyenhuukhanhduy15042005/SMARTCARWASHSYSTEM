@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 
 export default function StaffDashboard() {
-  const [activeTab, setActiveTab] = useState("bookings");
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState("All");
@@ -114,401 +113,192 @@ export default function StaffDashboard() {
     }
   };
 
-  // ========================================================
-  // RENDER DYNAMIC MOCK VIEWS FOR NAVIGATION TABS
-  // ========================================================
-
-  const renderCustomersView = () => (
-    <div>
-      <div style={styles.viewHeader}>
-        <h2><i className="fa-solid fa-users"></i> Quản Lý Khách Hàng</h2>
-        <p>Danh sách thông tin thành viên và tích điểm loyalty</p>
-      </div>
-      <div style={styles.tableWrapper}>
-        <table style={styles.table}>
-          <thead>
-            <tr style={styles.thRow}>
-              <th style={styles.th}>ID</th>
-              <th style={styles.th}>Họ Tên</th>
-              <th style={styles.th}>Số Điện Thoại</th>
-              <th style={styles.th}>Điểm Tích Lũy</th>
-              <th style={styles.th}>Hạng Thành Viên</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style={styles.tr}>
-              <td style={styles.td}><span style={styles.idBadge}>#1</span></td>
-              <td style={styles.td}><b>Nguyễn Văn A</b></td>
-              <td style={styles.td}>0901234567</td>
-              <td style={styles.td} style={{ color: "#10b981", fontWeight: "700" }}>85 pts</td>
-              <td style={styles.td}><span style={{ ...styles.badge, backgroundColor: "rgba(147, 197, 253, 0.15)", color: "#93c5fd", border: "1px solid #93c5fd" }}>Silver</span></td>
-            </tr>
-            <tr style={styles.tr}>
-              <td style={styles.td}><span style={styles.idBadge}>#2</span></td>
-              <td style={styles.td}><b>Trần Thị B</b></td>
-              <td style={styles.td}>0987654321</td>
-              <td style={styles.td} style={{ color: "#10b981", fontWeight: "700" }}>150 pts</td>
-              <td style={styles.td}><span style={{ ...styles.badge, backgroundColor: "rgba(251, 191, 36, 0.15)", color: "#fbbf24", border: "1px solid #fbbf24" }}>Gold</span></td>
-            </tr>
-            <tr style={styles.tr}>
-              <td style={styles.td}><span style={styles.idBadge}>#3</span></td>
-              <td style={styles.td}><b>Phan Phúc Nhân</b></td>
-              <td style={styles.td}>0948089166</td>
-              <td style={styles.td} style={{ color: "#10b981", fontWeight: "700" }}>20 pts</td>
-              <td style={styles.td}><span style={{ ...styles.badge, backgroundColor: "rgba(156, 163, 175, 0.15)", color: "#9ca3af", border: "1px solid #9ca3af" }}>Standard</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
-  const renderVehiclesView = () => (
-    <div>
-      <div style={styles.viewHeader}>
-        <h2><i className="fa-solid fa-car"></i> Quản Lý Phương Tiện</h2>
-        <p>Danh sách xe đã đăng ký dịch vụ của khách hàng</p>
-      </div>
-      <div style={styles.tableWrapper}>
-        <table style={styles.table}>
-          <thead>
-            <tr style={styles.thRow}>
-              <th style={styles.th}>Chủ Sở Hữu</th>
-              <th style={styles.th}>Biển Số Xe</th>
-              <th style={styles.th}>Dòng Xe</th>
-              <th style={styles.th}>Màu Xe</th>
-              <th style={styles.th}>Loại Phương Tiện</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style={styles.tr}>
-              <td style={styles.td}><b>Nguyễn Văn A</b></td>
-              <td style={styles.td}><span style={styles.licensePlate}>30A-12345</span></td>
-              <td style={styles.td}>Toyota Vios</td>
-              <td style={styles.td}>Đen</td>
-              <td style={styles.td}>Sedan</td>
-            </tr>
-            <tr style={styles.tr}>
-              <td style={styles.td}><b>Trần Thị B</b></td>
-              <td style={styles.td}><span style={styles.licensePlate}>51F-99999</span></td>
-              <td style={styles.td}>Hyundai SantaFe</td>
-              <td style={styles.td}>Trắng</td>
-              <td style={styles.td}>SUV</td>
-            </tr>
-            <tr style={styles.tr}>
-              <td style={styles.td}><b>Phan Phúc Nhân</b></td>
-              <td style={styles.td}><span style={styles.licensePlate}>97X9-2475</span></td>
-              <td style={styles.td}>Honda SH 150i</td>
-              <td style={styles.td}>Đỏ Đô</td>
-              <td style={styles.td}>Bike</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
-  const renderReportsView = () => (
-    <div>
-      <div style={styles.viewHeader}>
-        <h2><i className="fa-solid fa-chart-line"></i> Báo Cáo Doanh Thu</h2>
-        <p>Phân tích hiệu suất doanh thu và hoạt động chăm sóc xe</p>
-      </div>
-      <div style={styles.statsGrid}>
-        <div style={{ ...styles.statItem, borderLeft: "4px solid #10b981" }}>
-          <div style={styles.statIconWrapper}><i className="fa-solid fa-wallet" style={{ color: "#10b981" }}></i></div>
-          <div>
-            <div style={styles.statValue}>1,850,000 đ</div>
-            <div style={styles.statLabel}>Doanh thu hôm nay</div>
-          </div>
-        </div>
-        <div style={{ ...styles.statItem, borderLeft: "4px solid #6366f1" }}>
-          <div style={styles.statIconWrapper}><i className="fa-solid fa-spinner" style={{ color: "#6366f1" }}></i></div>
-          <div>
-            <div style={styles.statValue}>12 lượt</div>
-            <div style={styles.statLabel}>Tổng lượt rửa hôm nay</div>
-          </div>
-        </div>
-        <div style={{ ...styles.statItem, borderLeft: "4px solid #06b6d4" }}>
-          <div style={styles.statIconWrapper}><i className="fa-solid fa-award" style={{ color: "#06b6d4" }}></i></div>
-          <div>
-            <div style={styles.statValue}>Standard Sedan</div>
-            <div style={styles.statLabel}>Gói dịch vụ hot nhất</div>
-          </div>
-        </div>
-      </div>
-      <div style={styles.chartMock}>
-        <i className="fa-solid fa-chart-area" style={{ fontSize: "50px", color: "rgba(99, 102, 241, 0.4)", marginBottom: "15px" }}></i>
-        <h3>Mô Hình Biểu Đồ Doanh Thu Tuần</h3>
-        <p style={{ color: "#6b7280" }}>(Báo cáo chi tiết dạng đồ thị đường sẽ hiển thị tại đây khi liên kết API số liệu hoàn tất)</p>
-      </div>
-    </div>
-  );
-
-  const renderSettingsView = () => (
-    <div>
-      <div style={styles.viewHeader}>
-        <h2><i className="fa-solid fa-gear"></i> Cài Đặt Hệ Thống</h2>
-        <p>Tùy chỉnh thông tin và quyền hạn của tài khoản nhân viên</p>
-      </div>
-      <div style={styles.settingsContainer}>
-        <div style={styles.settingsGroup}>
-          <h3>Cá Nhân Hóa</h3>
-          <div style={styles.settingsRow}>
-            <span>Nhận thông báo lịch mới:</span>
-            <input type="checkbox" defaultChecked style={styles.toggleBtn} />
-          </div>
-          <div style={styles.settingsRow}>
-            <span>Bật chế độ Dark Mode:</span>
-            <input type="checkbox" defaultChecked disabled style={styles.toggleBtn} />
-          </div>
-        </div>
-        <div style={{ ...styles.settingsGroup, borderTop: "1px solid #2d2d34", paddingTop: "20px", marginTop: "20px" }}>
-          <h3>Bảo Mật</h3>
-          <button style={styles.viewBtn} style={{ marginTop: "10px" }}>Thay đổi mật khẩu đăng nhập</button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div style={styles.container}>
       {/* Background cyber-glow spheres */}
       <div style={styles.glowSphereLeft}></div>
       <div style={styles.glowSphereRight}></div>
 
-      {/* TOP NAVIGATION BAR */}
-      <nav style={styles.navbar}>
-        <div style={styles.navLogo}><i className="fa-solid fa-car-wash"></i> AutoWash Pro</div>
-        <div style={styles.navLinks}>
-          <button 
-            style={{...styles.navLink, ...(activeTab === "bookings" ? styles.activeNavLink : {})}} 
-            onClick={() => setActiveTab("bookings")}
-          >
-            <i className="fa-solid fa-calendar-days"></i> Lịch Đặt Xe
-          </button>
-          <button 
-            style={{...styles.navLink, ...(activeTab === "customers" ? styles.activeNavLink : {})}} 
-            onClick={() => setActiveTab("customers")}
-          >
-            <i className="fa-solid fa-users"></i> Khách Hàng
-          </button>
-          <button 
-            style={{...styles.navLink, ...(activeTab === "vehicles" ? styles.activeNavLink : {})}} 
-            onClick={() => setActiveTab("vehicles")}
-          >
-            <i className="fa-solid fa-car"></i> Quản Lý Xe
-          </button>
-          <button 
-            style={{...styles.navLink, ...(activeTab === "reports" ? styles.activeNavLink : {})}} 
-            onClick={() => setActiveTab("reports")}
-          >
-            <i className="fa-solid fa-chart-line"></i> Báo Cáo
-          </button>
-          <button 
-            style={{...styles.navLink, ...(activeTab === "settings" ? styles.activeNavLink : {})}} 
-            onClick={() => setActiveTab("settings")}
-          >
-            <i className="fa-solid fa-gear"></i> Cài Đặt
-          </button>
-        </div>
-        <div style={styles.navUser}>
-          <div style={styles.avatar}><i className="fa-solid fa-user-tie"></i></div>
-          <div>
-            <div style={styles.userName}>Trọng Staff</div>
-            <div style={styles.userRole}>Nhân Viên Điều Phối</div>
-          </div>
-        </div>
-      </nav>
-
       {/* Main glass card wrapper */}
       <div style={styles.dashboardCard}>
-        {activeTab === "bookings" && (
-          <>
-            <header style={styles.header}>
-              <div>
-                <div style={styles.logoBadge}><i className="fa-solid fa-users-gear"></i> Staff Workspace</div>
-                <h1 style={styles.title}>Lịch Đặt Xe & Điều Phối</h1>
-                <p style={styles.subtitle}>Không gian làm việc quản lý dịch vụ dành cho Nhân viên (Staff)</p>
-              </div>
-              <button style={styles.refreshBtn} onClick={fetchBookings}>
-                <i className="fa-solid fa-arrows-rotate"></i> Làm mới dữ liệu
-              </button>
-            </header>
+        <header style={styles.header}>
+          <div>
+            <div style={styles.logoBadge}><i className="fa-solid fa-users-gear"></i> Staff Workspace</div>
+            <h1 style={styles.title}>Lịch Đặt Xe & Điều Phối</h1>
+            <p style={styles.subtitle}>Không gian làm việc quản lý dịch vụ dành cho Nhân viên (Staff)</p>
+          </div>
+          <button style={styles.refreshBtn} onClick={fetchBookings}>
+            <i className="fa-solid fa-arrows-rotate"></i> Làm mới dữ liệu
+          </button>
+        </header>
 
-            {/* Dashboard KPI cards */}
-            <section style={styles.statsGrid}>
-              <div style={{ ...styles.statItem, borderLeft: "4px solid #6366f1" }}>
-                <div style={styles.statIconWrapper}><i className="fa-solid fa-calendar-check" style={{ color: "#6366f1" }}></i></div>
-                <div>
-                  <div style={styles.statValue}>{stats.total}</div>
-                  <div style={styles.statLabel}>Tổng lịch hôm nay</div>
-                </div>
-              </div>
-              <div style={{ ...styles.statItem, borderLeft: "4px solid #f59e0b" }}>
-                <div style={styles.statIconWrapper}><i className="fa-solid fa-hourglass-half" style={{ color: "#f59e0b" }}></i></div>
-                <div>
-                  <div style={styles.statValue}>{stats.pending}</div>
-                  <div style={styles.statLabel}>Đang chờ duyệt</div>
-                </div>
-              </div>
-              <div style={{ ...styles.statItem, borderLeft: "4px solid #06b6d4" }}>
-                <div style={styles.statIconWrapper}><i className="fa-solid fa-screwdriver-wrench" style={{ color: "#06b6d4" }}></i></div>
-                <div>
-                  <div style={styles.statValue}>{stats.active}</div>
-                  <div style={styles.statLabel}>Đang thực hiện</div>
-                </div>
-              </div>
-              <div style={{ ...styles.statItem, borderLeft: "4px solid #10b981" }}>
-                <div style={styles.statIconWrapper}><i className="fa-solid fa-check-double" style={{ color: "#10b981" }}></i></div>
-                <div>
-                  <div style={styles.statValue}>{stats.completed}</div>
-                  <div style={styles.statLabel}>Đã hoàn thành</div>
-                </div>
-              </div>
-            </section>
-
-            {/* Filters and Search segment */}
-            <div style={styles.filterSection}>
-              <div style={styles.filterBar}>
-                {["All", "1", "2", "3", "4", "5"].map(status => (
-                  <button
-                    key={status}
-                    style={{
-                      ...styles.filterTab,
-                      ...(selectedStatus === status ? styles.activeFilterTab : {})
-                    }}
-                    onClick={() => setSelectedStatus(status)}
-                  >
-                    {status === "All" && "Tất cả"}
-                    {status === "1" && "Chờ duyệt"}
-                    {status === "2" && "Đã nhận"}
-                    {status === "3" && "Đang rửa"}
-                    {status === "4" && "Hoàn tất"}
-                    {status === "5" && "Đã hủy"}
-                  </button>
-                ))}
-              </div>
+        {/* Dashboard KPI cards */}
+        <section style={styles.statsGrid}>
+          <div style={{ ...styles.statItem, borderLeft: "4px solid #6366f1" }}>
+            <div style={styles.statIconWrapper}><i className="fa-solid fa-calendar-check" style={{ color: "#6366f1" }}></i></div>
+            <div>
+              <div style={styles.statValue}>{stats.total}</div>
+              <div style={styles.statLabel}>Tổng lịch hôm nay</div>
             </div>
+          </div>
+          <div style={{ ...styles.statItem, borderLeft: "4px solid #f59e0b" }}>
+            <div style={styles.statIconWrapper}><i className="fa-solid fa-hourglass-half" style={{ color: "#f59e0b" }}></i></div>
+            <div>
+              <div style={styles.statValue}>{stats.pending}</div>
+              <div style={styles.statLabel}>Đang chờ duyệt</div>
+            </div>
+          </div>
+          <div style={{ ...styles.statItem, borderLeft: "4px solid #06b6d4" }}>
+            <div style={styles.statIconWrapper}><i className="fa-solid fa-screwdriver-wrench" style={{ color: "#06b6d4" }}></i></div>
+            <div>
+              <div style={styles.statValue}>{stats.active}</div>
+              <div style={styles.statLabel}>Đang thực hiện</div>
+            </div>
+          </div>
+          <div style={{ ...styles.statItem, borderLeft: "4px solid #10b981" }}>
+            <div style={styles.statIconWrapper}><i className="fa-solid fa-check-double" style={{ color: "#10b981" }}></i></div>
+            <div>
+              <div style={styles.statValue}>{stats.completed}</div>
+              <div style={styles.statLabel}>Đã hoàn thành</div>
+            </div>
+          </div>
+        </section>
 
-            {/* Data area */}
-            {loading ? (
-              <div style={styles.loader}>
-                <div style={styles.spinner}></div>
-                <p>Đang đồng bộ dữ liệu với SQL Server...</p>
-              </div>
-            ) : error ? (
-              <div style={styles.errorCard}>
-                <i className="fa-solid fa-circle-exclamation" style={{ fontSize: "24px", marginBottom: "10px" }}></i>
-                <h3>Kết nối thất bại</h3>
-                <p>{error}</p>
-              </div>
-            ) : (
-              <div style={styles.tableWrapper}>
-                <table style={styles.table}>
-                  <thead>
-                    <tr style={styles.thRow}>
-                      <th style={styles.th}>Mã</th>
-                      <th style={styles.th}>Khách hàng / SĐT</th>
-                      <th style={styles.th}>Thông tin xe</th>
-                      <th style={styles.th}>Thời gian đặt</th>
-                      <th style={styles.th}>Trạng thái</th>
-                      <th style={styles.th} style={{ textAlign: "right" }}>Thao tác điều phối</th>
+        {/* Filters and Search segment */}
+        <div style={styles.filterSection}>
+          <div style={styles.filterBar}>
+            {["All", "1", "2", "3", "4", "5"].map(status => (
+              <button
+                key={status}
+                style={{
+                  ...styles.filterTab,
+                  ...(selectedStatus === status ? styles.activeFilterTab : {})
+                }}
+                onClick={() => setSelectedStatus(status)}
+              >
+                {status === "All" && "Tất cả"}
+                {status === "1" && "Chờ duyệt"}
+                {status === "2" && "Đã nhận"}
+                {status === "3" && "Đang rửa"}
+                {status === "4" && "Hoàn tất"}
+                {status === "5" && "Đã hủy"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Data area */}
+        {loading ? (
+          <div style={styles.loader}>
+            <div style={styles.spinner}></div>
+            <p>Đang đồng bộ dữ liệu với SQL Server...</p>
+          </div>
+        ) : error ? (
+          <div style={styles.errorCard}>
+            <i className="fa-solid fa-circle-exclamation" style={{ fontSize: "24px", marginBottom: "10px" }}></i>
+            <h3>Kết nối thất bại</h3>
+            <p>{error}</p>
+          </div>
+        ) : (
+          <div style={styles.tableWrapper}>
+            <table style={styles.table}>
+              <thead>
+                <tr style={styles.thRow}>
+                  <th style={styles.th}>Mã</th>
+                  <th style={styles.th}>Khách hàng / SĐT</th>
+                  <th style={styles.th}>Thông tin xe</th>
+                  <th style={styles.th}>Thời gian đặt</th>
+                  <th style={styles.th}>Trạng thái</th>
+                  <th style={styles.th} style={{ textAlign: "right" }}>Thao tác điều phối</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBookings.map((booking) => {
+                  const badge = getStatusDetails(booking.Status);
+                  return (
+                    <tr key={booking.BookingID} style={styles.tr}>
+                      <td style={styles.td}>
+                        <span style={styles.idBadge}>#{booking.BookingID}</span>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={styles.customerName}>{booking.CustomerName || "Khách vãng lai"}</div>
+                        <div style={styles.customerPhone}>
+                          <i className="fa-solid fa-phone" style={{ fontSize: "10px", marginRight: "4px" }}></i>
+                          {booking.Phone || "Không có SĐT"}
+                        </div>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={styles.licensePlate}>{booking.LicensePlate || "Chưa có biển"}</div>
+                        <div style={styles.vehicleType}>
+                          <i className="fa-solid fa-car" style={{ fontSize: "10px", marginRight: "4px" }}></i>
+                          {booking.VehicleType || "Xe hơi"}
+                        </div>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={styles.bookingDate}>
+                          {new Date(booking.BookingDate).toLocaleDateString("vi-VN")}
+                        </div>
+                        <div style={styles.bookingTime}>
+                          <i className="fa-regular fa-clock" style={{ fontSize: "10px", marginRight: "4px" }}></i>
+                          {new Date(booking.BookingDate).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </td>
+                      <td style={styles.td}>
+                        <span style={{
+                          ...styles.badge,
+                          backgroundColor: badge.bg,
+                          color: badge.text,
+                          border: `1px solid ${badge.text}`,
+                          boxShadow: badge.shadow
+                        }}>
+                          <span style={{ ...styles.statusDot, backgroundColor: badge.dotBg }}></span>
+                          {badge.text}
+                        </span>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={styles.actionGroup}>
+                          <button style={styles.viewBtn} onClick={() => setSelectedBooking(booking)} title="Xem chi tiết">
+                            <i className="fa-solid fa-eye"></i> Chi tiết
+                          </button>
+                          
+                          {/* FSM Actions */}
+                          {String(booking.Status) === "1" && (
+                            <button style={styles.btnConfirm} onClick={() => handleTransition(booking.BookingID, 2)}>
+                              <i className="fa-solid fa-circle-check"></i> Nhận lịch
+                            </button>
+                          )}
+                          {String(booking.Status) === "2" && (
+                            <button style={styles.btnStart} onClick={() => handleTransition(booking.BookingID, 3)}>
+                              <i className="fa-solid fa-play"></i> Bắt đầu rửa
+                            </button>
+                          )}
+                          {String(booking.Status) === "3" && (
+                            <button style={styles.btnComplete} onClick={() => handleTransition(booking.BookingID, 4)}>
+                              <i className="fa-solid fa-flag-checkered"></i> Hoàn thành
+                            </button>
+                          )}
+                          {(String(booking.Status) === "1" || String(booking.Status) === "2") && (
+                            <button style={styles.btnCancel} onClick={() => handleTransition(booking.BookingID, 5)}>
+                              <i className="fa-solid fa-ban"></i> Hủy
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredBookings.map((booking) => {
-                      const badge = getStatusDetails(booking.Status);
-                      return (
-                        <tr key={booking.BookingID} style={styles.tr}>
-                          <td style={styles.td}>
-                            <span style={styles.idBadge}>#{booking.BookingID}</span>
-                          </td>
-                          <td style={styles.td}>
-                            <div style={styles.customerName}>{booking.CustomerName || "Khách vãng lai"}</div>
-                            <div style={styles.customerPhone}>
-                              <i className="fa-solid fa-phone" style={{ fontSize: "10px", marginRight: "4px" }}></i>
-                              {booking.Phone || "Không có SĐT"}
-                            </div>
-                          </td>
-                          <td style={styles.td}>
-                            <div style={styles.licensePlate}>{booking.LicensePlate || "Chưa có biển"}</div>
-                            <div style={styles.vehicleType}>
-                              <i className="fa-solid fa-car" style={{ fontSize: "10px", marginRight: "4px" }}></i>
-                              {booking.VehicleType || "Xe hơi"}
-                            </div>
-                          </td>
-                          <td style={styles.td}>
-                            <div style={styles.bookingDate}>
-                              {new Date(booking.BookingDate).toLocaleDateString("vi-VN")}
-                            </div>
-                            <div style={styles.bookingTime}>
-                              <i className="fa-regular fa-clock" style={{ fontSize: "10px", marginRight: "4px" }}></i>
-                              {new Date(booking.BookingDate).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          </td>
-                          <td style={styles.td}>
-                            <span style={{
-                              ...styles.badge,
-                              backgroundColor: badge.bg,
-                              color: badge.text,
-                              border: `1px solid ${badge.text}`,
-                              boxShadow: badge.shadow
-                            }}>
-                              <span style={{ ...styles.statusDot, backgroundColor: badge.dotBg }}></span>
-                              {badge.text}
-                            </span>
-                          </td>
-                          <td style={styles.td}>
-                            <div style={styles.actionGroup}>
-                              <button style={styles.viewBtn} onClick={() => setSelectedBooking(booking)} title="Xem chi tiết">
-                                <i className="fa-solid fa-eye"></i> Chi tiết
-                              </button>
-                              
-                              {/* FSM Actions */}
-                              {String(booking.Status) === "1" && (
-                                <button style={styles.btnConfirm} onClick={() => handleTransition(booking.BookingID, 2)}>
-                                  <i className="fa-solid fa-circle-check"></i> Nhận lịch
-                                </button>
-                              )}
-                              {String(booking.Status) === "2" && (
-                                <button style={styles.btnStart} onClick={() => handleTransition(booking.BookingID, 3)}>
-                                  <i className="fa-solid fa-play"></i> Bắt đầu rửa
-                                </button>
-                              )}
-                              {String(booking.Status) === "3" && (
-                                <button style={styles.btnComplete} onClick={() => handleTransition(booking.BookingID, 4)}>
-                                  <i className="fa-solid fa-flag-checkered"></i> Hoàn thành
-                                </button>
-                              )}
-                              {(String(booking.Status) === "1" || String(booking.Status) === "2") && (
-                                <button style={styles.btnCancel} onClick={() => handleTransition(booking.BookingID, 5)}>
-                                  <i className="fa-solid fa-ban"></i> Hủy
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {filteredBookings.length === 0 && (
-                      <tr>
-                        <td colSpan="6" style={styles.noData}>
-                          <i className="fa-regular fa-folder-open" style={{ fontSize: "40px", color: "#4b5563", marginBottom: "15px", display: "block" }}></i>
-                          Không tìm thấy lịch đặt xe nào ở trạng thái này.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
+                  );
+                })}
+                {filteredBookings.length === 0 && (
+                  <tr>
+                    <td colSpan="6" style={styles.noData}>
+                      <i className="fa-regular fa-folder-open" style={{ fontSize: "40px", color: "#4b5563", marginBottom: "15px", display: "block" }}></i>
+                      Không tìm thấy lịch đặt xe nào ở trạng thái này.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
-        {activeTab === "customers" && renderCustomersView()}
-        {activeTab === "vehicles" && renderVehiclesView()}
-        {activeTab === "reports" && renderReportsView()}
-        {activeTab === "settings" && renderSettingsView()}
       </div>
 
       {/* DETAIL GLASS MODAL */}
@@ -592,7 +382,7 @@ export default function StaffDashboard() {
 }
 
 // ========================================================
-// PREMIUM UI CSS SYSTEM (Pure Javascript Objects)
+// STYLES SYSTEM
 // ========================================================
 const styles = {
   container: {
@@ -600,117 +390,10 @@ const styles = {
     backgroundImage: "radial-gradient(at 0% 0%, rgba(17, 24, 39, 0.8) 0, transparent 50%), radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.05) 0, transparent 50%)",
     color: "#f3f4f6",
     minHeight: "100vh",
-    padding: "40px 20px",
+    padding: "60px 20px",
     fontFamily: "'Plus Jakarta Sans', sans-serif",
     position: "relative",
     overflow: "hidden"
-  },
-  navbar: {
-    maxWidth: "1280px",
-    margin: "0 auto 25px auto",
-    backgroundColor: "rgba(17, 24, 39, 0.6)",
-    backdropFilter: "blur(20px)",
-    WebkitBackdropFilter: "blur(20px)",
-    borderRadius: "16px",
-    border: "1px solid rgba(255, 255, 255, 0.06)",
-    padding: "15px 30px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4)",
-    zIndex: 2,
-    position: "relative"
-  },
-  navLogo: {
-    fontSize: "18px",
-    fontWeight: "800",
-    color: "#ffffff",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px"
-  },
-  navLinks: {
-    display: "flex",
-    gap: "10px"
-  },
-  navLink: {
-    backgroundColor: "transparent",
-    border: "none",
-    color: "#9ca3af",
-    padding: "10px 16px",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontSize: "13px",
-    fontWeight: "600",
-    transition: "all 0.2s ease",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px"
-  },
-  activeNavLink: {
-    backgroundColor: "rgba(99, 102, 241, 0.15)",
-    color: "#818cf8"
-  },
-  navUser: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px"
-  },
-  avatar: {
-    width: "36px",
-    height: "36px",
-    borderRadius: "50%",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    color: "#818cf8"
-  },
-  userName: {
-    fontSize: "13px",
-    fontWeight: "700",
-    color: "#ffffff"
-  },
-  userRole: {
-    fontSize: "10px",
-    color: "#9ca3af",
-    marginTop: "2px"
-  },
-  viewHeader: {
-    marginBottom: "30px",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-    paddingBottom: "15px"
-  },
-  chartMock: {
-    backgroundColor: "rgba(31, 41, 55, 0.2)",
-    border: "1px solid rgba(255, 255, 255, 0.04)",
-    borderRadius: "16px",
-    padding: "50px",
-    textAlign: "center",
-    marginTop: "20px"
-  },
-  settingsContainer: {
-    backgroundColor: "rgba(31, 41, 55, 0.2)",
-    border: "1px solid rgba(255, 255, 255, 0.04)",
-    borderRadius: "16px",
-    padding: "30px"
-  },
-  settingsGroup: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "15px"
-  },
-  settingsRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "14px"
-  },
-  toggleBtn: {
-    width: "40px",
-    height: "20px",
-    cursor: "pointer"
   },
   glowSphereLeft: {
     position: "absolute",
