@@ -72,6 +72,14 @@
   font-size: 24px;
 }
 
+.header-logo-img {
+  height: 42px;
+  width: 42px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
 .admin-sidebar-menu {
   list-style: none;
   padding: 0;

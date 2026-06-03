@@ -170,8 +170,8 @@ export default function AdminDashboard() {
       {/* Sidebar navigation */}
       <aside className="admin-sidebar">
         <div className="admin-sidebar-brand">
-          <i className="fa-solid fa-soap"></i>
-          <span>AutoWash Pro</span>
+          <img src="/logo.png" alt="Moto Shine Logo" className="header-logo-img" />
+          <span>Moto Shine</span>
         </div>
         <ul className="admin-sidebar-menu">
           <li className="admin-menu-item active">
