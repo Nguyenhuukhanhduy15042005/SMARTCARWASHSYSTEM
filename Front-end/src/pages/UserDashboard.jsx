@@ -66,11 +66,52 @@ export default function UserDashboard() {
     try {
       // 1. Fetch user profile
       const profileRes = await axios.get(`${API_BASE}/users/profile?userId=${userId}`, { headers });
-      setProfile(profileRes.data);
+      const rawProfile = profileRes.data;
+      if (rawProfile) {
+        setProfile({
+          UserID: rawProfile.UserID !== undefined ? rawProfile.UserID : (rawProfile.userId || userId),
+          FullName: rawProfile.FullName || rawProfile.fullName || rawProfile.message || "Khách hàng",
+          PhoneNumber: rawProfile.PhoneNumber || rawProfile.phoneNumber || "",
+          Email: rawProfile.Email || rawProfile.email || "",
+          CurrentPoints: rawProfile.CurrentPoints !== undefined ? rawProfile.CurrentPoints : (rawProfile.currentPoints || 0),
+          AccumulatedPoints: rawProfile.AccumulatedPoints !== undefined ? rawProfile.AccumulatedPoints : (rawProfile.accumulatedPoints || 0),
+          TierName: rawProfile.TierName || rawProfile.tierName || "Standard",
+          DiscountRate: rawProfile.DiscountRate !== undefined ? rawProfile.DiscountRate : (rawProfile.discountRate || 0)
+        });
+      }
 
       // 2. Fetch customer bookings
       const bookingsRes = await axios.get(`${API_BASE}/bookings?customerId=${userId}`, { headers });
-      setBookings(Array.isArray(bookingsRes.data) ? bookingsRes.data : []);
+      const rawBookings = Array.isArray(bookingsRes.data) ? bookingsRes.data : [];
+      const normalizedBookings = rawBookings.map(b => {
+        // Safe date-time parsing for old structures
+        let dateStr = b.date || "";
+        let timeStr = b.time || "";
+        if (!dateStr && b.BookingDate) {
+          const d = new Date(b.BookingDate);
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          dateStr = `${year}-${month}-${day}`;
+          
+          const hours = String(d.getHours()).padStart(2, '0');
+          const minutes = String(d.getMinutes()).padStart(2, '0');
+          timeStr = `${hours}:${minutes}`;
+        }
+        return {
+          id: b.id !== undefined ? b.id : b.BookingID,
+          customerName: b.customerName || b.CustomerName,
+          phone: b.phone || b.CustomerPhone,
+          vehicleType: b.vehicleType || b.VehicleType,
+          licensePlate: b.licensePlate || b.LicensePlate,
+          price: b.price !== undefined ? b.price : (b.FinalPrice || b.TotalPrice || 0),
+          status: b.status !== undefined ? b.status : b.Status,
+          date: dateStr,
+          time: timeStr,
+          servicePackage: b.servicePackage || b.ServiceName || "N/A"
+        };
+      });
+      setBookings(normalizedBookings);
     } catch (err) {
       console.error("Failed to connect to database API:", err);
       const errMsg = err.response?.data?.message || err.message;
@@ -247,7 +288,7 @@ export default function UserDashboard() {
               <div className="profile-field-row">
                 <span>Hạng ưu đãi:</span>
                 <strong style={{ color: "var(--color-accent)" }}>
-                  {profile.TierName} (Giảm {profile.DiscountRate * 100}%)
+                  {profile.TierName} (Giảm {profile.DiscountRate > 1 ? profile.DiscountRate : Math.round(profile.DiscountRate * 100)}%)
                 </strong>
               </div>
             </div>
