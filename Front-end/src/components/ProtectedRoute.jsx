@@ -7,8 +7,15 @@ import { useAuth } from '../context/AuthContext';
  * Dùng:
  *   <ProtectedRoute>                          → chỉ cần đăng nhập
  *   <ProtectedRoute requiredRole="admin">     → phải là admin
- *   <ProtectedRoute requiredRole="user">      → phải là user thường
+ *   <ProtectedRoute requiredRole="user">      → user thường, staff & admin đều vào được
+ *
+ * Thứ tự quyền: admin > staff > user
+ * Admin có thể vào MỌI trang.
+ * Staff có thể vào trang của user (dashboard, booking).
  */
+
+const ROLE_LEVEL = { admin: 3, staff: 2, user: 1 };
+
 const ProtectedRoute = ({ children, requiredRole }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -27,10 +34,21 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Đã đăng nhập nhưng không đúng role → về trang Unauthorized
+  // Kiểm tra quyền nếu có requiredRole
   if (requiredRole) {
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-    if (!roles.includes(user.role)) {
+
+    // Admin luôn được phép vào bất kỳ trang nào
+    if (user.role === 'admin') {
+      return children;
+    }
+
+    // Tính level tối thiểu cần có dựa trên danh sách roles cho phép
+    const minRequiredLevel = Math.min(...roles.map(r => ROLE_LEVEL[r] ?? 99));
+
+    // User hiện tại phải có level >= level tối thiểu
+    const userLevel = ROLE_LEVEL[user.role] ?? 0;
+    if (userLevel < minRequiredLevel) {
       return <Navigate to="/unauthorized" replace />;
     }
   }
@@ -39,3 +57,4 @@ const ProtectedRoute = ({ children, requiredRole }) => {
 };
 
 export default ProtectedRoute;
+
