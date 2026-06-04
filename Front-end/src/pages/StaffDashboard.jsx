@@ -79,16 +79,19 @@ export default function StaffDashboard() {
 
   // Transition Handler
   const handleTransition = async (bookingId, nextStatus) => {
+    const token = localStorage.getItem("TOKEN") || localStorage.getItem("token") || "";
     try {
       const res = await fetch(`${API_URL}/${bookingId}/transition`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({ nextStatus }),
       });
 
-      if (!res.ok) throw new Error("Cập nhật trạng thái thất bại.");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Cập nhật trạng thái thất bại.");
 
       fetchBookings();
       if (selectedBooking && selectedBooking.BookingID === bookingId) {
