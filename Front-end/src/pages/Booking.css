@@ -5,7 +5,7 @@
   background: radial-gradient(circle at 50% 0%, #1e1e38 0%, #0b0f19 100%);
   min-height: 100vh;
   color: #f8fafc;
-  padding: 40px 20px;
+  padding: 0;
 }
 
 .booking-card {

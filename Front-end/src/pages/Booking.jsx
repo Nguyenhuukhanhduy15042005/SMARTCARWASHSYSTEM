@@ -3,9 +3,13 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./Booking.css";
+import { useAuth } from "../context/AuthContext";
 
 export default function Booking() {
   const navigate = useNavigate();
+  const { user, isAdmin, isStaff, logout } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
 
   // State quản lý dữ liệu form
   const [vehicleType, setVehicleType] = useState("CAR"); // CAR hoặc BIKE
@@ -68,6 +72,17 @@ export default function Booking() {
     document.head.appendChild(linkIcons);
 
     fetchUserProfile();
+  }, []);
+
+  // Đóng dropdown khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest("[data-user-menu]")) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Fetch thông tin ưu đãi và profile thành viên
@@ -159,18 +174,172 @@ export default function Booking() {
     }
   };
 
+  const getInitials = (name = "") =>
+    name.split(" ").slice(-2).map((w) => w[0]).join("").toUpperCase();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
   return (
     <div className="booking-page-container">
-      <div className="max-w-6xl mx-auto">
-        {/* Nút quay lại */}
-        <div className="mb-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-orange-500 font-semibold text-sm transition-colors duration-200">
-            <i className="fa-solid fa-arrow-left"></i> Quay lại Trang chủ
+      {/* ===== NAVBAR ===== */}
+      <header style={{
+        position: "sticky", top: 0, zIndex: 100,
+        background: "rgba(15, 15, 30, 0.95)",
+        backdropFilter: "blur(12px)",
+        borderBottom: "1px solid rgba(245, 134, 7, 0.2)",
+        padding: "0 24px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        height: 64,
+        boxShadow: "0 2px 20px rgba(0,0,0,0.3)"
+      }}>
+        {/* Left: Logo + Back */}
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+            <img src="/logo.png" alt="Logo" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }} />
+            <span style={{ fontWeight: 800, fontSize: 16, color: "#fff", letterSpacing: "-0.3px" }}>Moto Shine</span>
+          </Link>
+          <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 18 }}>|</span>
+          <Link to="/" style={{
+            display: "flex", alignItems: "center", gap: 6,
+            color: "rgba(255,255,255,0.6)", textDecoration: "none",
+            fontSize: 14, fontWeight: 500, transition: "color 0.2s"
+          }}
+            onMouseOver={e => e.currentTarget.style.color = "#F58607"}
+            onMouseOut={e => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Trang chủ
           </Link>
         </div>
 
+        {/* Center: Page title */}
+        <span style={{ color: "#F58607", fontWeight: 700, fontSize: 15, letterSpacing: "0.5px" }}>
+          🗓️ Đặt lịch dịch vụ
+        </span>
+
+        {/* Right: User account info */}
+        <div style={{ position: "relative" }} data-user-menu>
+          {user ? (
+            <>
+              <button
+                onClick={() => setShowUserMenu(prev => !prev)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 40, padding: "6px 14px 6px 8px",
+                  cursor: "pointer", transition: "all 0.2s"
+                }}
+                onMouseOver={e => e.currentTarget.style.background = "rgba(245,134,7,0.15)"}
+                onMouseOut={e => e.currentTarget.style.background = "rgba(255,255,255,0.07)"}
+              >
+                {/* Avatar initials */}
+                <div style={{
+                  width: 32, height: 32, borderRadius: "50%",
+                  background: "#E1F5EE", display: "flex", alignItems: "center",
+                  justifyContent: "center", fontSize: 12, fontWeight: 700,
+                  color: "#0F6E56", border: "2px solid #5DCAA5", flexShrink: 0
+                }}>
+                  {getInitials(user.fullName)}
+                </div>
+                <span style={{ color: "#fff", fontWeight: 600, fontSize: 14 }}>{user.fullName}</span>
+                {isAdmin() && (
+                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: "#EEEDFE", color: "#534AB7", fontWeight: 600 }}>Admin</span>
+                )}
+                {isStaff() && (
+                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: "#FAEEDA", color: "#854F0B", fontWeight: 600 }}>Staff</span>
+                )}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+
+              {/* Dropdown menu */}
+              {showUserMenu && (
+                <div style={{
+                  position: "absolute", right: 0, top: "calc(100% + 8px)",
+                  background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 12, minWidth: 180, boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                  overflow: "hidden", zIndex: 200
+                }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div style={{ color: "#fff", fontWeight: 600, fontSize: 14 }}>{user.fullName}</div>
+                    <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 }}>Tài khoản của tôi</div>
+                  </div>
+                  <Link
+                    to="/profile"
+                    onClick={() => setShowUserMenu(false)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "11px 16px", textDecoration: "none",
+                      color: "rgba(255,255,255,0.75)", fontSize: 14, fontWeight: 500,
+                      transition: "background 0.15s"
+                    }}
+                    onMouseOver={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+                    onMouseOut={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    Hồ sơ cá nhân
+                  </Link>
+                  <Link
+                    to="/dashboard"
+                    onClick={() => setShowUserMenu(false)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "11px 16px", textDecoration: "none",
+                      color: "rgba(255,255,255,0.75)", fontSize: 14, fontWeight: 500,
+                      transition: "background 0.15s"
+                    }}
+                    onMouseOver={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+                    onMouseOut={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    Dashboard
+                  </Link>
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                    <button
+                      onClick={() => { setShowUserMenu(false); handleLogout(); }}
+                      style={{
+                        width: "100%", display: "flex", alignItems: "center", gap: 10,
+                        padding: "11px 16px", background: "none", border: "none",
+                        color: "#ff6b6b", fontSize: 14, fontWeight: 500,
+                        cursor: "pointer", textAlign: "left", transition: "background 0.15s"
+                      }}
+                      onMouseOver={e => e.currentTarget.style.background = "rgba(255,107,107,0.08)"}
+                      onMouseOut={e => e.currentTarget.style.background = "none"}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                      </svg>
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <Link to="/login" style={{
+              padding: "8px 18px", background: "#F58607", color: "#fff",
+              borderRadius: 40, fontWeight: 700, fontSize: 14, textDecoration: "none",
+              transition: "background 0.2s"
+            }}>
+              Đăng nhập
+            </Link>
+          )}
+        </div>
+      </header>
+
+      <div className="max-w-6xl mx-auto" style={{ padding: "0 24px 60px" }}>
         {/* Tiêu đề */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-10" style={{ paddingTop: 40 }}>
           <h2 className="booking-title">ĐẶT LỊCH DỊCH VỤ</h2>
           <p className="booking-subtitle">Trải nghiệm dịch vụ chăm sóc xe thông minh hàng đầu tại Moto Shine</p>
         </div>
