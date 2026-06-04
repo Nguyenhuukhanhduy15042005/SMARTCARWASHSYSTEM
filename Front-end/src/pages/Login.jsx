@@ -44,6 +44,7 @@ export default function Login({ setUser }) {
       const data = await response.json();
       if (response.ok) {
         localStorage.setItem("TOKEN", data.token);
+        localStorage.setItem("token", data.token); // Thêm lowercase key để tương thích
         localStorage.setItem("LOGIN_USER", JSON.stringify(data.user));
         setUser(data.user);
         const role = data.user.role;
@@ -98,9 +99,17 @@ export default function Login({ setUser }) {
 
         if (res.ok) {
           localStorage.setItem("TOKEN", data.token);
+          localStorage.setItem("token", data.token); // Thêm lowercase key
           localStorage.setItem("LOGIN_USER", JSON.stringify(data.user));
           setUser(data.user);
-          window.location.href = "/";
+          const role = data.user.role;
+          if (role === "admin") {
+            navigate("/admin/dashboard");
+          } else if (role === "staff") {
+            navigate("/staff/dashboard");
+          } else {
+            navigate("/dashboard");
+          }
         } else {
           setErrorMsg(data.message || "Lỗi đăng nhập qua Google!");
         }

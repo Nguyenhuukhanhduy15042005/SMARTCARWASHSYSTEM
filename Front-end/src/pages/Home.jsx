@@ -1,10 +1,21 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Home = () => {
   const navigate = useNavigate();
   const { user, isAdmin, isStaff, isUser, logout } = useAuth();
+
+  // Tự động chuyển hướng đến Dashboard nếu đã đăng nhập
+  useEffect(() => {
+    if (user) {
+      if (isAdmin() || isStaff()) {
+        navigate("/admin/dashboard", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
+    }
+  }, [user, navigate, isAdmin, isStaff]);
 
   const handleLogout = () => {
     logout();
@@ -56,6 +67,13 @@ const Home = () => {
           {user && (
             <Link to="/profile" className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
               Thành viên
+            </Link>
+          )}
+
+          {/* Quản lý xe (Trang của Thái): tất cả thấy khi đã login */}
+          {user && (
+            <Link to="/vehicles" className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
+              Quản lý xe
             </Link>
           )}
 
