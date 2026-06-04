@@ -12,6 +12,10 @@ export default function AdminDashboard() {
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [toast, setToast] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem("LOGIN_USER");
+    return saved ? JSON.parse(saved) : null;
+  });
 
   // Load Google Fonts & FontAwesome icons dynamically
   useEffect(() => {
@@ -186,7 +190,7 @@ export default function AdminDashboard() {
             <i className="fa-solid fa-car-side"></i>
             <span>Bàn làm việc</span>
           </li>
-          <li className="admin-menu-item">
+          <li className="admin-menu-item" style={{ cursor: "pointer" }} onClick={() => window.location.href = "/admin/members"}>
             <i className="fa-solid fa-users"></i>
             <span>Khách hàng</span>
           </li>
@@ -212,10 +216,17 @@ export default function AdminDashboard() {
             <p>Hệ thống Smart Car Wash System điều phối thời gian thực</p>
           </div>
           <div className="admin-header-actions">
-            <div className="admin-user-profile">
-              <div className="admin-avatar">AD</div>
+            <div 
+              className="admin-user-profile" 
+              style={{ cursor: "pointer" }}
+              onClick={() => window.location.href = "/profile"}
+              title="Xem hồ sơ cá nhân"
+            >
+              <div className="admin-avatar">
+                {currentUser?.fullName ? currentUser.fullName.substring(0, 2).toUpperCase() : "AD"}
+              </div>
               <div className="admin-user-info">
-                <span>Quản trị viên</span>
+                <span>{currentUser?.fullName || "Quản trị viên"}</span>
                 <small>Role: Admin</small>
               </div>
             </div>

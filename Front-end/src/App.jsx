@@ -16,6 +16,7 @@ import UserDashboard from "./pages/UserDashboard";
 import StaffDashboard from "./pages/StaffDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Unauthorized from "./pages/Unauthorized";
+import MemberManagement from "./pages/MemberManagement";
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -70,7 +71,7 @@ function App() {
         <Route
           path="/timeslots"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole={["admin", "staff"]}>
               <TimeslotValidation />
             </ProtectedRoute>
           }
@@ -90,6 +91,15 @@ function App() {
           element={
             <ProtectedRoute requiredRole="admin">
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/members"
+          element={
+            <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <MemberManagement />
             </ProtectedRoute>
           }
         />

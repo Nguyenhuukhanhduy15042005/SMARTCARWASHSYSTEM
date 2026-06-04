@@ -65,7 +65,7 @@ const Home = () => {
 
           {/* Thành viên: tất cả thấy khi đã login */}
           {user && (
-            <Link to="/profile" className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
+            <Link to={isAdmin() || isStaff() ? "/admin/dashboard" : "/dashboard"} className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
               Thành viên
             </Link>
           )}

@@ -28,8 +28,11 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   }
 
   // Đã đăng nhập nhưng không đúng role → về trang Unauthorized
-  if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to="/unauthorized" replace />;
+  if (requiredRole) {
+    const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!roles.includes(user.role)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   return children;

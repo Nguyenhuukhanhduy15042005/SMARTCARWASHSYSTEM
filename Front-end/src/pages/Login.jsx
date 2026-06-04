@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login({ setUser }) {
   const [account, setAccount] = useState("");
@@ -9,6 +10,7 @@ export default function Login({ setUser }) {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const { setUser: setAuthUser, setToken } = useAuth();
 
   useEffect(() => {
     if (location.state?.error === "unauthorized") {
@@ -47,6 +49,8 @@ export default function Login({ setUser }) {
         localStorage.setItem("token", data.token); // Thêm lowercase key để tương thích
         localStorage.setItem("LOGIN_USER", JSON.stringify(data.user));
         setUser(data.user);
+        setAuthUser(data.user); // Đồng bộ cho AuthContext
+        setToken(data.token);   // Đồng bộ cho AuthContext
         const role = data.user.role;
         if (role === "admin") {
           navigate("/admin/dashboard");
@@ -102,6 +106,8 @@ export default function Login({ setUser }) {
           localStorage.setItem("token", data.token); // Thêm lowercase key
           localStorage.setItem("LOGIN_USER", JSON.stringify(data.user));
           setUser(data.user);
+          setAuthUser(data.user); // Đồng bộ cho AuthContext
+          setToken(data.token);   // Đồng bộ cho AuthContext
           const role = data.user.role;
           if (role === "admin") {
             navigate("/admin/dashboard");

@@ -1,6 +1,7 @@
 
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const { sql, poolPromise } = require('../db');
 
 const toInt = (value) => {
@@ -12,6 +13,18 @@ const normalizeText = (value) => String(value || '').trim();
 const normalizePlate = (value) => normalizeText(value).toUpperCase().replace(/\s+/g, '');
 
 const isValidPlate = (plate) => /^[A-Z0-9\-.]{5,20}$/.test(plate);
+
+// Helper to get logged-in user from JWT token
+const getUserFromToken = (req) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token || token === 'mock-token' || token === 'null' || token === 'undefined') return null;
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET || 'secretkey_placeholder');
+  } catch (err) {
+    return null;
+  }
+};
 
 async function getVehicleById(pool, vehicleId) {
   const result = await pool.request()
@@ -66,10 +79,16 @@ router.get('/users', async (req, res) => {
 // GET /api/vehicles
 // Query hỗ trợ: ?userId=1&search=59A
 router.get('/', async (req, res) => {
-  const userId = req.query.userId && req.query.userId !== 'all' ? toInt(req.query.userId) : null;
+  let userId = req.query.userId && req.query.userId !== 'all' ? toInt(req.query.userId) : null;
   const search = normalizeText(req.query.search);
 
-  if (req.query.userId && req.query.userId !== 'all' && userId === null) {
+  // Enforce customer restriction: only view their own vehicles
+  const user = getUserFromToken(req);
+  if (user && user.role === 'user') {
+    userId = user.userId;
+  }
+
+  if (userId === null && req.query.userId && req.query.userId !== 'all') {
     return res.status(400).json({ message: 'UserID không hợp lệ' });
   }
 
@@ -133,6 +152,13 @@ router.get('/:id', async (req, res) => {
     const vehicle = await getVehicleById(pool, vehicleId);
 
     if (!vehicle) return res.status(404).json({ message: 'Không tìm thấy xe' });
+
+    // Enforce customer restriction: can only view their own vehicle detail
+    const user = getUserFromToken(req);
+    if (user && user.role === 'user' && vehicle.userId !== user.userId) {
+      return res.status(403).json({ message: 'Bạn không có quyền xem thông tin xe này' });
+    }
+
     res.json(vehicle);
   } catch (err) {
     console.error('[GET /api/vehicles/:id]', err);
@@ -143,11 +169,17 @@ router.get('/:id', async (req, res) => {
 // POST /api/vehicles
 // Body: { userId, plateNumber, brand, model, color }
 router.post('/', async (req, res) => {
-  const userId = toInt(req.body.userId);
+  let userId = toInt(req.body.userId);
   const plateNumber = normalizePlate(req.body.plateNumber);
   const brand = normalizeText(req.body.brand);
   const model = normalizeText(req.body.model);
   const color = normalizeText(req.body.color);
+
+  // Enforce customer restriction: only create vehicle for self
+  const user = getUserFromToken(req);
+  if (user && user.role === 'user') {
+    userId = user.userId;
+  }
 
   if (userId === null || !plateNumber || !brand || !model || !color) {
     return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin xe' });
@@ -219,10 +251,17 @@ router.put('/:id', async (req, res) => {
 
     const exists = await pool.request()
       .input('vehicleId', sql.Int, vehicleId)
-      .query('SELECT VehicleID FROM VEHICLE WHERE VehicleID = @vehicleId');
+      .query('SELECT UserID, VehicleID FROM VEHICLE WHERE VehicleID = @vehicleId');
 
     if (exists.recordset.length === 0) {
       return res.status(404).json({ message: 'Không tìm thấy xe' });
+    }
+
+    const vehicleRecord = exists.recordset[0];
+    // Enforce customer restriction: only edit their own vehicle
+    const user = getUserFromToken(req);
+    if (user && user.role === 'user' && vehicleRecord.UserID !== user.userId) {
+      return res.status(403).json({ message: 'Bạn không có quyền chỉnh sửa xe này' });
     }
 
     const duplicate = await pool.request()
@@ -267,6 +306,12 @@ router.delete('/:id', async (req, res) => {
 
     const vehicle = await getVehicleById(pool, vehicleId);
     if (!vehicle) return res.status(404).json({ message: 'Không tìm thấy xe' });
+
+    // Enforce customer restriction: only delete their own vehicle
+    const user = getUserFromToken(req);
+    if (user && user.role === 'user' && vehicle.userId !== user.userId) {
+      return res.status(403).json({ message: 'Bạn không có quyền xóa xe này' });
+    }
 
     await pool.request()
       .input('vehicleId', sql.Int, vehicleId)

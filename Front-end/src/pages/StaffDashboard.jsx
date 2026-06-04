@@ -8,6 +8,10 @@ export default function StaffDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [stats, setStats] = useState({ total: 0, pending: 0, active: 0, completed: 0 });
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem("LOGIN_USER");
+    return saved ? JSON.parse(saved) : null;
+  });
 
   const API_URL = "http://localhost:5000/api/bookings";
 
@@ -126,18 +130,27 @@ export default function StaffDashboard() {
           <span>Moto Shine</span>
         </div>
         <div style={styles.navLinks}>
-          <button style={{...styles.navLink, ...styles.activeNavLink}}><i className="fa-solid fa-house"></i> Trang chủ</button>
-          <button style={styles.navLink}><i className="fa-solid fa-bell-concierge"></i> Dịch vụ</button>
-          <button style={styles.navLink}><i className="fa-solid fa-id-card"></i> Thành viên</button>
+          <button style={{...styles.navLink, ...styles.activeNavLink}} onClick={() => window.location.href = currentUser?.role === 'staff' ? '/staff/dashboard' : '/admin/dashboard'}><i className="fa-solid fa-house"></i> Trang chủ</button>
+          <button style={styles.navLink} onClick={() => window.location.href = '/timeslots'}><i className="fa-solid fa-bell-concierge"></i> Dịch vụ</button>
+          <button style={styles.navLink} onClick={() => window.location.href = '/admin/members'}><i className="fa-solid fa-id-card"></i> Thành viên</button>
         </div>
         <div style={styles.navUser}>
-          <div style={styles.avatar}><i className="fa-solid fa-user-tie"></i></div>
-          <div style={styles.userInfo}>
-            <div style={styles.userName}>Trọng Staff</div>
-            <div style={styles.userRole}>Staff Account</div>
+          <div 
+            style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
+            onClick={() => window.location.href = "/profile"}
+            title="Xem hồ sơ cá nhân"
+          >
+            <div style={styles.avatar}><i className="fa-solid fa-user-tie"></i></div>
+            <div style={styles.userInfo}>
+              <div style={styles.userName}>{currentUser?.fullName || "Staff Member"}</div>
+              <div style={styles.userRole}>
+                {currentUser?.role === 'admin' ? 'Admin Account' : 'Staff Account'}
+              </div>
+            </div>
           </div>
           <button style={styles.logoutBtn} onClick={() => {
             localStorage.removeItem("TOKEN");
+            localStorage.removeItem("token");
             localStorage.removeItem("LOGIN_USER");
             window.location.href = "/login";
           }}>

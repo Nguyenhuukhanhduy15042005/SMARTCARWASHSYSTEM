@@ -160,4 +160,105 @@ router.put('/profile', async (req, res) => {
     }
 });
 
+// GET /api/users/members
+// Lấy danh sách toàn bộ thành viên kèm theo thông tin hạng thành viên và tích điểm (Admin & Staff)
+router.get("/members", verifyToken, async (req, res) => {
+  if (req.user.roleId !== 1 && req.user.roleId !== 2) {
+    return res.status(403).json({ message: "Bạn không có quyền thực hiện hành động này!" });
+  }
+
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query(`
+      SELECT 
+        u.UserID AS id, 
+        u.FullName AS name, 
+        u.PhoneNumber AS phone, 
+        u.Email AS email,
+        COALESCE(mp.CurrentPoints, 0) AS currentPoints, 
+        COALESCE(mp.AccumulatedPoints, 0) AS accumulatedPoints, 
+        COALESCE(lt.TierID, 1) AS tierId,
+        COALESCE(lt.TierName, N'Bronze') AS tierName, 
+        COALESCE(lt.DiscountRate, 0) AS discountRate
+      FROM [USER] u
+      LEFT JOIN [ROLE] r ON u.RoleID = r.RoleID
+      LEFT JOIN MEMBER_PROFILE mp ON u.UserID = mp.UserID
+      LEFT JOIN LOYALTY_TIER lt ON mp.TierID = lt.TierID
+      WHERE u.RoleID = 3 OR u.RoleID IS NULL OR r.RoleName = 'MEMBER'
+      ORDER BY u.FullName ASC
+    `);
+
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server: " + err.message });
+  }
+});
+
+// PUT /api/users/members/:userId/tier
+// Cập nhật hạng thành viên và tích điểm của khách hàng (Admin & Staff)
+router.put("/members/:userId/tier", verifyToken, async (req, res) => {
+  if (req.user.roleId !== 1 && req.user.roleId !== 2) {
+    return res.status(403).json({ message: "Bạn không có quyền thực hiện hành động này!" });
+  }
+
+  const userId = parseInt(req.params.userId, 10);
+  const { currentPoints, accumulatedPoints, tierId } = req.body;
+
+  if (isNaN(userId)) {
+    return res.status(400).json({ message: "UserID không hợp lệ!" });
+  }
+
+  try {
+    const pool = await poolPromise;
+
+    // Kiểm tra xem đã có bản ghi MEMBER_PROFILE chưa
+    const profileCheck = await pool.request()
+      .input("userId", sql.Int, userId)
+      .query("SELECT UserID FROM MEMBER_PROFILE WHERE UserID = @userId");
+
+    if (profileCheck.recordset.length === 0) {
+      // Nếu chưa có, tiến hành INSERT
+      await pool.request()
+        .input("userId", sql.Int, userId)
+        .input("tierId", sql.Int, tierId || 1)
+        .input("currentPoints", sql.Int, currentPoints || 0)
+        .input("accumulatedPoints", sql.Int, accumulatedPoints || 0)
+        .query(`
+          INSERT INTO MEMBER_PROFILE (UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate)
+          VALUES (@userId, @tierId, @currentPoints, @accumulatedPoints, GETDATE())
+        `);
+    } else {
+      // Nếu đã có, tiến hành UPDATE
+      await pool.request()
+        .input("userId", sql.Int, userId)
+        .input("tierId", sql.Int, tierId)
+        .input("currentPoints", sql.Int, currentPoints)
+        .input("accumulatedPoints", sql.Int, accumulatedPoints)
+        .query(`
+          UPDATE MEMBER_PROFILE
+          SET TierID = @tierId,
+              CurrentPoints = @currentPoints,
+              AccumulatedPoints = @accumulatedPoints
+          WHERE UserID = @userId
+        `);
+    }
+
+    res.json({ message: "Cập nhật hạng thành viên thành công!" });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server: " + err.message });
+  }
+});
+
+// GET /api/users/tiers
+// Lấy danh sách toàn bộ các hạng (Tiers) cấu hình sẵn
+router.get("/tiers", verifyToken, async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query("SELECT * FROM LOYALTY_TIER ORDER BY RequiredPoints ASC");
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server: " + err.message });
+  }
+});
+
 module.exports = router;

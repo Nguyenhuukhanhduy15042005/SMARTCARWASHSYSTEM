@@ -1,6 +1,6 @@
 
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 const API_BASE = "http://localhost:5000";
 
@@ -21,6 +21,20 @@ const EMPTY_FORM = { userId: "", plateNumber: "", brand: "", model: "", color: "
 
 const normalizePlate = (value) => value.toUpperCase().replace(/\s+/g, '');
 
+const getLoggedInUser = () => {
+  const token = localStorage.getItem("TOKEN") || localStorage.getItem("token");
+  if (token && token !== "mock-token" && token !== "null" && token !== "undefined") {
+    try {
+      const payload = token.split(".")[1];
+      const decoded = JSON.parse(window.atob(payload));
+      return decoded; // { userId, roleId, role }
+    } catch (err) {
+      console.error("Lỗi giải mã token:", err);
+    }
+  }
+  return null;
+};
+
 export default function VehicleManagement() {
   const [vehicles, setVehicles]           = useState([]);
   const [users, setUsers]                 = useState([]);
@@ -28,12 +42,18 @@ export default function VehicleManagement() {
   const [editingId, setEditingId]         = useState(null);
   const [showForm, setShowForm]           = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [filterUserId, setFilterUserId]   = useState("all");
+  const [filterUserId, setFilterUserId]   = useState(() => {
+    const u = getLoggedInUser();
+    return (u && u.role === "user") ? String(u.userId) : "all";
+  });
   const [searchQuery, setSearchQuery]     = useState("");
   const [loading, setLoading]             = useState(false);
   const [toast, setToast]                 = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [submitting, setSubmitting]       = useState(false);
+
+  const token = localStorage.getItem("TOKEN") || localStorage.getItem("token") || "";
+  const currentUser = useMemo(() => getLoggedInUser(), [token]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -44,15 +64,18 @@ export default function VehicleManagement() {
   // API này đặt trong vehicle router: GET /api/vehicles/users
   // để không sửa file user.js của thành viên khác.
   const fetchVehicleUsers = useCallback(async () => {
+    if (currentUser && currentUser.role === "user") return;
     try {
-      const res = await fetch(`${API_BASE}/api/vehicles/users`);
+      const res = await fetch(`${API_BASE}/api/vehicles/users`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Không thể tải chủ xe");
       setUsers(data);
     } catch {
       showToast("Không thể tải danh sách chủ xe!", "error");
     }
-  }, []);
+  }, [currentUser, token]);
 
   useEffect(() => { fetchVehicleUsers(); }, [fetchVehicleUsers]);
 
@@ -61,31 +84,59 @@ export default function VehicleManagement() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filterUserId !== "all") params.set("userId", filterUserId);
+      const effectiveFilterUserId = (currentUser && currentUser.role === "user")
+        ? String(currentUser.userId)
+        : filterUserId;
+
+      if (effectiveFilterUserId !== "all") {
+        params.set("userId", effectiveFilterUserId);
+      }
+
       const url = params.toString()
         ? `${API_BASE}/api/vehicles?${params.toString()}`
         : `${API_BASE}/api/vehicles`;
-      const res  = await fetch(url);
+
+      const res  = await fetch(url, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error();
       const data = await res.json();
       setVehicles(data);
-      // Sync selected vehicle nếu đang mở
-      if (selectedVehicle) {
-        const updated = data.find(v => v.id === selectedVehicle.id);
-        if (updated) setSelectedVehicle(updated);
-      }
     } catch {
       showToast("Không thể tải danh sách xe!", "error");
     } finally {
       setLoading(false);
     }
-  }, [filterUserId]);
+  }, [filterUserId, currentUser, token]);
 
   useEffect(() => { fetchVehicles(); }, [fetchVehicles]);
 
+  // Sync selected vehicle khi danh sách xe (vehicles) thay đổi
+  useEffect(() => {
+    if (selectedVehicle) {
+      const updated = vehicles.find(v => v.id === selectedVehicle.id);
+      if (updated) {
+        // So sánh các trường chính để tránh kích hoạt lại setSelectedVehicle thừa
+        const isDifferent =
+          updated.plateNumber !== selectedVehicle.plateNumber ||
+          updated.brand !== selectedVehicle.brand ||
+          updated.model !== selectedVehicle.model ||
+          updated.color !== selectedVehicle.color ||
+          updated.ownerName !== selectedVehicle.ownerName ||
+          updated.ownerPhone !== selectedVehicle.ownerPhone;
+
+        if (isDifferent) {
+          setSelectedVehicle(updated);
+        }
+      } else {
+        setSelectedVehicle(null);
+      }
+    }
+  }, [vehicles, selectedVehicle]);
+
   // ── Submit form (Add / Edit) ───────────────────────────────
   const handleSubmit = async () => {
-    const userId = formData.userId;
+    const userId = (currentUser && currentUser.role === "user") ? currentUser.userId : formData.userId;
     const plateNumber = normalizePlate(formData.plateNumber);
     const brand = formData.brand.trim();
     const model = formData.model.trim();
@@ -100,7 +151,10 @@ export default function VehicleManagement() {
         // PUT /api/vehicles/:id
         const res = await fetch(`${API_BASE}/api/vehicles/${editingId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({ plateNumber, brand, model, color }),
         });
         const data = await res.json();
@@ -112,7 +166,10 @@ export default function VehicleManagement() {
         // POST /api/vehicles
         const res = await fetch(`${API_BASE}/api/vehicles`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({ userId: parseInt(userId), plateNumber, brand, model, color }),
         });
         const data = await res.json();
@@ -120,7 +177,13 @@ export default function VehicleManagement() {
         if (data.vehicle) setSelectedVehicle(data.vehicle);
         showToast("Thêm xe thành công!");
       }
-      setFormData(EMPTY_FORM);
+      setFormData({
+        userId: (currentUser && currentUser.role === "user") ? String(currentUser.userId) : "",
+        plateNumber: "",
+        brand: "",
+        model: "",
+        color: ""
+      });
       setShowForm(false);
       fetchVehicles();
     } catch {
@@ -133,7 +196,10 @@ export default function VehicleManagement() {
   // ── Delete ─────────────────────────────────────────────────
   const handleDelete = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/api/vehicles/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE}/api/vehicles/${id}`, { 
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       const data = await res.json();
       if (!res.ok) { showToast(data.message || "Lỗi xóa xe!", "error"); return; }
       if (selectedVehicle?.id === id) setSelectedVehicle(null);
@@ -175,11 +241,91 @@ export default function VehicleManagement() {
     brands:  [...new Set(vehicles.map(v => v.brand))].length,
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("TOKEN");
+    localStorage.removeItem("token");
+    localStorage.removeItem("LOGIN_USER");
+    window.location.href = "/login";
+  };
+
+  useEffect(() => {
+    const linkFont = document.createElement("link");
+    linkFont.href = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap";
+    linkFont.rel = "stylesheet";
+    document.head.appendChild(linkFont);
+
+    const linkIcons = document.createElement("link");
+    linkIcons.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
+    linkIcons.rel = "stylesheet";
+    document.head.appendChild(linkIcons);
+  }, []);
+
   const getUserById = (id) => users.find(u => u.id === parseInt(id));
 
   return (
     <div style={s.root}>
       <div style={s.bg} /><div style={s.bgGrid} />
+
+      {/* TOP HEADER NAVIGATION BAR */}
+      <nav style={s.navbar}>
+        <div style={s.navLogo} onClick={() => window.location.href = "/"}>
+          <img src="/logo.png" alt="Moto Shine Logo" style={s.logoImg} />
+          <span>Moto Shine</span>
+        </div>
+        
+        <div style={s.navLinks}>
+          {currentUser?.role === 'user' ? (
+            <>
+              <button style={s.navLink} onClick={() => window.location.href = "/dashboard"}>
+                <i className="fa-solid fa-house"></i> Thành viên
+              </button>
+              <button style={s.navLink} onClick={() => window.location.href = "/booking"}>
+                <i className="fa-solid fa-calendar-plus"></i> Đặt Lịch Ngay
+              </button>
+              <button style={{ ...s.navLink, ...s.navLinkActive }} onClick={() => window.location.href = "/vehicles"}>
+                <i className="fa-solid fa-car"></i> Xe của tôi
+              </button>
+              <button style={s.navLink} onClick={() => window.location.href = "/profile"}>
+                <i className="fa-solid fa-user"></i> Hồ sơ cá nhân
+              </button>
+            </>
+          ) : (
+            <>
+              <button style={s.navLink} onClick={() => window.location.href = currentUser?.role === 'staff' ? '/staff/dashboard' : '/admin/dashboard'}>
+                <i className="fa-solid fa-house"></i> Trang chủ
+              </button>
+              <button style={s.navLink} onClick={() => window.location.href = '/timeslots'}>
+                <i className="fa-solid fa-bell-concierge"></i> Dịch vụ
+              </button>
+              <button style={s.navLink} onClick={() => window.location.href = '/admin/members'}>
+                <i className="fa-solid fa-id-card"></i> Thành viên
+              </button>
+              <button style={{ ...s.navLink, ...s.navLinkActive }} onClick={() => window.location.href = '/vehicles'}>
+                <i className="fa-solid fa-car"></i> Xe cộ
+              </button>
+              <button style={s.navLink} onClick={() => window.location.href = "/profile"}>
+                <i className="fa-solid fa-user-tie"></i> Hồ sơ cá nhân
+              </button>
+            </>
+          )}
+        </div>
+
+        <div style={s.navUser}>
+          <div 
+            style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+            onClick={() => window.location.href = "/profile"}
+          >
+            <div style={s.avatar}>{currentUser?.fullName?.slice(0, 2).toUpperCase() || currentUser?.name?.slice(0, 2).toUpperCase() || "?"}</div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 13 }}>{currentUser?.fullName || currentUser?.name || "Người dùng"}</div>
+              <div style={{ color: "#64748b", fontSize: 11, textTransform: "capitalize" }}>{currentUser?.role || ""} Account</div>
+            </div>
+          </div>
+          <button style={s.logoutBtn} onClick={handleLogout}>
+            <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất
+          </button>
+        </div>
+      </nav>
 
       {/* Toast */}
       {toast && (
@@ -207,7 +353,8 @@ export default function VehicleManagement() {
         </div>
       )}
 
-      <div style={s.wrapper}>
+      <div style={{ padding: "24px 32px" }}>
+        <div style={s.wrapper}>
         {/* Header */}
         <div style={s.header}>
           <div>
@@ -248,8 +395,8 @@ export default function VehicleManagement() {
           <div style={s.formCard}>
             <h2 style={s.formTitle}>{editingId ? "✏️ Chỉnh sửa xe" : "➕ Thêm xe mới"}</h2>
             <div style={s.formGrid}>
-              {/* Chủ xe — ẩn khi đang edit */}
-              {!editingId && (
+              {/* Chủ xe — ẩn khi đang edit hoặc role là user */}
+              {!editingId && (!currentUser || currentUser.role !== "user") && (
                 <div style={s.field}>
                   <label style={s.label}>Chủ sở hữu *</label>
                   <select style={s.input} value={formData.userId}
@@ -295,8 +442,9 @@ export default function VehicleManagement() {
                 Hủy
               </button>
               <button style={{ ...s.submitBtn, opacity: submitting ? 0.7 : 1 }}
-                onClick={handleSubmit} disabled={submitting || (!editingId && users.length === 0)}>
-                {submitting ? "Đang lưu..." : editingId ? "Cập nhật xe" : users.length === 0 ? "Chưa có chủ xe" : "Thêm xe"}
+                onClick={handleSubmit} 
+                disabled={submitting || (!editingId && (!currentUser || currentUser.role !== "user") && users.length === 0)}>
+                {submitting ? "Đang lưu..." : editingId ? "Cập nhật xe" : "Thêm xe"}
               </button>
             </div>
           </div>
@@ -311,11 +459,13 @@ export default function VehicleManagement() {
                 placeholder="🔍 Tìm biển số, hãng, dòng xe, chủ xe..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)} />
-              <select style={s.filterSelect} value={filterUserId}
-                onChange={e => setFilterUserId(e.target.value)}>
-                <option value="all">👤 Tất cả chủ xe</option>
-                {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
+              {(!currentUser || currentUser.role !== "user") && (
+                <select style={s.filterSelect} value={filterUserId}
+                  onChange={e => setFilterUserId(e.target.value)}>
+                  <option value="all">👤 Tất cả chủ xe</option>
+                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              )}
             </div>
 
             {/* List */}
@@ -442,13 +592,84 @@ export default function VehicleManagement() {
             )}
           </div>
         </div>
+        </div>
       </div>
     </div>
   );
 }
 
 const s = {
-  root: { minHeight: "100vh", width: "100%", boxSizing: "border-box", background: "#0f172a", fontFamily: "'Be Vietnam Pro','Segoe UI',sans-serif", position: "relative", padding: "24px 32px" },
+  root: { minHeight: "100vh", width: "100%", boxSizing: "border-box", background: "#0f172a", fontFamily: "'Be Vietnam Pro','Segoe UI',sans-serif", position: "relative", padding: "0 0 24px 0" },
+  navbar: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    height: 70,
+    padding: "0 40px",
+    background: "#111827",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+    position: "sticky",
+    top: 0,
+    zIndex: 1000,
+    boxSizing: "border-box",
+  },
+  navLogo: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontSize: 20,
+    fontWeight: 800,
+    color: "white",
+    textDecoration: "none",
+    cursor: "pointer",
+  },
+  logoImg: {
+    height: 42,
+    width: 42,
+    objectFit: "cover",
+    borderRadius: "50%",
+    border: "1px solid rgba(255, 255, 255, 0.15)",
+  },
+  navLinks: {
+    display: "flex",
+    alignItems: "center",
+    gap: 24,
+  },
+  navLink: {
+    color: "#9ca3af",
+    textDecoration: "none",
+    fontSize: 14,
+    fontWeight: 600,
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    transition: "color 0.2s",
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+  },
+  navLinkActive: {
+    color: "#06b6d4",
+  },
+  navUser: {
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+  },
+  logoutBtn: {
+    background: "transparent",
+    border: "1px solid #ef4444",
+    color: "#ef4444",
+    borderRadius: 8,
+    padding: "8px 16px",
+    cursor: "pointer",
+    fontSize: 13,
+    fontWeight: 600,
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    transition: "all 0.2s",
+  },
   bg: { position: "fixed", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% 0%,#1e3a5f44 0%,transparent 60%)", pointerEvents: "none" },
   bgGrid: { position: "fixed", inset: 0, backgroundImage: "linear-gradient(rgba(148,163,184,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,0.03) 1px,transparent 1px)", backgroundSize: "40px 40px", pointerEvents: "none" },
   wrapper: { width: "100%", boxSizing: "border-box", position: "relative", zIndex: 1 },

@@ -54,16 +54,43 @@ function adminAuth(req, res, next) {
 // STAFF & USER ROUTES (Database PascalCase Casing)
 // ==========================================
 
-// 1. Xem danh sách booking (Cho Staff Dashboard)
+// 1. Xem danh sách booking (Cho Staff Dashboard hoặc User Dashboard)
 router.get('/', async (req, res) => {
     try {
         const pool = await poolPromise;
-        const result = await pool.request().query(`
+        const token = req.headers.authorization?.split(' ')[1];
+        let customerId = req.query.customerId;
+
+        if (token && token !== 'mock-token' && token !== 'null' && token !== 'undefined') {
+            try {
+                const decoded = jwt.verify(
+                    token,
+                    process.env.JWT_SECRET || 'secretkey_placeholder'
+                );
+                // Nếu là user thường, chỉ cho phép xem dữ liệu của chính họ
+                if (decoded && decoded.role === 'user') {
+                    customerId = decoded.userId;
+                }
+            } catch (err) {
+                // Bỏ qua lỗi verify token trong môi trường demo/dev
+            }
+        }
+
+        let query = `
             SELECT b.*, u.FullName AS CustomerName, u.PhoneNumber AS Phone
             FROM BOOKING b
             LEFT JOIN [USER] u ON b.CustomerID = u.UserID
-            ORDER BY b.BookingDate DESC
-        `);
+        `;
+        
+        const request = pool.request();
+        if (customerId) {
+            query += ` WHERE b.CustomerID = @customerId`;
+            request.input('customerId', sql.Int, customerId);
+        }
+        
+        query += ` ORDER BY b.BookingDate DESC`;
+        
+        const result = await request.query(query);
         res.json(result.recordset);
     } catch (err) {
         res.status(500).json({ message: err.message });

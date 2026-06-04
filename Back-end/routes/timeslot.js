@@ -311,6 +311,9 @@ router.post('/book', async (req, res) => {
   if (!machineId || !serviceId || !date || !time || !customerName || !customerPhone || !vehicleType) {
     return res.status(400).json({ message: 'Thiếu thông tin đặt lịch' });
   }
+  if (!/^(0|\+84)(3|5|7|8|9)\d{8}$/.test(customerPhone)) {
+    return res.status(400).json({ message: 'Số điện thoại không hợp lệ! Vui lòng nhập số điện thoại Việt Nam (10 chữ số).' });
+  }
   if (!['CAR', 'BIKE'].includes(vehicleType)) {
     return res.status(400).json({ message: 'vehicleType chỉ nhận CAR hoặc BIKE' });
   }
@@ -370,8 +373,11 @@ router.post('/book', async (req, res) => {
 
         IF @UserID IS NULL
         BEGIN
+          DECLARE @DummyEmail VARCHAR(255);
+          SET @DummyEmail = @customerPhone + '@guest.local';
+
           INSERT INTO [USER] (FullName, Email, PhoneNumber, Password, RoleID)
-          VALUES (@customerName, NULL, @customerPhone, NULL, 4);
+          VALUES (@customerName, @DummyEmail, @customerPhone, NULL, 4);
           SET @UserID = SCOPE_IDENTITY();
         END
         ELSE

@@ -118,7 +118,7 @@ export default function Booking() {
 
   // Tính toán chi phí
   const basePrice = selectedService ? selectedService.basePrice : 0;
-  const discountRate = profile.DiscountRate;
+  const discountRate = profile.DiscountRate > 1 ? profile.DiscountRate / 100 : profile.DiscountRate;
   const discountAmount = basePrice * discountRate;
   const finalPrice = Math.max(0, basePrice - discountAmount);
 
