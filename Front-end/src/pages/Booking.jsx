@@ -187,7 +187,7 @@ export default function Booking() {
     <div className="booking-page-container portal-layout-container">
       <Sidebar />
       <main className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: 0, position: "relative" }}>
-        <div className="max-w-6xl mx-auto" style={{ padding: "0 24px 60px", width: "100%", boxSizing: "border-box" }}>
+        <div style={{ padding: "0 24px 60px", width: "100%", maxWidth: "1200px", margin: "0 auto", boxSizing: "border-box" }}>
         {/* Tiêu đề */}
         <div className="text-center mb-10" style={{ paddingTop: 40 }}>
           <h2 className="booking-title">ĐẶT LỊCH DỊCH VỤ</h2>
