@@ -223,8 +223,9 @@ export default function UserDashboard() {
       <Sidebar />
 
       {/* Main Wrapper */}
-      <main className="user-main-content portal-main-content">
-        <section className="welcome-section">
+      <main className="portal-main-content" style={{ padding: 0 }}>
+        <div className="user-main-content">
+          <section className="welcome-section">
           <h1>Xin Chào, {profile.FullName}!</h1>
           <p>Chào mừng quay trở lại. Theo dõi trạng thái đặt lịch và hạng thành viên của bạn.</p>
         </section>
@@ -416,6 +417,7 @@ export default function UserDashboard() {
             </div>
           )}
         </section>
+        </div>
       </main>
 
       {/* Booking Details Modal */}
