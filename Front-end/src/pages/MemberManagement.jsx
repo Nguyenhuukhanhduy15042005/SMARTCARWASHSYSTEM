@@ -523,7 +523,7 @@ const styles = {
   },
   dashboardCard: {
     maxWidth: "1280px",
-    margin: "0 auto",
+    margin: "0",
     backgroundColor: "rgba(17, 24, 39, 0.45)",
     backdropFilter: "blur(20px)",
     WebkitBackdropFilter: "blur(20px)",

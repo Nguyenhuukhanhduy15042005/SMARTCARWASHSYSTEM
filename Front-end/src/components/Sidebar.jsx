@@ -43,7 +43,8 @@ export default function Sidebar() {
     menuItems.push(
       { path: "/admin/dashboard", label: "Trang chủ", icon: "fa-solid fa-chart-line" },
       { path: "/timeslots", label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
-      { path: "/admin/members", label: "Khách hàng", icon: "fa-solid fa-users" }
+      { path: "/admin/members", label: "Khách hàng", icon: "fa-solid fa-users" },
+      { path: "/admin/accounts", label: "Tài khoản", icon: "fa-solid fa-user-shield" }
     );
   } else if (role === "staff") {
     menuItems.push(

@@ -119,7 +119,7 @@
 /* Main Content Wrapper */
 .user-main-content {
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 0;
   padding: 40px 20px;
   display: flex;
   flex-direction: column;

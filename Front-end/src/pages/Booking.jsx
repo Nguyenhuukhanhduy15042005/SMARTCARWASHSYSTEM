@@ -187,10 +187,11 @@ export default function Booking() {
     <div className="booking-page-container portal-layout-container">
       <Sidebar />
       <main className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: 0, position: "relative" }}>
-        <div style={{ padding: "0 24px 60px", width: "100%", maxWidth: "1200px", margin: "0 auto", boxSizing: "border-box" }}>
+        <div style={{ padding: "0 24px 60px", width: "100%", maxWidth: "1200px", margin: "0", boxSizing: "border-box" }}>
         {/* Tiêu đề */}
-        <div className="text-center mb-10" style={{ paddingTop: 40 }}>
-          <h2 className="booking-title">ĐẶT LỊCH DỊCH VỤ</h2>
+        <div style={{ marginBottom: 28, paddingTop: 40 }}>
+          <div className="booking-badge"><i className="fa-regular fa-calendar-check"></i> Đặt lịch dịch vụ</div>
+          <h1 className="booking-title">Đặt Lịch Dịch Vụ</h1>
           <p className="booking-subtitle">Trải nghiệm dịch vụ chăm sóc xe thông minh hàng đầu tại Moto Shine</p>
         </div>
 
