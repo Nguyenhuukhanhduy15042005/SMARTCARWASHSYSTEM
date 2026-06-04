@@ -64,12 +64,16 @@ export default function Sidebar() {
   menuItems.push({ path: "/profile", label: "Hồ sơ cá nhân", icon: "fa-solid fa-user-gear" });
 
   return (
-    <aside className="admin-sidebar">
-      {/* Brand header */}
-      <Link to="/" className="admin-sidebar-brand">
-        <img src="/logo.png" alt="Moto Shine Logo" className="sidebar-logo-img" />
-        <span>Moto Shine</span>
-      </Link>
+    <>
+      <div className="floating-logo-trigger" title="Mở menu điều hướng">
+        <img src="/logo.png" alt="Moto Shine Logo" className="floating-logo-img" />
+      </div>
+      <aside className="admin-sidebar">
+        {/* Brand header */}
+        <Link to="/" className="admin-sidebar-brand">
+          <img src="/logo.png" alt="Moto Shine Logo" className="sidebar-logo-img" />
+          <span>Moto Shine</span>
+        </Link>
 
       {/* User account details card */}
       <Link to="/profile" className="sidebar-user-info" title="Xem hồ sơ cá nhân">
@@ -105,5 +109,6 @@ export default function Sidebar() {
         </button>
       </div>
     </aside>
+    </>
   );
 }

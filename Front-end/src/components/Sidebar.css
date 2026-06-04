@@ -1,4 +1,4 @@
-/* Sidebar.css - Premium Collapsible Sidebar Layout showing ONLY Logo when collapsed */
+/* Sidebar.css - Premium Slide-out Sidebar Layout with Floating Logo Trigger */
 
 :root {
   --bg-primary-portal: #0b0f19;
@@ -11,7 +11,7 @@
   --color-accent-hover-portal: #0369a1;
   --color-accent-glow-portal: rgba(2, 132, 199, 0.15);
   
-  --sidebar-collapsed-width: 76px;
+  --sidebar-collapsed-width: 80px; /* Layout offset to clear the floating logo */
   --sidebar-expanded-width: 260px;
 }
 
@@ -46,40 +46,66 @@
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Sidebar Box - Collapsible and Hoverable */
+/* Floating Logo Trigger Button - Visible by default */
+.floating-logo-trigger {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  width: 42px;
+  height: 42px;
+  z-index: 998; /* Just below the sidebar to let sidebar slide over it */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: var(--bg-secondary-portal);
+  border: 1px solid var(--border-color-portal);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+}
+
+.floating-logo-trigger:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px var(--color-accent-glow-portal);
+}
+
+.floating-logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Sidebar Box - Hidden off-screen, slides in on hover */
 .admin-sidebar {
-  width: var(--sidebar-collapsed-width);
-  background-color: transparent; /* Fully transparent when collapsed */
-  border-right: 1px solid transparent;
+  width: var(--sidebar-expanded-width);
+  background-color: var(--bg-secondary-portal);
+  border-right: 1px solid var(--border-color-portal);
   display: flex;
   flex-direction: column;
   position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
-  z-index: 999;
-  padding: 24px 10px; /* Center logo nicely when collapsed */
-  box-shadow: none;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
-              padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              background-color 0.3s ease,
-              border-color 0.3s ease,
-              box-shadow 0.3s ease;
-  overflow: hidden;
-}
-
-/* On hover: slides open and reveals itself */
-.admin-sidebar:hover {
-  width: var(--sidebar-expanded-width);
+  z-index: 999; /* Overlay above everything */
   padding: 24px;
-  background-color: var(--bg-secondary-portal);
-  border-color: var(--border-color-portal);
   box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  
+  /* Collapsed off-screen */
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Brand header */
+/* Sibling hover state + self hover state to trigger slide-in */
+.floating-logo-trigger:hover + .admin-sidebar,
+.admin-sidebar:hover {
+  transform: translateX(0);
+}
+
+/* Brand header inside sidebar */
 .admin-sidebar-brand {
   display: flex;
   align-items: center;
@@ -88,33 +114,19 @@
   font-weight: 800;
   color: #fff;
   letter-spacing: 0.5px;
-  margin-bottom: 35px;
+  margin-bottom: 30px;
   text-decoration: none;
-  padding: 0 4px;
-  transition: padding 0.3s ease;
-  white-space: nowrap;
   flex-shrink: 0;
 }
 
-.admin-sidebar:hover .admin-sidebar-brand {
-  padding: 0;
-}
-
-.admin-sidebar-brand span {
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s;
-}
-
-.admin-sidebar:hover .admin-sidebar-brand span {
-  opacity: 1;
-  visibility: visible;
-  transition-delay: 0.05s;
+.admin-sidebar-brand i {
+  color: var(--color-accent-portal);
+  font-size: 24px;
 }
 
 .sidebar-logo-img {
-  height: 40px;
-  width: 40px;
+  height: 42px;
+  width: 42px;
   object-fit: cover;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -126,28 +138,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px;
+  padding: 12px;
   background: var(--bg-card-portal);
   border: 1px solid var(--border-color-portal);
   border-radius: 12px;
   margin-bottom: 25px;
   text-decoration: none;
   color: white;
-  transition: all 0.3s ease, opacity 0.2s ease, visibility 0.2s;
-  white-space: nowrap;
+  transition: all 0.2s ease;
   flex-shrink: 0;
-  overflow: hidden;
-  
-  /* Hidden when collapsed */
-  opacity: 0;
-  visibility: hidden;
-}
-
-.admin-sidebar:hover .sidebar-user-info {
-  padding: 12px;
-  opacity: 1;
-  visibility: visible;
-  transition-delay: 0.05s;
 }
 
 .sidebar-user-info:hover {
@@ -197,24 +196,13 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: opacity 0.2s ease, visibility 0.2s;
-  
-  /* Hidden when collapsed */
-  opacity: 0;
-  visibility: hidden;
-}
-
-.admin-sidebar:hover .admin-sidebar-menu {
-  opacity: 1;
-  visibility: visible;
-  transition-delay: 0.05s;
 }
 
 .admin-menu-item {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 14px;
+  gap: 12px;
+  padding: 12px 16px;
   color: var(--text-secondary-portal);
   text-decoration: none;
   font-size: 15px;
@@ -223,11 +211,6 @@
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   white-space: nowrap;
-  overflow: hidden;
-}
-
-.admin-sidebar:hover .admin-menu-item {
-  padding: 12px 16px;
 }
 
 .admin-menu-item:hover, .admin-menu-item.active {
@@ -247,25 +230,10 @@
   flex-shrink: 0;
 }
 
-.admin-menu-item span {
-  transition: opacity 0.2s ease, visibility 0.2s;
-}
-
 .admin-sidebar-footer {
   margin-top: auto;
   border-top: 1px solid var(--border-color-portal);
   padding-top: 20px;
-  transition: opacity 0.2s ease, visibility 0.2s;
-  
-  /* Hidden when collapsed */
-  opacity: 0;
-  visibility: hidden;
-}
-
-.admin-sidebar:hover .admin-sidebar-footer {
-  opacity: 1;
-  visibility: visible;
-  transition-delay: 0.05s;
 }
 
 .logout-btn-sidebar {
