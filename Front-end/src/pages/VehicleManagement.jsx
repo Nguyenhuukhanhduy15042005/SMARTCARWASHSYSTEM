@@ -53,7 +53,20 @@ export default function VehicleManagement() {
   const [submitting, setSubmitting]       = useState(false);
 
   const token = localStorage.getItem("TOKEN") || localStorage.getItem("token") || "";
-  const currentUser = useMemo(() => getLoggedInUser(), [token]);
+  const currentUser = useMemo(() => {
+    const decoded = getLoggedInUser();
+    if (!decoded) return null;
+    const savedUser = localStorage.getItem("LOGIN_USER");
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        return { ...decoded, ...parsed };
+      } catch (err) {
+        console.error("Lỗi parse LOGIN_USER:", err);
+      }
+    }
+    return decoded;
+  }, [token]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
