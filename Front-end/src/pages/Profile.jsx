@@ -84,7 +84,7 @@ export default function Profile({ setUser }) {
   return (
     <div className="portal-layout-container" style={{ minHeight: "100vh" }}>
       <Sidebar />
-      <main className="portal-main-content" style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "40px 20px" }}>
+      <main className="portal-main-content" style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", padding: "40px 20px" }}>
         <div className="auth-card" style={{ maxWidth: 520, width: "100%", textAlign: "left" }}>
           <h2>Hồ Sơ Của Tôi</h2>
 
