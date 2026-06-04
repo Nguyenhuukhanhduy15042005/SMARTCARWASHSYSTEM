@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
 
 const API = "http://localhost:5000/api/users";
 
@@ -81,25 +82,11 @@ export default function Profile({ setUser }) {
   }
 
   return (
-    <div className="auth-container" style={{ alignItems: "flex-start", paddingTop: "2rem" }}>
-      <div className="auth-card" style={{ maxWidth: 520, width: "100%" }}>
-
-        {/* Back button — dùng cùng style với Login.jsx */}
-        <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 15 }}>
-          <Link
-            to="/"
-            style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none", color: "#475569", fontSize: 14, fontWeight: 600 }}
-            onMouseOver={(e) => (e.currentTarget.style.color = "#F58607")}
-            onMouseOut={(e) => (e.currentTarget.style.color = "#475569")}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            Quay lại
-          </Link>
-        </div>
-
-        <h2>Hồ Sơ Của Tôi</h2>
+    <div className="portal-layout-container" style={{ minHeight: "100vh" }}>
+      <Sidebar />
+      <main className="portal-main-content" style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "40px 20px" }}>
+        <div className="auth-card" style={{ maxWidth: 520, width: "100%", textAlign: "left" }}>
+          <h2>Hồ Sơ Của Tôi</h2>
 
         {/* Thông báo */}
         {msg.text && (
@@ -117,7 +104,7 @@ export default function Profile({ setUser }) {
             <div style={{ fontWeight: 600, fontSize: 17, color: "#1e293b" }}>{user?.FullName}</div>
             <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>{user?.Email}</div>
             <span style={{ display: "inline-block", marginTop: 6, padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 500, background: "#E1F5EE", color: "#0F6E56" }}>
-              Khách hàng
+              {user?.RoleID === 1 ? "Quản trị viên" : user?.RoleID === 2 ? "Nhân viên" : "Thành viên"}
             </span>
           </div>
           {!editing && (
@@ -191,7 +178,8 @@ export default function Profile({ setUser }) {
           </div>
         )}
 
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

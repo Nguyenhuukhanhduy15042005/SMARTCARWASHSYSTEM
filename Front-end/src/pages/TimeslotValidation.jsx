@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://localhost:5000";
 
@@ -259,58 +260,17 @@ export default function TimeslotValidation() {
   const freeCount   = slots.filter(s => s.status === "free").length;
 
   return (
-    <div style={s.root}>
-      <div style={s.bg} /><div style={s.bgGrid} />
+    <div className="portal-layout-container" style={{ ...s.root, padding: 0 }}>
+      <Sidebar />
+      <div className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "40px 20px", position: "relative" }}>
+        <div style={s.bg} /><div style={s.bgGrid} />
 
-      {/* Toast */}
-      {toast && (
-        <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#10b981" }}>
-          {toast.msg}
-        </div>
-      )}
-
-      {/* TOP HEADER NAVIGATION BAR */}
-      <nav style={s.navbar}>
-        <div style={s.navLogo}>
-          <img src="/logo.png" alt="Moto Shine Logo" style={s.logoImg} />
-          <span>Moto Shine</span>
-        </div>
-        <div style={s.navLinks}>
-          <a href={currentUser?.role === 'staff' ? '/staff/dashboard' : currentUser?.role === 'admin' ? '/admin/dashboard' : '/dashboard'} style={s.navLink}>
-            <i className="fa-solid fa-house"></i> Trang chủ
-          </a>
-          <a href="/timeslots" style={{ ...s.navLink, ...s.activeNavLink }}>
-            <i className="fa-solid fa-bell-concierge"></i> Dịch vụ
-          </a>
-          {/* Only show member management button to staff and admin */}
-          {(currentUser?.role === 'admin' || currentUser?.role === 'staff') && (
-            <a href="/admin/members" style={s.navLink}>
-              <i className="fa-solid fa-id-card"></i> Thành viên
-            </a>
-          )}
-        </div>
-        <div style={s.navUser}>
-          <div 
-            style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
-            onClick={() => navigate("/profile")}
-            title="Xem hồ sơ cá nhân"
-          >
-            <div style={s.avatar}><i className="fa-solid fa-user-tie"></i></div>
-            <div style={s.userInfo}>
-              <div style={s.userName}>{currentUser?.fullName || "Member"}</div>
-              <div style={s.userRole}>
-                {currentUser?.role === 'admin' ? 'Admin Account' : currentUser?.role === 'staff' ? 'Staff Account' : 'Member Account'}
-              </div>
-            </div>
+        {/* Toast */}
+        {toast && (
+          <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#10b981" }}>
+            {toast.msg}
           </div>
-          <button style={s.logoutBtn} onClick={() => {
-            localStorage.clear();
-            navigate("/login");
-          }}>
-            <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất
-          </button>
-        </div>
-      </nav>
+        )}
 
       {/* Success Modal */}
       {successBooking && (
@@ -707,6 +667,7 @@ export default function TimeslotValidation() {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

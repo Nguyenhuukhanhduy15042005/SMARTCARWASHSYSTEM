@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./UserDashboard.css";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
@@ -218,28 +219,11 @@ export default function UserDashboard() {
   const totalSpend = bookings.filter(b => b.status === 4).reduce((acc, b) => acc + (b.price || 0), 0);
 
   return (
-    <div className="user-dashboard-container">
-      {/* Header bar */}
-      <header className="user-header">
-        <div className="user-header-brand">
-          <img src="/logo.png" alt="Moto Shine Logo" className="header-logo-img" />
-          <span>Moto Shine</span>
-        </div>
-        <div className="user-header-profile">
-          <a href="/dashboard" className="nav-link active">Thành viên</a>
-          <a href="/booking" className="nav-link">Đặt Lịch Ngay</a>
-          <a href="/vehicles" className="nav-link">Xe của tôi</a>
-          <a href="/profile" className="nav-link">Hồ sơ cá nhân</a>
-          <div className="user-header-actions">
-            <a href="/login" className="btn-logout" onClick={() => localStorage.clear()}>
-              <i className="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất
-            </a>
-          </div>
-        </div>
-      </header>
+    <div className="user-dashboard-container portal-layout-container">
+      <Sidebar />
 
       {/* Main Wrapper */}
-      <main className="user-main-content">
+      <main className="user-main-content portal-main-content">
         <section className="welcome-section">
           <h1>Xin Chào, {profile.FullName}!</h1>
           <p>Chào mừng quay trở lại. Theo dõi trạng thái đặt lịch và hạng thành viên của bạn.</p>

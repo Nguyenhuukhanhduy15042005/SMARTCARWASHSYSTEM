@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://localhost:5000/api";
 
@@ -173,52 +174,14 @@ export default function MemberManagement() {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.glowSphereLeft}></div>
-      <div style={styles.glowSphereRight}></div>
+    <div className="portal-layout-container" style={{ ...styles.container, padding: 0 }}>
+      <Sidebar />
+      <div className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "40px 20px", position: "relative" }}>
+        <div style={styles.glowSphereLeft}></div>
+        <div style={styles.glowSphereRight}></div>
 
-      {/* TOP HEADER NAVIGATION BAR */}
-      <nav style={styles.navbar}>
-        <div style={styles.navLogo}>
-          <img src="/logo.png" alt="Moto Shine Logo" style={styles.logoImg} />
-          <span>Moto Shine</span>
-        </div>
-        <div style={styles.navLinks}>
-          <a href={currentUser?.role === 'staff' ? '/staff/dashboard' : '/admin/dashboard'} style={styles.navLink}>
-            <i className="fa-solid fa-house"></i> Trang chủ
-          </a>
-          <a href="/timeslots" style={styles.navLink}>
-            <i className="fa-solid fa-bell-concierge"></i> Dịch vụ
-          </a>
-          <a href="/admin/members" style={{ ...styles.navLink, ...styles.activeNavLink }}>
-            <i className="fa-solid fa-id-card"></i> Thành viên
-          </a>
-        </div>
-        <div style={styles.navUser}>
-          <div 
-            style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
-            onClick={() => navigate("/profile")}
-            title="Xem hồ sơ cá nhân"
-          >
-            <div style={styles.avatar}><i className="fa-solid fa-user-tie"></i></div>
-            <div style={styles.userInfo}>
-              <div style={styles.userName}>{currentUser?.fullName || "Staff Member"}</div>
-              <div style={styles.userRole}>
-                {currentUser?.role === 'admin' ? 'Admin Account' : 'Staff Account'}
-              </div>
-            </div>
-          </div>
-          <button style={styles.logoutBtn} onClick={() => {
-            localStorage.clear();
-            navigate("/login");
-          }}>
-            <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất
-          </button>
-        </div>
-      </nav>
-
-      {/* Main glass card wrapper */}
-      <div style={styles.dashboardCard}>
+        {/* Main glass card wrapper */}
+        <div style={styles.dashboardCard}>
         <header style={styles.header}>
           <div>
             <div style={styles.logoBadge}><i className="fa-solid fa-id-card"></i> Loyalty Manager</div>
@@ -424,6 +387,7 @@ export default function MemberManagement() {
           {toast.msg}
         </div>
       )}
+      </div>
     </div>
   );
 }

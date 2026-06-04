@@ -1,0 +1,193 @@
+/* Sidebar.css - Premium Sidebar Navigation Layout */
+
+:root {
+  --bg-primary-portal: #0b0f19;
+  --bg-secondary-portal: #111827;
+  --bg-card-portal: rgba(17, 24, 39, 0.7);
+  --border-color-portal: rgba(255, 255, 255, 0.08);
+  --text-primary-portal: #f3f4f6;
+  --text-secondary-portal: #9ca3af;
+  --color-accent-portal: #0284c7;
+  --color-accent-hover-portal: #0369a1;
+  --color-accent-glow-portal: rgba(2, 132, 199, 0.15);
+  --sidebar-width-portal: 260px;
+}
+
+/* Unified Layout Wrappers */
+.portal-layout-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-primary-portal);
+  color: var(--text-primary-portal);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.portal-layout-container * {
+  box-sizing: border-box;
+}
+
+.portal-main-content {
+  margin-left: var(--sidebar-width-portal);
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 30px;
+}
+
+/* Sidebar Box */
+.admin-sidebar {
+  width: var(--sidebar-width-portal);
+  background-color: var(--bg-secondary-portal);
+  border-right: 1px solid var(--border-color-portal);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  padding: 24px;
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.3);
+}
+
+.admin-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.5px;
+  margin-bottom: 30px;
+  text-decoration: none;
+}
+
+.admin-sidebar-brand i {
+  color: var(--color-accent-portal);
+  font-size: 24px;
+}
+
+.sidebar-logo-img {
+  height: 42px;
+  width: 42px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* User Account Info inside Sidebar */
+.sidebar-user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-card-portal);
+  border: 1px solid var(--border-color-portal);
+  border-radius: 12px;
+  margin-bottom: 25px;
+  text-decoration: none;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.sidebar-user-info:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.sidebar-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-accent-portal), #3b82f6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: white;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.sidebar-user-details {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-username {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-userrole {
+  font-size: 11px;
+  color: var(--text-secondary-portal);
+  margin-top: 2px;
+}
+
+/* Sidebar Menu Items */
+.admin-sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: var(--text-secondary-portal);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.admin-menu-item:hover, .admin-menu-item.active {
+  color: #fff;
+  background-color: var(--color-accent-glow-portal);
+  box-shadow: inset 0 0 0 1px rgba(2, 132, 199, 0.2);
+}
+
+.admin-menu-item.active i {
+  color: var(--color-accent-portal);
+}
+
+.admin-menu-item i {
+  font-size: 18px;
+  width: 20px;
+  text-align: center;
+}
+
+.admin-sidebar-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border-color-portal);
+  padding-top: 20px;
+}
+
+.logout-btn-sidebar {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.15) !important;
+}
+
+.logout-btn-sidebar:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.1) !important;
+}
