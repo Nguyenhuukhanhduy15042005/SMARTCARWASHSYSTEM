@@ -125,19 +125,19 @@ export default function Profile({ setUser }) {
             <label>Họ và tên</label>
             {editing
               ? <input type="text" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{user?.FullName}</div>}
+              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#1e293b" }}>{user?.FullName}</div>}
           </div>
           <div className="input-group">
             <label>Số điện thoại</label>
             {editing
               ? <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{user?.PhoneNumber}</div>}
+              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#1e293b" }}>{user?.PhoneNumber}</div>}
           </div>
           <div className="input-group" style={{ gridColumn: "1 / -1" }}>
             <label>Email</label>
             {editing
               ? <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{user?.Email}</div>}
+              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#1e293b" }}>{user?.Email}</div>}
           </div>
           <div className="input-group" style={{ gridColumn: "1 / -1" }}>
             <label>Ngày tham gia</label>
