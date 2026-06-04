@@ -64,9 +64,9 @@ export default function Sidebar() {
   menuItems.push({ path: "/profile", label: "Hồ sơ cá nhân", icon: "fa-solid fa-user-gear" });
 
   return (
-    <aside className="admin-sidebar">
+    <aside className="portal-sidebar">
       {/* Brand header */}
-      <Link to="/" className="admin-sidebar-brand">
+      <Link to="/" className="portal-sidebar-brand">
         <img src="/logo.png" alt="Moto Shine Logo" className="sidebar-logo-img" />
         <span>Moto Shine</span>
       </Link>
@@ -83,12 +83,12 @@ export default function Sidebar() {
       </Link>
 
       {/* Menu items */}
-      <ul className="admin-sidebar-menu">
+      <ul className="portal-sidebar-menu">
         {menuItems.map((item) => {
           const isActive = currentPath === item.path;
           return (
             <li key={item.path}>
-              <Link to={item.path} className={`admin-menu-item ${isActive ? "active" : ""}`}>
+              <Link to={item.path} className={`portal-menu-item ${isActive ? "active" : ""}`}>
                 <i className={item.icon}></i>
                 <span>{item.label}</span>
               </Link>
@@ -98,8 +98,8 @@ export default function Sidebar() {
       </ul>
 
       {/* Footer logout */}
-      <div className="admin-sidebar-footer">
-        <button onClick={handleLogout} className="admin-menu-item logout-btn-sidebar" style={{ width: "100%", border: "none", background: "none", textAlign: "left" }}>
+      <div className="portal-sidebar-footer">
+        <button onClick={handleLogout} className="portal-menu-item portal-logout-btn-sidebar" style={{ width: "100%", border: "none", background: "none", textAlign: "left" }}>
           <i className="fa-solid fa-arrow-right-from-bracket"></i>
           <span>Đăng xuất</span>
         </button>
