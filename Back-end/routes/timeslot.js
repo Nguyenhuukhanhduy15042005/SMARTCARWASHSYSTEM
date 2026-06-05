@@ -79,11 +79,37 @@ async function fetchBookingsByMachineDate(pool, machineId, date) {
         bd.PriceAtBooking
       FROM BOOKING b
       INNER JOIN [USER] u ON b.CustomerID = u.UserID
-      INNER JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
-      INNER JOIN SERVICE s ON bd.ServiceID = s.ServiceID
-      WHERE bd.MachineID = @machineId
-        AND CAST(b.BookingDate AS DATE) = @date
+      LEFT JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
+      LEFT JOIN SERVICE s ON bd.ServiceID = s.ServiceID
+      INNER JOIN MACHINE m ON m.MachineID = @machineId
+      WHERE CAST(b.BookingDate AS DATE) = @date
         AND b.Status <> 5
+        AND (
+          bd.MachineID = @machineId
+          OR (
+            bd.MachineID IS NULL
+            AND (
+              (
+                m.MachineType = 'CAR_WASHER'
+                AND (
+                  UPPER(b.VehicleType) = 'CAR'
+                  OR b.VehicleType = N'Ô tô'
+                  OR b.VehicleType = N'O tô'
+                  OR b.VehicleType = N'Ô TÔ'
+                )
+              )
+              OR
+              (
+                m.MachineType = 'BIKE_WASHER'
+                AND (
+                  UPPER(b.VehicleType) = 'BIKE'
+                  OR b.VehicleType = N'Xe máy'
+                  OR b.VehicleType = N'XE MÁY'
+                )
+              )
+            )
+          )
+        )
       ORDER BY b.BookingDate ASC
     `);
 }
