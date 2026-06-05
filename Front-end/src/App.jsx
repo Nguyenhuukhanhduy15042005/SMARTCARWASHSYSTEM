@@ -18,6 +18,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Unauthorized from "./pages/Unauthorized";
 import MemberManagement from "./pages/MemberManagement";
 import AccountManagement from "./pages/AccountManagement";
+import RewardRedemption from "./pages/RewardRedemption";
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -65,6 +66,15 @@ function App() {
           element={
             <ProtectedRoute requiredRole="user">
               <Booking />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reward-redemption"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <RewardRedemption />
             </ProtectedRoute>
           }
         />
