@@ -611,9 +611,37 @@ export default function TimeslotValidation() {
                         <div style={{ fontSize: "12px", color: isBooked ? "#94a3b8" : "#64748b", minHeight: "44px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
                           {isBooked && slot.booking ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                              <div style={{ fontWeight: "700", color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>👤 {slot.booking.customerName}</div>
-                              <div style={{ fontSize: "11px", color: "#94a3b8" }}>📞 {slot.booking.customerPhone}</div>
-                              <div style={{ fontSize: "11px", color: "#475569" }}>🛠️ {slot.booking.serviceName}</div>
+                              <div
+                                style={{
+                                  fontWeight: "700",
+                                  color: "#f1f5f9",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap"
+                                }}
+                              >
+                                👤 {slot.booking.customerName}
+                              </div>
+
+                              <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                                📞 {slot.booking.customerPhone}
+                              </div>
+
+                              {slot.booking.licensePlate && (
+                                <div
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "#fbbf24",
+                                    fontWeight: "600"
+                                  }}
+                                >
+                                  🚘 {slot.booking.licensePlate}
+                                </div>
+                              )}
+
+                              <div style={{ fontSize: "11px", color: "#475569" }}>
+                                🛠️ {slot.booking.serviceName}
+                              </div>
                             </div>
                           ) : isChecking ? (
                             <span style={{ color: "#a3e635", fontWeight: "600" }}>⏳ Đang kiểm tra lịch...</span>

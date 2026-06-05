@@ -269,6 +269,7 @@ router.get('/overview', async (req, res) => {
 
   try {
     const pool = await poolPromise;
+
     let machineWhere = '';
     if (type === 'CAR') machineWhere = "WHERE MachineType = 'CAR_WASHER'";
     if (type === 'BIKE') machineWhere = "WHERE MachineType = 'BIKE_WASHER'";
@@ -280,42 +281,34 @@ router.get('/overview', async (req, res) => {
       ORDER BY MachineID ASC
     `);
 
-    const bookings = await pool.request()
-      .input('date', sql.Date, date)
-      .query(`
-        SELECT bd.MachineID, b.BookingDate
-        FROM BOOKING b
-        INNER JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
-        WHERE CAST(b.BookingDate AS DATE) = @date
-          AND b.Status <> 5
-          AND bd.MachineID IS NOT NULL
-      `);
+    const overview = [];
 
-    const occupiedByMachine = {};
-    for (const row of bookings.recordset) {
-      const mid = String(row.MachineID);
-      const startTime = timeFromDate(row.BookingDate);
-      if (!occupiedByMachine[mid]) occupiedByMachine[mid] = new Set();
-      getOccupiedSlots(startTime, DEFAULT_DURATION).forEach(slot => occupiedByMachine[mid].add(slot));
+    for (const m of machines.recordset) {
+      const result = await fetchBookingsByMachineDate(pool, m.MachineID, date);
+      const occupiedSlots = new Set();
+
+      for (const row of result.recordset) {
+        const startTime = timeFromDate(row.BookingDate);
+        getOccupiedSlots(startTime, DEFAULT_DURATION).forEach(slot => {
+          occupiedSlots.add(slot);
+        });
+      }
+
+      const bookedSlots = occupiedSlots.size;
+
+      overview.push({
+        id: String(m.MachineID),
+        name: m.MachineName,
+        type: m.MachineType === 'BIKE_WASHER' ? 'BIKE' : 'CAR',
+        machineStatus: MACHINE_STATUS[m.Status] || 'Available',
+        totalSlots: TIME_SLOTS.length,
+        bookedSlots,
+        freeSlots: TIME_SLOTS.length - bookedSlots,
+        occupancyPct: Math.round((bookedSlots / TIME_SLOTS.length) * 100)
+      });
     }
 
-    res.json({
-      date,
-      overview: machines.recordset.map(m => {
-        const mid = String(m.MachineID);
-        const bookedSlots = occupiedByMachine[mid] ? occupiedByMachine[mid].size : 0;
-        return {
-          id: mid,
-          name: m.MachineName,
-          type: m.MachineType === 'BIKE_WASHER' ? 'BIKE' : 'CAR',
-          machineStatus: MACHINE_STATUS[m.Status] || 'Available',
-          totalSlots: TIME_SLOTS.length,
-          bookedSlots,
-          freeSlots: TIME_SLOTS.length - bookedSlots,
-          occupancyPct: Math.round((bookedSlots / TIME_SLOTS.length) * 100)
-        };
-      })
-    });
+    res.json({ date, overview });
   } catch (err) {
     console.error('GET /api/timeslots/overview error:', err);
     res.status(500).json({ message: 'Lỗi khi lấy tổng quan timeslot' });
