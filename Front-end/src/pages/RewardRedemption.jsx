@@ -149,7 +149,7 @@ export default function RewardRedemption() {
             <div className="reward-section-title">
               <div>
                 <h2>Voucher khả dụng</h2>
-                <p>Mock UI độc lập, sau này chỉ cần thay API rewards.</p>
+                <p>Đổi điểm tích lũy để nhận ưu đãi phù hợp với đơn hàng.</p>
               </div>
               <input
                 type="number"
