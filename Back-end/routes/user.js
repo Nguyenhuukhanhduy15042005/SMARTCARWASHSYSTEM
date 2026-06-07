@@ -352,4 +352,75 @@ router.get("/tiers", verifyToken, async (req, res) => {
   }
 });
 
+// DELETE /api/users/:userId
+// Xóa tài khoản hệ thống (Chỉ Admin)
+router.delete("/:userId", verifyToken, async (req, res) => {
+  if (req.user.roleId !== 1) {
+    return res.status(403).json({ message: "Chỉ admin mới được thực hiện hành động này!" });
+  }
+
+  const userId = parseInt(req.params.userId, 10);
+  if (isNaN(userId)) {
+    return res.status(400).json({ message: "UserID không hợp lệ!" });
+  }
+
+  if (userId === req.user.userId) {
+    return res.status(400).json({ message: "Bạn không thể tự xóa tài khoản của chính mình!" });
+  }
+
+  try {
+    const pool = await poolPromise;
+    
+    // Check if user exists
+    const userCheck = await pool.request()
+      .input("userId", sql.Int, userId)
+      .query("SELECT UserID, RoleID FROM [USER] WHERE UserID = @userId");
+      
+    if (userCheck.recordset.length === 0) {
+      return res.status(404).json({ message: "Người dùng không tồn tại!" });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    try {
+      const request = transaction.request();
+      request.input("userId", sql.Int, userId);
+
+      // 1. Delete MEMBER_PROFILE
+      await request.query("DELETE FROM MEMBER_PROFILE WHERE UserID = @userId");
+
+      // 2. Delete SURVEY (Feedback/Survey feedback)
+      await request.query("DELETE FROM SURVEY WHERE UserID = @userId");
+
+      // 3. Delete VEHICLE
+      await request.query("DELETE FROM VEHICLE WHERE UserID = @userId");
+
+      // 4. Delete BOOKING details & payments first, then BOOKING
+      await request.query(`
+        DELETE FROM PAYMENT 
+        WHERE BookingID IN (SELECT BookingID FROM BOOKING WHERE CustomerID = @userId)
+      `);
+      
+      await request.query(`
+        DELETE FROM BOOKING_DETAIL 
+        WHERE BookingID IN (SELECT BookingID FROM BOOKING WHERE CustomerID = @userId)
+      `);
+
+      await request.query("DELETE FROM BOOKING WHERE CustomerID = @userId");
+
+      // 5. Delete [USER]
+      await request.query("DELETE FROM [USER] WHERE UserID = @userId");
+
+      await transaction.commit();
+      res.json({ message: "Xóa tài khoản thành công!" });
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  } catch (err) {
+    console.error("Lỗi khi xóa tài khoản:", err);
+    res.status(500).json({ message: "Lỗi server khi xóa tài khoản: " + err.message });
+  }
+});
+
 module.exports = router;

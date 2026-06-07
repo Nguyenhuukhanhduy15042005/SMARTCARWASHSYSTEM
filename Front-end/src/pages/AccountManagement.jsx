@@ -74,6 +74,43 @@ export default function AccountManagement() {
     setSelectedRoleId(user.roleId || 3);
   };
 
+  const handleDeleteUser = async (userId, userName) => {
+    let loggedInId = null;
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        loggedInId = payload.id || payload.userId;
+      } catch (err) {
+        console.error("Lỗi decode token:", err);
+      }
+    }
+
+    if (userId === loggedInId) {
+      showToast("Bạn không thể tự xóa tài khoản của chính mình!", "error");
+      return;
+    }
+
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản "${userName}"? Tất cả thông tin liên quan (lịch đặt xe, xe liên kết, hạng thành viên) sẽ bị xóa sạch và không thể khôi phục!`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Xóa tài khoản thất bại!");
+
+      showToast("Xóa tài khoản thành công!");
+      fetchUsers();
+    } catch (err) {
+      showToast(err.message || "Lỗi khi xóa tài khoản!", "error");
+    }
+  };
+
   const handleSaveRole = async () => {
     setSubmitting(true);
     try {
@@ -256,6 +293,9 @@ export default function AccountManagement() {
                         <div style={styles.actionGroup}>
                           <button style={styles.editBtn} onClick={() => handleEditRoleClick(user)}>
                             <i className="fa-solid fa-user-pen"></i> Đổi vai trò
+                          </button>
+                          <button style={styles.deleteBtn} onClick={() => handleDeleteUser(user.id, user.name)}>
+                            <i className="fa-solid fa-trash-can"></i> Xóa
                           </button>
                         </div>
                       </td>
@@ -576,6 +616,20 @@ const styles = {
     backgroundColor: "rgba(99, 102, 241, 0.15)",
     border: "1px solid rgba(99, 102, 241, 0.2)",
     color: "#818cf8",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "600",
+    transition: "all 0.2s ease",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px"
+  },
+  deleteBtn: {
+    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    border: "1px solid rgba(239, 68, 68, 0.2)",
+    color: "#f87171",
     padding: "8px 14px",
     borderRadius: "8px",
     cursor: "pointer",
