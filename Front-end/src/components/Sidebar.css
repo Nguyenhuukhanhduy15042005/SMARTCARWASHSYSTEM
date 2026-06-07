@@ -74,8 +74,8 @@
   background-color: var(--bg-secondary-portal) !important;
   border-color: var(--border-color-portal) !important;
   box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5) !important;
-  backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
 }
 
 /* Brand header */
