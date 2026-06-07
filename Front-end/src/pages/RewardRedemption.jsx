@@ -224,14 +224,15 @@ export default function RewardRedemption() {
 const rewardRedemptionCss = `
 .reward-page{
   min-height:100vh;
-  background:#f4f7fb;
+  background:#0b1120;
   font-family:'Plus Jakarta Sans',sans-serif;
   color:#172033;
 }
 
 .reward-main{
-  margin-left:280px;
+  margin-left:76px;
   padding:32px;
+  min-height:100vh;
 }
 
 .reward-toast{
