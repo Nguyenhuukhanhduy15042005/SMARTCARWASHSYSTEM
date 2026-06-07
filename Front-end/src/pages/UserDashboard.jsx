@@ -277,7 +277,9 @@ export default function UserDashboard() {
           <div className={`membership-card-glow ${getTierClass(profile.TierName)}`}>
             <div className="card-top">
               <span className="card-label">Thẻ Thành Viên</span>
-              <div className="card-chip"></div>
+              <div className="card-logo">
+                <i className="fa-solid fa-gem"></i> MOTO SHINE
+              </div>
             </div>
             <div className="card-middle">
               <div className="points-display">

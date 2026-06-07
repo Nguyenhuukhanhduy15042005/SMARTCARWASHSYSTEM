@@ -187,7 +187,7 @@ export default function Booking() {
     <div className="booking-page-container portal-layout-container">
       <Sidebar />
       <main className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: 0, position: "relative" }}>
-        <div style={{ padding: "0 24px 60px", width: "100%", maxWidth: "1200px", margin: "0", boxSizing: "border-box" }}>
+        <div style={{ padding: "0 32px 60px", width: "100%", maxWidth: "100%", margin: "0", boxSizing: "border-box" }}>
         {/* Tiêu đề */}
         <div style={{ marginBottom: 28, paddingTop: 40 }}>
           <div className="booking-badge"><i className="fa-regular fa-calendar-check"></i> Đặt lịch dịch vụ</div>

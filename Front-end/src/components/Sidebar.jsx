@@ -62,7 +62,8 @@ export default function Sidebar() {
       { path: "/dashboard", label: "Trang chủ", icon: "fa-solid fa-chart-line" },
       { path: "/booking", label: "Đặt lịch", icon: "fa-regular fa-calendar-check" },
       { path: "/vehicles", label: "Xe của tôi", icon: "fa-solid fa-car" },
-      { path: "/reward-redemption", label: "Đổi điểm thưởng", icon: "fa-solid fa-gift" }
+      { path: "/reward-redemption", label: "Đổi điểm thưởng", icon: "fa-solid fa-gift" },
+      { path: "/loyalty", label: "Hạng & Lịch sử điểm", icon: "fa-solid fa-award" }
     );
   }
 

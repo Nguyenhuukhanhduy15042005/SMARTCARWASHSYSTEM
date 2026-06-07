@@ -21,6 +21,8 @@ import AccountManagement from "./pages/AccountManagement";
 import RewardRedemption from "./pages/RewardRedemption";
 import FeedbackManagement from "./pages/FeedbackManagement";
 import PromotionManagement from "./pages/PromotionManagement";
+import LoyaltyHistory from "./pages/LoyaltyHistory";
+
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -80,6 +82,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/loyalty"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <LoyaltyHistory />
+            </ProtectedRoute>
+          }
+        />
+
 
         <Route
           path="/timeslots"

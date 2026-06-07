@@ -19,7 +19,8 @@
 .portal-layout-container {
   display: flex;
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
+  max-width: 100%;
   background-color: var(--bg-primary-portal);
   color: var(--text-primary-portal);
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -35,14 +36,14 @@
 
 .portal-main-content {
   margin-left: var(--sidebar-collapsed-width) !important;
-  margin-right: auto !important;
   flex: 1;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   padding: 30px;
   box-sizing: border-box;
-  width: calc(100vw - var(--sidebar-collapsed-width)) !important;
+  width: calc(100% - var(--sidebar-collapsed-width)) !important;
+  max-width: 100% !important;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
