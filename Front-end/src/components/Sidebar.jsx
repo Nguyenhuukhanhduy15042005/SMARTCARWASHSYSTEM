@@ -44,13 +44,17 @@ export default function Sidebar() {
       { path: "/admin/dashboard", label: "Trang chủ", icon: "fa-solid fa-chart-line" },
       { path: "/timeslots", label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
       { path: "/admin/members", label: "Khách hàng", icon: "fa-solid fa-users" },
-      { path: "/admin/accounts", label: "Tài khoản", icon: "fa-solid fa-user-shield" }
+      { path: "/admin/accounts", label: "Tài khoản", icon: "fa-solid fa-user-shield" },
+      { path: "/admin/promotions", label: "Khuyến mãi", icon: "fa-solid fa-tags" },
+      { path: "/admin/feedbacks", label: "Đánh giá", icon: "fa-solid fa-star" }
     );
   } else if (role === "staff") {
     menuItems.push(
       { path: "/staff/dashboard", label: "Trang chủ", icon: "fa-solid fa-chart-line" },
       { path: "/timeslots", label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
-      { path: "/admin/members", label: "Khách hàng", icon: "fa-solid fa-users" }
+      { path: "/admin/members", label: "Khách hàng", icon: "fa-solid fa-users" },
+      { path: "/admin/promotions", label: "Khuyến mãi", icon: "fa-solid fa-tags" },
+      { path: "/admin/feedbacks", label: "Đánh giá", icon: "fa-solid fa-star" }
     );
   } else {
     // Member / Normal User

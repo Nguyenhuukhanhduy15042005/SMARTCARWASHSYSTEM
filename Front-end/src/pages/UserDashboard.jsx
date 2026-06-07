@@ -22,6 +22,9 @@ export default function UserDashboard() {
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [toast, setToast] = useState(null);
+  const [feedbackBooking, setFeedbackBooking] = useState(null);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackComment, setFeedbackComment] = useState("");
 
   // Decode customer ID from localStorage token, fallback to ID 12 for direct testing
   const getCustomerId = () => {
@@ -171,6 +174,44 @@ export default function UserDashboard() {
       showToast(`Không thể xóa: ${errMsg}`, "error");
     }
   };
+
+  const handleSubmitFeedback = async () => {
+  if (!feedbackBooking) return;
+
+  if (!feedbackRating || feedbackRating < 1 || feedbackRating > 5) {
+    showToast("Vui lòng chọn số sao từ 1 đến 5.", "error");
+    return;
+  }
+
+  if (!feedbackComment.trim()) {
+    showToast("Vui lòng nhập nội dung đánh giá.", "error");
+    return;
+  }
+
+  const token = localStorage.getItem("token") || "mock-token";
+  const headers = { Authorization: `Bearer ${token}` };
+
+  try {
+    await axios.post(
+      `${API_BASE}/feedbacks`,
+      {
+        bookingId: feedbackBooking.id,
+        rating: feedbackRating,
+        comment: feedbackComment.trim(),
+      },
+      { headers }
+    );
+
+    showToast("Gửi đánh giá thành công! Cảm ơn bạn đã phản hồi.", "success");
+    setFeedbackBooking(null);
+    setFeedbackRating(5);
+    setFeedbackComment("");
+  } catch (err) {
+    console.error("Failed to submit feedback:", err);
+    const errMsg = err.response?.data?.message || err.message;
+    showToast(`Không thể gửi đánh giá: ${errMsg}`, "error");
+  }
+};
 
   const getStatusPill = (status) => {
     switch (status) {
@@ -402,6 +443,11 @@ export default function UserDashboard() {
                               <i className="fa-solid fa-ban"></i>
                             </button>
                           )}
+                          {b.status === 4 && (
+                            <button className="action-icon-btn btn-details" title="Đánh giá dịch vụ" onClick={() => setFeedbackBooking(b)}>
+                              <i className="fa-solid fa-star"></i>
+                            </button>
+                          )}
                           {(b.status === 4 || b.status === 5) && (
                             <button className="action-icon-btn btn-user-delete" title="Xóa lịch sử" onClick={() => handleDeleteBooking(b.id)}>
                               <i className="fa-solid fa-trash-can"></i>
@@ -499,6 +545,92 @@ export default function UserDashboard() {
           </div>
         </div>
       )}
+
+      {feedbackBooking && (
+  <div className="admin-modal-overlay" onClick={() => setFeedbackBooking(null)}>
+    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="admin-modal-header">
+        <h3>Đánh giá dịch vụ #{feedbackBooking.id}</h3>
+        <button className="close-modal-btn" onClick={() => setFeedbackBooking(null)}>
+          <i className="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div className="admin-modal-body">
+        <div className="modal-section">
+          <h4 className="modal-section-title">Dịch vụ đã sử dụng</h4>
+          <div className="modal-grid">
+            <div className="modal-field" style={{ gridColumn: "span 2" }}>
+              <label>Gói dịch vụ</label>
+              <span>{feedbackBooking.servicePackage}</span>
+            </div>
+            <div className="modal-field">
+              <label>Biển số xe</label>
+              <span className="vehicle-badge">{feedbackBooking.licensePlate}</span>
+            </div>
+            <div className="modal-field">
+              <label>Ngày sử dụng</label>
+              <span>{feedbackBooking.date}</span>
+            </div>
+          </div>
+        </div>
+
+        <hr style={{ border: "none", borderTop: "1px solid var(--border-color)", margin: "24px 0" }} />
+
+        <div className="modal-section">
+          <h4 className="modal-section-title">Bạn đánh giá dịch vụ thế nào?</h4>
+
+          <div style={{ display: "flex", gap: "8px", marginBottom: "18px" }}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={() => setFeedbackRating(star)}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: star <= feedbackRating ? "#f59e0b" : "#64748b",
+                  fontSize: "28px",
+                  cursor: "pointer",
+                }}
+              >
+                <i className="fa-solid fa-star"></i>
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            value={feedbackComment}
+            onChange={(e) => setFeedbackComment(e.target.value)}
+            placeholder="Nhập cảm nhận của bạn về dịch vụ..."
+            rows={5}
+            maxLength={1000}
+            style={{
+              width: "100%",
+              padding: "14px",
+              borderRadius: "14px",
+              border: "1px solid var(--border-color)",
+              background: "var(--bg-secondary)",
+              color: "white",
+              outline: "none",
+              resize: "vertical",
+            }}
+          />
+
+          <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <button className="action-icon-btn btn-details" style={{ width: "auto", padding: "10px 16px" }} onClick={() => setFeedbackBooking(null)}>
+              Hủy
+            </button>
+            <button className="action-icon-btn btn-user-cancel" style={{ width: "auto", padding: "10px 16px", background: "var(--color-success)" }} onClick={handleSubmitFeedback}>
+              <i className="fa-solid fa-paper-plane" style={{ marginRight: "6px" }}></i>
+              Gửi đánh giá
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Banner Alert Toast */}
       {toast && (
