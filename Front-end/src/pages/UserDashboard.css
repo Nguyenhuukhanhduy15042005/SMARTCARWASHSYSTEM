@@ -227,23 +227,15 @@
   letter-spacing: 1.5px;
 }
 
-.card-chip {
-  width: 40px;
-  height: 30px;
-  background: linear-gradient(135deg, #e2e8f0, #94a3b8);
-  border-radius: 6px;
-  position: relative;
-}
-
-.card-chip::after {
-  content: '';
-  position: absolute;
-  top: 5px;
-  left: 10px;
-  right: 10px;
-  bottom: 5px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+.card-logo {
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.9;
 }
 
 .card-middle {
