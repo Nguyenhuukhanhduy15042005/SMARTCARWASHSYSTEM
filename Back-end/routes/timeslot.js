@@ -410,7 +410,30 @@ router.post('/book', async (req, res) => {
       `);
 
     const customerId = userResult.recordset[0].UserID;
+
+    // Task 12: Anti-spam check (Maximum 2 pending bookings)
+    const pendingCheck = await transaction.request()
+      .input('customerId', sql.Int, customerId)
+      .query('SELECT COUNT(*) AS PendingCount FROM BOOKING WHERE CustomerID = @customerId AND Status IN (1, 2)');
+    const pendingCount = pendingCheck.recordset[0].PendingCount;
+    if (pendingCount >= 2) {
+      await transaction.rollback();
+      return res.status(400).json({ 
+        message: 'Khách hàng này đã có 2 lịch đặt xe đang chờ xử lý. Vui lòng hoàn tất hoặc hủy lịch cũ trước khi đặt lịch mới!' 
+      });
+    }
+
+    // Task 12: Clash check (cannot book another wash in the exact same timeslot)
     const scheduledDT = toSqlDateTime(date, time);
+    const clashCheck = await transaction.request()
+      .input('customerId', sql.Int, customerId)
+      .input('bookingDate', sql.DateTime, scheduledDT)
+      .query('SELECT BookingID FROM BOOKING WHERE CustomerID = @customerId AND BookingDate = @bookingDate AND Status <> 5');
+    if (clashCheck.recordset.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({ message: 'Khách hàng này đã có một lịch hẹn khác vào khung giờ này!' });
+    }
+
     const price = Number(info.BasePrice);
 
     const bookingResult = await transaction.request()
