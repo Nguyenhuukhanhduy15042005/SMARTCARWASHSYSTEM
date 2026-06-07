@@ -1,6 +1,7 @@
 
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://localhost:5000";
 
@@ -53,7 +54,20 @@ export default function VehicleManagement() {
   const [submitting, setSubmitting]       = useState(false);
 
   const token = localStorage.getItem("TOKEN") || localStorage.getItem("token") || "";
-  const currentUser = useMemo(() => getLoggedInUser(), [token]);
+  const currentUser = useMemo(() => {
+    const decoded = getLoggedInUser();
+    if (!decoded) return null;
+    const savedUser = localStorage.getItem("LOGIN_USER");
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        return { ...decoded, ...parsed };
+      } catch (err) {
+        console.error("Lỗi parse LOGIN_USER:", err);
+      }
+    }
+    return decoded;
+  }, [token]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -248,91 +262,18 @@ export default function VehicleManagement() {
     window.location.href = "/login";
   };
 
-  useEffect(() => {
-    const linkFont = document.createElement("link");
-    linkFont.href = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap";
-    linkFont.rel = "stylesheet";
-    document.head.appendChild(linkFont);
-
-    const linkIcons = document.createElement("link");
-    linkIcons.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
-    linkIcons.rel = "stylesheet";
-    document.head.appendChild(linkIcons);
-  }, []);
-
-  const getUserById = (id) => users.find(u => u.id === parseInt(id));
-
   return (
-    <div style={s.root}>
-      <div style={s.bg} /><div style={s.bgGrid} />
+    <div className="portal-layout-container" style={{ ...s.root, padding: 0 }}>
+      <Sidebar />
+      <div className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "24px 32px", position: "relative" }}>
+        <div style={s.bg} /><div style={s.bgGrid} />
 
-      {/* TOP HEADER NAVIGATION BAR */}
-      <nav style={s.navbar}>
-        <div style={s.navLogo} onClick={() => window.location.href = "/"}>
-          <img src="/logo.png" alt="Moto Shine Logo" style={s.logoImg} />
-          <span>Moto Shine</span>
-        </div>
-        
-        <div style={s.navLinks}>
-          {currentUser?.role === 'user' ? (
-            <>
-              <button style={s.navLink} onClick={() => window.location.href = "/dashboard"}>
-                <i className="fa-solid fa-house"></i> Thành viên
-              </button>
-              <button style={s.navLink} onClick={() => window.location.href = "/booking"}>
-                <i className="fa-solid fa-calendar-plus"></i> Đặt Lịch Ngay
-              </button>
-              <button style={{ ...s.navLink, ...s.navLinkActive }} onClick={() => window.location.href = "/vehicles"}>
-                <i className="fa-solid fa-car"></i> Xe của tôi
-              </button>
-              <button style={s.navLink} onClick={() => window.location.href = "/profile"}>
-                <i className="fa-solid fa-user"></i> Hồ sơ cá nhân
-              </button>
-            </>
-          ) : (
-            <>
-              <button style={s.navLink} onClick={() => window.location.href = currentUser?.role === 'staff' ? '/staff/dashboard' : '/admin/dashboard'}>
-                <i className="fa-solid fa-house"></i> Trang chủ
-              </button>
-              <button style={s.navLink} onClick={() => window.location.href = '/timeslots'}>
-                <i className="fa-solid fa-bell-concierge"></i> Dịch vụ
-              </button>
-              <button style={s.navLink} onClick={() => window.location.href = '/admin/members'}>
-                <i className="fa-solid fa-id-card"></i> Thành viên
-              </button>
-              <button style={{ ...s.navLink, ...s.navLinkActive }} onClick={() => window.location.href = '/vehicles'}>
-                <i className="fa-solid fa-car"></i> Xe cộ
-              </button>
-              <button style={s.navLink} onClick={() => window.location.href = "/profile"}>
-                <i className="fa-solid fa-user-tie"></i> Hồ sơ cá nhân
-              </button>
-            </>
-          )}
-        </div>
-
-        <div style={s.navUser}>
-          <div 
-            style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
-            onClick={() => window.location.href = "/profile"}
-          >
-            <div style={s.avatar}>{currentUser?.fullName?.slice(0, 2).toUpperCase() || currentUser?.name?.slice(0, 2).toUpperCase() || "?"}</div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 13 }}>{currentUser?.fullName || currentUser?.name || "Người dùng"}</div>
-              <div style={{ color: "#64748b", fontSize: 11, textTransform: "capitalize" }}>{currentUser?.role || ""} Account</div>
-            </div>
+        {/* Toast */}
+        {toast && (
+          <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#10b981" }}>
+            {toast.msg}
           </div>
-          <button style={s.logoutBtn} onClick={handleLogout}>
-            <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất
-          </button>
-        </div>
-      </nav>
-
-      {/* Toast */}
-      {toast && (
-        <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#10b981" }}>
-          {toast.msg}
-        </div>
-      )}
+        )}
 
       {/* Delete Modal */}
       {deleteConfirm && (
@@ -353,7 +294,6 @@ export default function VehicleManagement() {
         </div>
       )}
 
-      <div style={{ padding: "24px 32px" }}>
         <div style={s.wrapper}>
         {/* Header */}
         <div style={s.header}>
@@ -672,7 +612,7 @@ const s = {
   },
   bg: { position: "fixed", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% 0%,#1e3a5f44 0%,transparent 60%)", pointerEvents: "none" },
   bgGrid: { position: "fixed", inset: 0, backgroundImage: "linear-gradient(rgba(148,163,184,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,0.03) 1px,transparent 1px)", backgroundSize: "40px 40px", pointerEvents: "none" },
-  wrapper: { width: "100%", boxSizing: "border-box", position: "relative", zIndex: 1 },
+  wrapper: { width: "100%", maxWidth: "1200px", margin: "0", boxSizing: "border-box", position: "relative", zIndex: 1 },
   toast: { position: "fixed", top: 20, right: 20, color: "white", padding: "12px 20px", borderRadius: 10, fontWeight: 600, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" },
   overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9998 },
   modal: { background: "#1e293b", border: "1px solid #334155", borderRadius: 16, padding: 32, maxWidth: 380, width: "90%", textAlign: "center" },

@@ -3,9 +3,14 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./Booking.css";
+import { useAuth } from "../context/AuthContext";
+import Sidebar from "../components/Sidebar";
 
 export default function Booking() {
   const navigate = useNavigate();
+  const { user, isAdmin, isStaff, logout } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
 
   // State quản lý dữ liệu form
   const [vehicleType, setVehicleType] = useState("CAR"); // CAR hoặc BIKE
@@ -68,6 +73,17 @@ export default function Booking() {
     document.head.appendChild(linkIcons);
 
     fetchUserProfile();
+  }, []);
+
+  // Đóng dropdown khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest("[data-user-menu]")) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Fetch thông tin ưu đãi và profile thành viên
@@ -159,19 +175,23 @@ export default function Booking() {
     }
   };
 
-  return (
-    <div className="booking-page-container">
-      <div className="max-w-6xl mx-auto">
-        {/* Nút quay lại */}
-        <div className="mb-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-orange-500 font-semibold text-sm transition-colors duration-200">
-            <i className="fa-solid fa-arrow-left"></i> Quay lại Trang chủ
-          </Link>
-        </div>
+  const getInitials = (name = "") =>
+    name.split(" ").slice(-2).map((w) => w[0]).join("").toUpperCase();
 
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
+  return (
+    <div className="booking-page-container portal-layout-container">
+      <Sidebar />
+      <main className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: 0, position: "relative" }}>
+        <div style={{ padding: "0 24px 60px", width: "100%", maxWidth: "1200px", margin: "0", boxSizing: "border-box" }}>
         {/* Tiêu đề */}
-        <div className="text-center mb-10">
-          <h2 className="booking-title">ĐẶT LỊCH DỊCH VỤ</h2>
+        <div style={{ marginBottom: 28, paddingTop: 40 }}>
+          <div className="booking-badge"><i className="fa-regular fa-calendar-check"></i> Đặt lịch dịch vụ</div>
+          <h1 className="booking-title">Đặt Lịch Dịch Vụ</h1>
           <p className="booking-subtitle">Trải nghiệm dịch vụ chăm sóc xe thông minh hàng đầu tại Moto Shine</p>
         </div>
 
@@ -388,6 +408,7 @@ export default function Booking() {
           <span>{toast.message}</span>
         </div>
       )}
+      </main>
     </div>
   );
 }

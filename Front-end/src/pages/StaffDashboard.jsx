@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Sidebar from "../components/Sidebar";
 
 export default function StaffDashboard() {
   const [bookings, setBookings] = useState([]);
@@ -118,50 +119,16 @@ export default function StaffDashboard() {
   };
 
   return (
-    <div style={styles.container}>
-      {/* Background cyber-glow spheres */}
-      <div style={styles.glowSphereLeft}></div>
-      <div style={styles.glowSphereRight}></div>
+    <div className="portal-layout-container" style={{ ...styles.container, padding: 0 }}>
+      <Sidebar />
+      <div className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "40px 20px", position: "relative" }}>
+        {/* Background cyber-glow spheres */}
+        <div style={styles.glowSphereLeft}></div>
+        <div style={styles.glowSphereRight}></div>
 
-      {/* TOP HEADER NAVIGATION BAR */}
-      <nav style={styles.navbar}>
-        <div style={styles.navLogo}>
-          <img src="/logo.png" alt="Moto Shine Logo" style={styles.logoImg} />
-          <span>Moto Shine</span>
-        </div>
-        <div style={styles.navLinks}>
-          <button style={{...styles.navLink, ...styles.activeNavLink}} onClick={() => window.location.href = currentUser?.role === 'staff' ? '/staff/dashboard' : '/admin/dashboard'}><i className="fa-solid fa-house"></i> Trang chủ</button>
-          <button style={styles.navLink} onClick={() => window.location.href = '/timeslots'}><i className="fa-solid fa-bell-concierge"></i> Dịch vụ</button>
-          <button style={styles.navLink} onClick={() => window.location.href = '/admin/members'}><i className="fa-solid fa-id-card"></i> Thành viên</button>
-        </div>
-        <div style={styles.navUser}>
-          <div 
-            style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
-            onClick={() => window.location.href = "/profile"}
-            title="Xem hồ sơ cá nhân"
-          >
-            <div style={styles.avatar}><i className="fa-solid fa-user-tie"></i></div>
-            <div style={styles.userInfo}>
-              <div style={styles.userName}>{currentUser?.fullName || "Staff Member"}</div>
-              <div style={styles.userRole}>
-                {currentUser?.role === 'admin' ? 'Admin Account' : 'Staff Account'}
-              </div>
-            </div>
-          </div>
-          <button style={styles.logoutBtn} onClick={() => {
-            localStorage.removeItem("TOKEN");
-            localStorage.removeItem("token");
-            localStorage.removeItem("LOGIN_USER");
-            window.location.href = "/login";
-          }}>
-            <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất
-          </button>
-        </div>
-      </nav>
-
-      {/* Main glass card wrapper */}
-      <div style={styles.dashboardCard}>
-        <header style={styles.header}>
+        {/* Main glass card wrapper */}
+        <div style={styles.dashboardCard}>
+          <header style={styles.header}>
           <div>
             <div style={styles.logoBadge}><i className="fa-solid fa-users-gear"></i> Staff Workspace</div>
             <h1 style={styles.title}>Lịch Đặt Xe & Điều Phối</h1>
@@ -417,6 +384,7 @@ export default function StaffDashboard() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -560,7 +528,7 @@ const styles = {
   },
   dashboardCard: {
     maxWidth: "1280px",
-    margin: "0 auto",
+    margin: "0",
     backgroundColor: "rgba(17, 24, 39, 0.45)",
     backdropFilter: "blur(20px)",
     WebkitBackdropFilter: "blur(20px)",

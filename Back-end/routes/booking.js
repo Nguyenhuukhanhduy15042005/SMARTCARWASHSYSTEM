@@ -163,17 +163,27 @@ router.post('/', async (req, res) => {
 router.post('/:id/transition', async (req, res) => {
     try {
         const { id } = req.params;
-        const { nextStatus } = req.body; // Ví dụ: 'Confirmed', 'In Service', 'Completed'
+        const { nextStatus } = req.body;
+
+        // Đảm bảo nextStatus là số nguyên (TinyInt trong DB)
+        const statusInt = parseInt(nextStatus, 10);
+        if (isNaN(statusInt) || statusInt < 1 || statusInt > 5) {
+            return res.status(400).json({ message: 'Trạng thái không hợp lệ. Giá trị phải từ 1 đến 5.' });
+        }
 
         const pool = await poolPromise;
-        // Thực hiện cập nhật trạng thái mới
-        await pool.request()
-            .input('bookingId', sql.Int, id)
-            .input('status', sql.VarChar, nextStatus)
+        const result = await pool.request()
+            .input('bookingId', sql.Int, parseInt(id, 10))
+            .input('status', sql.TinyInt, statusInt)
             .query('UPDATE BOOKING SET Status = @status WHERE BookingID = @bookingId');
 
-        res.json({ message: `Cập nhật trạng thái thành ${nextStatus} thành công` });
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy lịch đặt này!' });
+        }
+
+        res.json({ message: `Cập nhật trạng thái thành công (Status: ${statusInt})` });
     } catch (err) {
+        console.error('[transition error]', err.message);
         res.status(500).json({ message: err.message });
     }
 });

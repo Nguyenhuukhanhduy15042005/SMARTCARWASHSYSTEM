@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://localhost:5000/api";
 
@@ -124,6 +125,36 @@ export default function MemberManagement() {
     }
   };
 
+  // Chỉ Admin mới được xóa hạng — reset về Bronze, điểm = 0
+  const handleResetTier = async (member) => {
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn XÓA hạng của "${member.name}"?\n\nHành động này sẽ:\n• Reset hạng về Bronze\n• Điểm hiện tại về 0\n• Điểm tích lũy về 0`
+    );
+    if (!confirmed) return;
+
+    try {
+      const bronzeTier = tiers.find(t => t.TierName?.toLowerCase() === 'bronze') || tiers[0];
+      const res = await fetch(`${API_BASE}/users/members/${member.id}/tier`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          tierId: bronzeTier?.TierID ?? 1,
+          currentPoints: 0,
+          accumulatedPoints: 0
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      showToast(`Đã xóa hạng của ${member.name}, reset về Bronze!`);
+      fetchMembers();
+    } catch (err) {
+      showToast(err.message || "Xóa hạng thất bại!", "error");
+    }
+  };
+
   const filteredMembers = members.filter(m => {
     const q = searchQuery.toLowerCase();
     return (
@@ -143,52 +174,14 @@ export default function MemberManagement() {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.glowSphereLeft}></div>
-      <div style={styles.glowSphereRight}></div>
+    <div className="portal-layout-container" style={{ ...styles.container, padding: 0 }}>
+      <Sidebar />
+      <div className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "40px 20px", position: "relative" }}>
+        <div style={styles.glowSphereLeft}></div>
+        <div style={styles.glowSphereRight}></div>
 
-      {/* TOP HEADER NAVIGATION BAR */}
-      <nav style={styles.navbar}>
-        <div style={styles.navLogo}>
-          <img src="/logo.png" alt="Moto Shine Logo" style={styles.logoImg} />
-          <span>Moto Shine</span>
-        </div>
-        <div style={styles.navLinks}>
-          <a href={currentUser?.role === 'staff' ? '/staff/dashboard' : '/admin/dashboard'} style={styles.navLink}>
-            <i className="fa-solid fa-house"></i> Trang chủ
-          </a>
-          <a href="/timeslots" style={styles.navLink}>
-            <i className="fa-solid fa-bell-concierge"></i> Dịch vụ
-          </a>
-          <a href="/admin/members" style={{ ...styles.navLink, ...styles.activeNavLink }}>
-            <i className="fa-solid fa-id-card"></i> Thành viên
-          </a>
-        </div>
-        <div style={styles.navUser}>
-          <div 
-            style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
-            onClick={() => navigate("/profile")}
-            title="Xem hồ sơ cá nhân"
-          >
-            <div style={styles.avatar}><i className="fa-solid fa-user-tie"></i></div>
-            <div style={styles.userInfo}>
-              <div style={styles.userName}>{currentUser?.fullName || "Staff Member"}</div>
-              <div style={styles.userRole}>
-                {currentUser?.role === 'admin' ? 'Admin Account' : 'Staff Account'}
-              </div>
-            </div>
-          </div>
-          <button style={styles.logoutBtn} onClick={() => {
-            localStorage.clear();
-            navigate("/login");
-          }}>
-            <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất
-          </button>
-        </div>
-      </nav>
-
-      {/* Main glass card wrapper */}
-      <div style={styles.dashboardCard}>
+        {/* Main glass card wrapper */}
+        <div style={styles.dashboardCard}>
         <header style={styles.header}>
           <div>
             <div style={styles.logoBadge}><i className="fa-solid fa-id-card"></i> Loyalty Manager</div>
@@ -294,6 +287,15 @@ export default function MemberManagement() {
                         <button style={styles.editBtn} onClick={() => handleEditClick(member)}>
                           <i className="fa-solid fa-pen-to-square"></i> Cập nhật hạng
                         </button>
+                        {currentUser?.role === 'admin' && (
+                          <button
+                            style={styles.deleteBtn}
+                            onClick={() => handleResetTier(member)}
+                            title="Xóa hạng — Reset về Bronze"
+                          >
+                            <i className="fa-solid fa-trash-can"></i> Xóa hạng
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -385,6 +387,7 @@ export default function MemberManagement() {
           {toast.msg}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -520,7 +523,7 @@ const styles = {
   },
   dashboardCard: {
     maxWidth: "1280px",
-    margin: "0 auto",
+    margin: "0",
     backgroundColor: "rgba(17, 24, 39, 0.45)",
     backdropFilter: "blur(20px)",
     WebkitBackdropFilter: "blur(20px)",
@@ -710,6 +713,17 @@ const styles = {
     backgroundColor: "rgba(99, 102, 241, 0.15)",
     border: "1px solid rgba(99, 102, 241, 0.2)",
     color: "#818cf8",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "600",
+    transition: "all 0.2s ease"
+  },
+  deleteBtn: {
+    backgroundColor: "rgba(239, 68, 68, 0.12)",
+    border: "1px solid rgba(239, 68, 68, 0.25)",
+    color: "#f87171",
     padding: "8px 14px",
     borderRadius: "8px",
     cursor: "pointer",
