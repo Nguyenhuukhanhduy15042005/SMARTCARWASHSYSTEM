@@ -612,7 +612,7 @@ const s = {
   },
   bg: { position: "fixed", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% 0%,#1e3a5f44 0%,transparent 60%)", pointerEvents: "none" },
   bgGrid: { position: "fixed", inset: 0, backgroundImage: "linear-gradient(rgba(148,163,184,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,0.03) 1px,transparent 1px)", backgroundSize: "40px 40px", pointerEvents: "none" },
-  wrapper: { width: "100%", maxWidth: "1200px", margin: "0", boxSizing: "border-box", position: "relative", zIndex: 1 },
+  wrapper: { width: "100%", maxWidth: "100%", margin: "0", boxSizing: "border-box", position: "relative", zIndex: 1 },
   toast: { position: "fixed", top: 20, right: 20, color: "white", padding: "12px 20px", borderRadius: 10, fontWeight: 600, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" },
   overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9998 },
   modal: { background: "#1e293b", border: "1px solid #334155", borderRadius: 16, padding: 32, maxWidth: 380, width: "90%", textAlign: "center" },
