@@ -407,7 +407,7 @@ export default function LoyaltyHistory() {
 const loyaltyCss = `
 .loyalty-main-wrapper {
   padding: 32px;
-  max-width: 1200px;
+  max-width: 100%;
   width: 100%;
   box-sizing: border-box;
   font-family: 'Plus Jakarta Sans', sans-serif;
