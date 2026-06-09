@@ -79,11 +79,37 @@ async function fetchBookingsByMachineDate(pool, machineId, date) {
         bd.PriceAtBooking
       FROM BOOKING b
       INNER JOIN [USER] u ON b.CustomerID = u.UserID
-      INNER JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
-      INNER JOIN SERVICE s ON bd.ServiceID = s.ServiceID
-      WHERE bd.MachineID = @machineId
-        AND CAST(b.BookingDate AS DATE) = @date
+      LEFT JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
+      LEFT JOIN SERVICE s ON bd.ServiceID = s.ServiceID
+      INNER JOIN MACHINE m ON m.MachineID = @machineId
+      WHERE CAST(b.BookingDate AS DATE) = @date
         AND b.Status <> 5
+        AND (
+          bd.MachineID = @machineId
+          OR (
+            bd.MachineID IS NULL
+            AND (
+              (
+                m.MachineType = 'CAR_WASHER'
+                AND (
+                  UPPER(b.VehicleType) = 'CAR'
+                  OR b.VehicleType = N'Ô tô'
+                  OR b.VehicleType = N'O tô'
+                  OR b.VehicleType = N'Ô TÔ'
+                )
+              )
+              OR
+              (
+                m.MachineType = 'BIKE_WASHER'
+                AND (
+                  UPPER(b.VehicleType) = 'BIKE'
+                  OR b.VehicleType = N'Xe máy'
+                  OR b.VehicleType = N'XE MÁY'
+                )
+              )
+            )
+          )
+        )
       ORDER BY b.BookingDate ASC
     `);
 }
@@ -243,6 +269,7 @@ router.get('/overview', async (req, res) => {
 
   try {
     const pool = await poolPromise;
+
     let machineWhere = '';
     if (type === 'CAR') machineWhere = "WHERE MachineType = 'CAR_WASHER'";
     if (type === 'BIKE') machineWhere = "WHERE MachineType = 'BIKE_WASHER'";
@@ -254,42 +281,34 @@ router.get('/overview', async (req, res) => {
       ORDER BY MachineID ASC
     `);
 
-    const bookings = await pool.request()
-      .input('date', sql.Date, date)
-      .query(`
-        SELECT bd.MachineID, b.BookingDate
-        FROM BOOKING b
-        INNER JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
-        WHERE CAST(b.BookingDate AS DATE) = @date
-          AND b.Status <> 5
-          AND bd.MachineID IS NOT NULL
-      `);
+    const overview = [];
 
-    const occupiedByMachine = {};
-    for (const row of bookings.recordset) {
-      const mid = String(row.MachineID);
-      const startTime = timeFromDate(row.BookingDate);
-      if (!occupiedByMachine[mid]) occupiedByMachine[mid] = new Set();
-      getOccupiedSlots(startTime, DEFAULT_DURATION).forEach(slot => occupiedByMachine[mid].add(slot));
+    for (const m of machines.recordset) {
+      const result = await fetchBookingsByMachineDate(pool, m.MachineID, date);
+      const occupiedSlots = new Set();
+
+      for (const row of result.recordset) {
+        const startTime = timeFromDate(row.BookingDate);
+        getOccupiedSlots(startTime, DEFAULT_DURATION).forEach(slot => {
+          occupiedSlots.add(slot);
+        });
+      }
+
+      const bookedSlots = occupiedSlots.size;
+
+      overview.push({
+        id: String(m.MachineID),
+        name: m.MachineName,
+        type: m.MachineType === 'BIKE_WASHER' ? 'BIKE' : 'CAR',
+        machineStatus: MACHINE_STATUS[m.Status] || 'Available',
+        totalSlots: TIME_SLOTS.length,
+        bookedSlots,
+        freeSlots: TIME_SLOTS.length - bookedSlots,
+        occupancyPct: Math.round((bookedSlots / TIME_SLOTS.length) * 100)
+      });
     }
 
-    res.json({
-      date,
-      overview: machines.recordset.map(m => {
-        const mid = String(m.MachineID);
-        const bookedSlots = occupiedByMachine[mid] ? occupiedByMachine[mid].size : 0;
-        return {
-          id: mid,
-          name: m.MachineName,
-          type: m.MachineType === 'BIKE_WASHER' ? 'BIKE' : 'CAR',
-          machineStatus: MACHINE_STATUS[m.Status] || 'Available',
-          totalSlots: TIME_SLOTS.length,
-          bookedSlots,
-          freeSlots: TIME_SLOTS.length - bookedSlots,
-          occupancyPct: Math.round((bookedSlots / TIME_SLOTS.length) * 100)
-        };
-      })
-    });
+    res.json({ date, overview });
   } catch (err) {
     console.error('GET /api/timeslots/overview error:', err);
     res.status(500).json({ message: 'Lỗi khi lấy tổng quan timeslot' });
@@ -391,7 +410,30 @@ router.post('/book', async (req, res) => {
       `);
 
     const customerId = userResult.recordset[0].UserID;
+
+    // Task 12: Anti-spam check (Maximum 2 pending bookings)
+    const pendingCheck = await transaction.request()
+      .input('customerId', sql.Int, customerId)
+      .query('SELECT COUNT(*) AS PendingCount FROM BOOKING WHERE CustomerID = @customerId AND Status IN (1, 2)');
+    const pendingCount = pendingCheck.recordset[0].PendingCount;
+    if (pendingCount >= 2) {
+      await transaction.rollback();
+      return res.status(400).json({ 
+        message: 'Khách hàng này đã có 2 lịch đặt xe đang chờ xử lý. Vui lòng hoàn tất hoặc hủy lịch cũ trước khi đặt lịch mới!' 
+      });
+    }
+
+    // Task 12: Clash check (cannot book another wash in the exact same timeslot)
     const scheduledDT = toSqlDateTime(date, time);
+    const clashCheck = await transaction.request()
+      .input('customerId', sql.Int, customerId)
+      .input('bookingDate', sql.DateTime, scheduledDT)
+      .query('SELECT BookingID FROM BOOKING WHERE CustomerID = @customerId AND BookingDate = @bookingDate AND Status <> 5');
+    if (clashCheck.recordset.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({ message: 'Khách hàng này đã có một lịch hẹn khác vào khung giờ này!' });
+    }
+
     const price = Number(info.BasePrice);
 
     const bookingResult = await transaction.request()

@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./Booking.css";
 import { useAuth } from "../context/AuthContext";
+import Sidebar from "../components/Sidebar";
 
 export default function Booking() {
   const navigate = useNavigate();
@@ -182,102 +183,15 @@ export default function Booking() {
     navigate("/");
   };
 
-  const navLinkStyle = {
-    color: "#9ca3af", textDecoration: "none", fontSize: 14, fontWeight: 600,
-    background: "none", border: "none", cursor: "pointer",
-    transition: "color 0.2s", display: "flex", alignItems: "center", gap: 6,
-    fontFamily: "'Plus Jakarta Sans', sans-serif"
-  };
-
   return (
-    <div className="booking-page-container">
-      {/* ===== NAVBAR — giống VehicleManagement ===== */}
-      <nav style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        height: 70, padding: "0 40px",
-        background: "#111827",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
-        position: "sticky", top: 0, zIndex: 1000,
-        boxSizing: "border-box",
-        fontFamily: "'Plus Jakarta Sans', sans-serif"
-      }}>
-        {/* Logo */}
-        <div
-          style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 20, fontWeight: 800, color: "white", cursor: "pointer" }}
-          onClick={() => navigate("/")}
-        >
-          <img src="/logo.png" alt="Moto Shine Logo" style={{ height: 42, width: 42, objectFit: "cover", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.15)" }} />
-          <span>Moto Shine</span>
-        </div>
-
-        {/* Nav Links */}
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <button style={navLinkStyle} onClick={() => navigate(user?.role === "admin" ? "/admin/dashboard" : user?.role === "staff" ? "/staff/dashboard" : "/dashboard")}>
-            <i className="fa-solid fa-house"></i> Thành viên
-          </button>
-          <button style={{ ...navLinkStyle, color: "#f97316" }}>
-            <i className="fa-solid fa-calendar-plus"></i> Đặt Lịch
-          </button>
-          <button style={navLinkStyle} onClick={() => navigate("/vehicles")}>
-            <i className="fa-solid fa-car"></i> Quản lý xe
-          </button>
-          <button style={navLinkStyle} onClick={() => navigate("/profile")}>
-            <i className="fa-solid fa-user"></i> Hồ sơ cá nhân
-          </button>
-        </div>
-
-        {/* User info + Logout */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {user ? (
-            <>
-              <div
-                style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
-                onClick={() => navigate("/profile")}
-              >
-                <div style={{
-                  width: 38, height: 38, borderRadius: "50%",
-                  background: "linear-gradient(135deg,#06b6d4,#3b82f6)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 14, fontWeight: 700, color: "#fff", flexShrink: 0
-                }}>
-                  {getInitials(user.fullName)}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 13 }}>{user.fullName}</div>
-                  <div style={{ color: "#64748b", fontSize: 11, textTransform: "capitalize" }}>
-                    {user.role} Account
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={handleLogout}
-                style={{
-                  background: "transparent", border: "1px solid #ef4444",
-                  color: "#ef4444", borderRadius: 8, padding: "8px 16px",
-                  cursor: "pointer", fontSize: 13, fontWeight: 600,
-                  display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s"
-                }}
-                onMouseOver={e => { e.currentTarget.style.background = "#ef4444"; e.currentTarget.style.color = "#fff"; }}
-                onMouseOut={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#ef4444"; }}
-              >
-                <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => navigate("/login")}
-              style={{ background: "#f97316", border: "none", color: "#fff", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: 14, fontWeight: 700 }}
-            >
-              Đăng nhập
-            </button>
-          )}
-        </div>
-      </nav>
-
-      <div className="max-w-6xl mx-auto" style={{ padding: "0 24px 60px" }}>
+    <div className="booking-page-container portal-layout-container">
+      <Sidebar />
+      <main className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: 0, position: "relative" }}>
+        <div style={{ padding: "0 32px 60px", width: "100%", maxWidth: "100%", margin: "0", boxSizing: "border-box" }}>
         {/* Tiêu đề */}
-        <div className="text-center mb-10" style={{ paddingTop: 40 }}>
-          <h2 className="booking-title">ĐẶT LỊCH DỊCH VỤ</h2>
+        <div style={{ marginBottom: 28, paddingTop: 40 }}>
+          <div className="booking-badge"><i className="fa-regular fa-calendar-check"></i> Đặt lịch dịch vụ</div>
+          <h1 className="booking-title">Đặt Lịch Dịch Vụ</h1>
           <p className="booking-subtitle">Trải nghiệm dịch vụ chăm sóc xe thông minh hàng đầu tại Moto Shine</p>
         </div>
 
@@ -494,6 +408,7 @@ export default function Booking() {
           <span>{toast.message}</span>
         </div>
       )}
+      </main>
     </div>
   );
 }

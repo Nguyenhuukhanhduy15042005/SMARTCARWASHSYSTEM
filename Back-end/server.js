@@ -28,6 +28,8 @@ const userRouter = require('./routes/user');
 const vehicleRouter = require('./routes/vehicle');
 const bookingRouter = require('./routes/booking');
 const timeslotRouter = require('./routes/timeslot');
+const feedbackRouter = require('./routes/feedback');
+const promotionRouter = require('./routes/promotion');
 
 // MOUNT ROUTERS
 app.use('/api/auth', authRouter);
@@ -35,6 +37,8 @@ app.use('/api/users', userRouter);
 app.use('/api/vehicles', vehicleRouter);
 app.use('/api/bookings', bookingRouter);
 app.use('/api/timeslots', timeslotRouter);
+app.use('/api/feedbacks', feedbackRouter);
+app.use('/api/promotions', promotionRouter);
 // Test Endpoint
 app.get("/api/test", (req, res) => {
   res.json({ message: "API Car Wash System hoạt động tốt!" });
@@ -46,3 +50,12 @@ app.listen(PORT, () => {
 });
 
 require('dotenv').config();
+
+// Các route đã có
+app.use('/api/auth',     require('./routes/auth'));
+app.use('/api/bookings', require('./routes/bookingrouter'));
+app.use('/api/users',    require('./routes/user'));
+app.use('/api/vehicles', require('./routes/vehicle'));
+
+// ← Thêm dòng này
+app.use('/api/payments', require('./routes/paymentRouter'));

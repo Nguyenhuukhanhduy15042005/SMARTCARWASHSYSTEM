@@ -19,6 +19,140 @@ const formatLocalDateTime = (dateInput) => {
     };
 };
 
+// Helper to process FSM state changes (Loyalty calculation, Machine status updates, Payment auto-generation)
+const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
+    const statusInt = parseInt(nextStatus, 10);
+    
+    // 1. Get current booking info
+    const bookingRes = await pool.request()
+        .input('bookingId', sql.Int, bookingId)
+        .query('SELECT CustomerID, TotalPrice, FinalPrice, Status FROM BOOKING WHERE BookingID = @bookingId');
+        
+    if (bookingRes.recordset.length === 0) {
+        throw new Error('Không tìm thấy lịch đặt xe!');
+    }
+    
+    const booking = bookingRes.recordset[0];
+    const oldStatus = booking.Status;
+    const customerId = booking.CustomerID;
+    
+    if (oldStatus === statusInt) return; // No change needed
+
+    // 2. Update booking status & CheckInTime if In Service (status = 3)
+    await pool.request()
+        .input('bookingId', sql.Int, bookingId)
+        .input('status', sql.TinyInt, statusInt)
+        .query(`
+            UPDATE BOOKING 
+            SET Status = @status, 
+                CheckInTime = CASE WHEN @status = 3 THEN GETDATE() ELSE CheckInTime END
+            WHERE BookingID = @bookingId
+        `);
+
+    // 3. Update machine status (assigned to the booking in BOOKING_DETAIL)
+    const detailRes = await pool.request()
+        .input('bookingId', sql.Int, bookingId)
+        .query('SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId');
+    const machineIds = detailRes.recordset.map(r => r.MachineID).filter(Boolean);
+
+    for (const machineId of machineIds) {
+        if (statusInt === 3) {
+            // Set machine status to 2 (Busy/Operating)
+            await pool.request()
+                .input('machineId', sql.Int, machineId)
+                .query('UPDATE MACHINE SET Status = 2 WHERE MachineID = @machineId');
+        } else if (statusInt === 4 || statusInt === 5) {
+            // Free the machine: set status to 1 (Available)
+            await pool.request()
+                .input('machineId', sql.Int, machineId)
+                .query('UPDATE MACHINE SET Status = 1 WHERE MachineID = @machineId');
+        }
+    }
+
+    // 4. Booking Completion Flow (statusInt === 4)
+    if (statusInt === 4) {
+        const finalPrice = Number(booking.FinalPrice || booking.TotalPrice || 0);
+        const points = Math.floor(finalPrice / 1000);
+
+        if (points > 0) {
+            // Check if loyalty transaction already recorded for this booking
+            const txCheck = await pool.request()
+                .input('bookingId', sql.Int, bookingId)
+                .query("SELECT TransactionID FROM LOYALTY_TRANSACTION WHERE BookingID = @bookingId AND TransactionType = 'Accumulate'");
+                
+            if (txCheck.recordset.length === 0) {
+                // a. Insert loyalty transaction
+                await pool.request()
+                    .input('userId', sql.Int, customerId)
+                    .input('bookingId', sql.Int, bookingId)
+                    .input('points', sql.Int, points)
+                    .query(`
+                        INSERT INTO LOYALTY_TRANSACTION (UserID, BookingID, TransactionType, Points, CreatedDate)
+                        VALUES (@userId, @bookingId, 'Accumulate', @points, GETDATE())
+                    `);
+
+                // b. Update/Insert customer MEMBER_PROFILE
+                const profileCheck = await pool.request()
+                    .input('userId', sql.Int, customerId)
+                    .query('SELECT UserID, AccumulatedPoints FROM MEMBER_PROFILE WHERE UserID = @userId');
+
+                let newAccumulatedPoints = points;
+
+                if (profileCheck.recordset.length === 0) {
+                    await pool.request()
+                        .input('userId', sql.Int, customerId)
+                        .input('points', sql.Int, points)
+                        .query(`
+                            INSERT INTO MEMBER_PROFILE (UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate)
+                            VALUES (@userId, 1, @points, @points, GETDATE())
+                        `);
+                } else {
+                    newAccumulatedPoints = Number(profileCheck.recordset[0].AccumulatedPoints || 0) + points;
+                    await pool.request()
+                        .input('userId', sql.Int, customerId)
+                        .input('points', sql.Int, points)
+                        .query(`
+                            UPDATE MEMBER_PROFILE
+                            SET CurrentPoints = CurrentPoints + @points,
+                                AccumulatedPoints = AccumulatedPoints + @points
+                            WHERE UserID = @userId
+                        `);
+                }
+
+                // c. Tier Evaluation: Silver >= 500, Gold >= 1500, Platinum >= 5000
+                const tiersRes = await pool.request().query('SELECT TierID, RequiredPoints FROM LOYALTY_TIER ORDER BY RequiredPoints ASC');
+                let newTierId = 1; // Bronze
+                for (const tier of tiersRes.recordset) {
+                    if (newAccumulatedPoints >= tier.RequiredPoints) {
+                        newTierId = tier.TierID;
+                    }
+                }
+
+                await pool.request()
+                    .input('userId', sql.Int, customerId)
+                    .input('tierId', sql.Int, newTierId)
+                    .query('UPDATE MEMBER_PROFILE SET TierID = @tierId WHERE UserID = @userId');
+            }
+        }
+
+        // d. Auto-generate payment log
+        const paymentCheck = await pool.request()
+            .input('bookingId', sql.Int, bookingId)
+            .query('SELECT PaymentID FROM PAYMENT WHERE BookingID = @bookingId');
+            
+        if (paymentCheck.recordset.length === 0) {
+            await pool.request()
+                .input('bookingId', sql.Int, bookingId)
+                .input('amount', sql.Decimal, finalPrice)
+                .query(`
+                    INSERT INTO PAYMENT (BookingID, PaymentMethod, Amount, PaidAt)
+                    VALUES (@bookingId, N'Tiền mặt', @amount, GETDATE())
+                `);
+        }
+    }
+};
+
+
 // Middleware to authorize admin requests
 function adminAuth(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
@@ -120,15 +254,49 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// 3. Khách hàng tạo booking mới (Database connected)
+// 3. Khách hàng tạo booking mới (Database connected + Validation & Anti-spam checks)
 router.post('/', async (req, res) => {
     try {
         const { CustomerID, BookingDate, VehicleType, LicensePlate, TotalPrice, FinalPrice, Status, ServiceIDs } = req.body;
-        const pool = await poolPromise;
         
+        // Validation checks
+        if (!CustomerID || !BookingDate || !VehicleType || !LicensePlate || !ServiceIDs || !Array.isArray(ServiceIDs) || ServiceIDs.length === 0) {
+            return res.status(400).json({ message: 'Thiếu thông tin đặt lịch hoặc gói dịch vụ không hợp lệ!' });
+        }
+
+        const scheduledDate = new Date(BookingDate);
+        if (isNaN(scheduledDate.getTime())) {
+            return res.status(400).json({ message: 'Thời gian đặt lịch không hợp lệ!' });
+        }
+        if (scheduledDate < new Date()) {
+            return res.status(400).json({ message: 'Thời gian đặt lịch không được ở trong quá khứ!' });
+        }
+
+        const pool = await poolPromise;
+
+        // Anti-spam check: Maximum of 2 pending bookings (Status = 1 or 2)
+        const pendingCheck = await pool.request()
+            .input('customerId', sql.Int, CustomerID)
+            .query('SELECT COUNT(*) AS PendingCount FROM BOOKING WHERE CustomerID = @customerId AND Status IN (1, 2)');
+        const pendingCount = pendingCheck.recordset[0].PendingCount;
+        if (pendingCount >= 2) {
+            return res.status(400).json({ 
+                message: 'Bạn đã có 2 lịch đặt xe đang chờ xử lý. Vui lòng hoàn tất hoặc hủy lịch cũ trước khi đặt lịch mới!' 
+            });
+        }
+
+        // Clash check: same customer cannot book another wash in the exact same timeslot
+        const clashCheck = await pool.request()
+            .input('customerId', sql.Int, CustomerID)
+            .input('bookingDate', sql.DateTime, scheduledDate)
+            .query('SELECT BookingID FROM BOOKING WHERE CustomerID = @customerId AND BookingDate = @bookingDate AND Status <> 5');
+        if (clashCheck.recordset.length > 0) {
+            return res.status(400).json({ message: 'Bạn đã có một lịch hẹn khác vào khung giờ này!' });
+        }
+
         const result = await pool.request()
             .input('CustomerID', sql.Int, CustomerID)
-            .input('BookingDate', sql.DateTime, BookingDate ? new Date(BookingDate) : new Date())
+            .input('BookingDate', sql.DateTime, scheduledDate)
             .input('VehicleType', sql.NVarChar, VehicleType)
             .input('LicensePlate', sql.NVarChar, LicensePlate)
             .input('TotalPrice', sql.Decimal, TotalPrice)
@@ -165,21 +333,13 @@ router.post('/:id/transition', async (req, res) => {
         const { id } = req.params;
         const { nextStatus } = req.body;
 
-        // Đảm bảo nextStatus là số nguyên (TinyInt trong DB)
         const statusInt = parseInt(nextStatus, 10);
         if (isNaN(statusInt) || statusInt < 1 || statusInt > 5) {
             return res.status(400).json({ message: 'Trạng thái không hợp lệ. Giá trị phải từ 1 đến 5.' });
         }
 
         const pool = await poolPromise;
-        const result = await pool.request()
-            .input('bookingId', sql.Int, parseInt(id, 10))
-            .input('status', sql.TinyInt, statusInt)
-            .query('UPDATE BOOKING SET Status = @status WHERE BookingID = @bookingId');
-
-        if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ message: 'Không tìm thấy lịch đặt này!' });
-        }
+        await processBookingStatusChange(parseInt(id, 10), statusInt, pool);
 
         res.json({ message: `Cập nhật trạng thái thành công (Status: ${statusInt})` });
     } catch (err) {
@@ -390,15 +550,14 @@ router.post('/admin/create', adminAuth, async (req, res) => {
 router.put('/admin/:id/status', adminAuth, async (req, res) => {
     try {
         const { status } = req.body;
+        const statusInt = parseInt(status, 10);
+        if (isNaN(statusInt) || statusInt < 1 || statusInt > 5) {
+            return res.status(400).json({ message: 'Trạng thái không hợp lệ. Giá trị phải từ 1 đến 5.' });
+        }
+
         const pool = await poolPromise;
-        await pool.request()
-            .input('id', sql.Int, req.params.id)
-            .input('status', sql.TinyInt, status)
-            .query(`
-                UPDATE BOOKING 
-                SET Status = @status, CheckInTime = CASE WHEN @status = 3 THEN GETDATE() ELSE CheckInTime END
-                WHERE BookingID = @id
-            `);
+        await processBookingStatusChange(parseInt(req.params.id, 10), statusInt, pool);
+
         res.json({ message: 'Cập nhật trạng thái thành công' });
     } catch (err) {
         res.status(500).json({ message: err.message });

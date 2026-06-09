@@ -17,6 +17,12 @@ import StaffDashboard from "./pages/StaffDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Unauthorized from "./pages/Unauthorized";
 import MemberManagement from "./pages/MemberManagement";
+import AccountManagement from "./pages/AccountManagement";
+import RewardRedemption from "./pages/RewardRedemption";
+import FeedbackManagement from "./pages/FeedbackManagement";
+import PromotionManagement from "./pages/PromotionManagement";
+import LoyaltyHistory from "./pages/LoyaltyHistory";
+
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -69,6 +75,25 @@ function App() {
         />
 
         <Route
+          path="/reward-redemption"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <RewardRedemption />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/loyalty"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <LoyaltyHistory />
+            </ProtectedRoute>
+          }
+        />
+
+
+        <Route
           path="/timeslots"
           element={
             <ProtectedRoute requiredRole={["admin", "staff"]}>
@@ -100,6 +125,33 @@ function App() {
           element={
             <ProtectedRoute requiredRole={["admin", "staff"]}>
               <MemberManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/accounts"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AccountManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/feedbacks"
+          element={
+            <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <FeedbackManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/promotions"
+          element={
+            <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <PromotionManagement />
             </ProtectedRoute>
           }
         />

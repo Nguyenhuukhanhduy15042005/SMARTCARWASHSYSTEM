@@ -1,6 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const nodemailer = require("nodemailer");
 const { sql, poolPromise } = require("../db");
 const router = express.Router();
 
@@ -11,8 +12,133 @@ const ROLE_MAP = {
   3: "user",
 };
 
+// ==========================================
+// CẤU HÌNH GỬI MAIL (NODEMAILER)
+// ==========================================
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER || "hungduong738@gmail.com",
+    pass: process.env.EMAIL_PASS || "foxjkvzbffrlzkgi",
+  },
+});
+
+// Nơi lưu trữ OTP tạm thời trong RAM (Key: Email, Value: { otp, expiresAt })
+const otpStore = new Map();
+
+// ==========================================
+// 1A. ĐĂNG KÝ BƯỚC 1: KIỂM TRA & GỬI OTP
+// ==========================================
+router.post("/register-step1", async (req, res) => {
+  const { fullName, phone, email } = req.body;
+  if (!fullName || !phone || !email) {
+    return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin!" });
+  }
+
+  try {
+    const pool = await poolPromise;
+    const checkExist = await pool
+      .request()
+      .input("phone", sql.VarChar, phone)
+      .input("email", sql.VarChar, email)
+      .query(`SELECT UserID FROM [USER] WHERE PhoneNumber = @phone OR Email = @email`);
+
+    if (checkExist.recordset.length > 0) {
+      return res
+        .status(400)
+        .json({ message: "Email hoặc Số điện thoại đã được sử dụng!" });
+    }
+
+    // Tạo mã OTP 6 số
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Lưu mã OTP vào bộ nhớ, hết hạn sau 5 phút (300,000 ms)
+    otpStore.set(email, {
+      otp: otp,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+
+    // Nội dung Email
+    const mailOptions = {
+      from: `"AutoWash Pro" <${process.env.EMAIL_USER || "hungduong738@gmail.com"}>`,
+      to: email,
+      subject: "Mã xác thực OTP - AutoWash Pro",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+          <h2 style="color: #2C387E;">Xin chào ${fullName},</h2>
+          <p>Cảm ơn bạn đã đăng ký tài khoản tại <b>AutoWash Pro</b>.</p>
+          <p>Mã xác thực OTP của bạn là:</p>
+          <h1 style="color: #F58607; font-size: 36px; letter-spacing: 5px; text-align: center; background: #fdf8f0; padding: 15px; border-radius: 8px;">${otp}</h1>
+          <p><i>Mã này sẽ hết hạn trong vòng 5 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.</i></p>
+          <p>Trân trọng,<br/>Đội ngũ AutoWash Pro</p>
+        </div>
+      `,
+    };
+
+    // Gửi mail
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ message: "Mã OTP đã được gửi đến email của bạn!" });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server khi gửi OTP: " + err.message });
+  }
+});
+
+// ==========================================
+// 1B. ĐĂNG KÝ BƯỚC 2: XÁC THỰC OTP & LƯU DB
+// ==========================================
+router.post("/register-step2", async (req, res) => {
+  const { fullName, phone, email, password, otp } = req.body;
+
+  if (!fullName || !phone || !email || !password || !otp) {
+    return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin!" });
+  }
+
+  try {
+    const storedOtpData = otpStore.get(email);
+
+    if (!storedOtpData) {
+      return res
+        .status(400)
+        .json({ message: "Mã OTP không tồn tại hoặc chưa được yêu cầu!" });
+    }
+
+    if (Date.now() > storedOtpData.expiresAt) {
+      otpStore.delete(email); // Xóa OTP cũ
+      return res
+        .status(400)
+        .json({ message: "Mã OTP đã hết hạn, vui lòng gửi lại!" });
+    }
+
+    if (storedOtpData.otp !== otp) {
+      return res.status(400).json({ message: "Mã OTP không chính xác!" });
+    }
+
+    // OTP đúng -> Hash mật khẩu và Lưu vào Database
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const pool = await poolPromise;
+    await pool
+      .request()
+      .input("fullName", sql.NVarChar, fullName)
+      .input("phone", sql.VarChar, phone)
+      .input("email", sql.VarChar, email)
+      .input("password", sql.NVarChar, hashedPassword)
+      .query(`
+        INSERT INTO [USER] (FullName, PhoneNumber, Email, Password, RoleID)
+        VALUES (@fullName, @phone, @email, @password, 3)
+      `);
+
+    // Xóa OTP khỏi bộ nhớ sau khi đăng ký thành công
+    otpStore.delete(email);
+
+    res.status(201).json({ message: "Đăng ký tài khoản thành công!" });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server: " + err.message });
+  }
+});
+
 // ================================================================
-// 1. Đăng ký thông thường
+// 1C. Đăng ký thông thường (Trực tiếp không qua OTP - giữ lại làm fallback)
 // ================================================================
 router.post("/register", async (req, res) => {
   const { fullName, phone, email, password } = req.body;
