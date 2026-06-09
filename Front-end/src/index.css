@@ -1,0 +1,161 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import "tailwindcss";
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Inter", sans-serif;
+}
+
+body {
+  /* Nền kem đồng bộ với trang chủ */
+  background-color: #fcf7f0;
+  color: #1e293b;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Khung chứa Auth căn giữa màn hình */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+/* Thẻ Form: Chuyển sang nền trắng, đổ bóng mềm mại */
+.auth-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 40px;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 40px -15px rgba(44, 56, 126, 0.15); /* Bóng tone xanh navy */
+  text-align: center;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-card h2 {
+  margin-bottom: 30px;
+  font-size: 28px;
+  font-weight: 800;
+  color: #2c387e; /* Xanh Navy của thương hiệu */
+}
+
+.input-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  color: #1e293b;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.input-group input::placeholder {
+  color: #94a3b8;
+}
+
+/* Hiệu ứng viền sáng màu Cam khi click vào ô nhập */
+.input-group input:focus {
+  border-color: #f58607;
+  box-shadow: 0 0 0 4px rgba(245, 134, 7, 0.15);
+  background: #ffffff;
+}
+
+/* Nút bấm màu Cam đồng bộ với nút "Đặt lịch ngay" */
+.btn-primary {
+  background: #f58607;
+  color: white;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.btn-primary:hover {
+  background: #ea580c; /* Cam đậm hơn khi hover */
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(245, 134, 7, 0.6);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Đường gạch ngang "Hoặc tiếp tục với" */
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 25px 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.divider::before {
+  margin-right: 15px;
+}
+.divider::after {
+  margin-left: 15px;
+}
+
+/* Thông báo lỗi */
+.error-msg {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Nút Google (nếu cần style thêm để hợp với nền trắng) */
+.nsm7Vb-HzV7m-LgbsSe {
+  border-radius: 12px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+}
