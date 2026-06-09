@@ -3,7 +3,6 @@ const cors = require("cors");
 require("dotenv").config();
 require("./db");
 
-// [FIX] Kiểm tra JWT_SECRET bắt buộc phải có trong .env
 if (!process.env.JWT_SECRET) {
   console.error("FATAL: Thiếu JWT_SECRET trong file .env. Dừng server.");
   process.exit(1);
@@ -15,26 +14,29 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json());
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,
+}));
 
 // IMPORT ROUTERS
-const authRouter = require('./routes/auth');
-const userRouter = require('./routes/user');
-const vehicleRouter = require('./routes/vehicle');
-const bookingRouter = require('./routes/booking');
+const authRouter     = require('./routes/auth');
+const userRouter     = require('./routes/user');
+const vehicleRouter  = require('./routes/vehicle');
+const bookingRouter  = require('./routes/booking');
 const timeslotRouter = require('./routes/timeslot');
+const paymentRouter  = require('./routes/paymentRouter');
+const machineRouter  = require('./routes/machine'); // 
 
 // MOUNT ROUTERS
-app.use('/api/auth', authRouter);
-app.use('/api/users', userRouter);
-app.use('/api/vehicles', vehicleRouter);
-app.use('/api/bookings', bookingRouter);
+app.use('/api/auth',      authRouter);
+app.use('/api/users',     userRouter);
+app.use('/api/vehicles',  vehicleRouter);
+app.use('/api/bookings',  bookingRouter);
 app.use('/api/timeslots', timeslotRouter);
+app.use('/api/payments',  paymentRouter);
+app.use('/api/machines',  machineRouter); // 
+
 // Test Endpoint
 app.get("/api/test", (req, res) => {
   res.json({ message: "API Car Wash System hoạt động tốt!" });
@@ -44,5 +46,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });
-
-require('dotenv').config();

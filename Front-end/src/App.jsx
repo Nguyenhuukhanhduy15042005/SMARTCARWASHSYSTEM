@@ -2,9 +2,6 @@ import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// ========================================================
-// IMPORT PAGES (Mỗi người code ở một file trang riêng biệt)
-// ========================================================
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -17,6 +14,9 @@ import StaffDashboard from "./pages/StaffDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Unauthorized from "./pages/Unauthorized";
 import MemberManagement from "./pages/MemberManagement";
+import Payment from "./pages/Payment";
+import PaymentHistory from "./pages/PaymentHistory";
+import PaymentResult from "./pages/PaymentResult";
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -32,77 +32,72 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute requiredRole="user">
-              <UserDashboard />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/dashboard" element={
+          <ProtectedRoute requiredRole="user">
+            <UserDashboard />
+          </ProtectedRoute>
+        } />
 
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile setUser={setUser} />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Profile setUser={setUser} />
+          </ProtectedRoute>
+        } />
 
-        <Route
-          path="/vehicles"
-          element={
-            <ProtectedRoute>
-              <VehicleManagement />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/vehicles" element={
+          <ProtectedRoute>
+            <VehicleManagement />
+          </ProtectedRoute>
+        } />
 
-        <Route
-          path="/booking"
-          element={
-            <ProtectedRoute requiredRole="user">
-              <Booking />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/booking" element={
+          <ProtectedRoute requiredRole="user">
+            <Booking />
+          </ProtectedRoute>
+        } />
 
-        <Route
-          path="/timeslots"
-          element={
-            <ProtectedRoute requiredRole={["admin", "staff"]}>
-              <TimeslotValidation />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/timeslots" element={
+          <ProtectedRoute requiredRole={["admin", "staff"]}>
+            <TimeslotValidation />
+          </ProtectedRoute>
+        } />
 
-        <Route
-          path="/staff/dashboard"
-          element={
-            <ProtectedRoute requiredRole="staff">
-              <StaffDashboard />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/staff/dashboard" element={
+          <ProtectedRoute requiredRole="staff">
+            <StaffDashboard />
+          </ProtectedRoute>
+        } />
 
-        <Route
-          path="/admin/dashboard"
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/admin/dashboard" element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
 
-        <Route
-          path="/admin/members"
-          element={
-            <ProtectedRoute requiredRole={["admin", "staff"]}>
-              <MemberManagement />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/admin/members" element={
+          <ProtectedRoute requiredRole={["admin", "staff"]}>
+            <MemberManagement />
+          </ProtectedRoute>
+        } />
+
+        {/* ✅ Payment routes */}
+        <Route path="/payments" element={
+          <ProtectedRoute requiredRole="user">
+            <Payment />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/payments/history" element={
+          <ProtectedRoute requiredRole="user">
+            <PaymentHistory />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/payments/result" element={
+          <ProtectedRoute requiredRole="user">
+            <PaymentResult />
+          </ProtectedRoute>
+        } />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

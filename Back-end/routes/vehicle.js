@@ -322,6 +322,8 @@ router.delete('/:id', async (req, res) => {
     console.error('[DELETE /api/vehicles/:id]', err);
     res.status(500).json({ message: 'Lỗi khi xóa xe' });
   }
+
+
 });
 
 module.exports = router;

@@ -169,7 +169,7 @@ router.post('/:id/transition', async (req, res) => {
         // Thực hiện cập nhật trạng thái mới
         await pool.request()
             .input('bookingId', sql.Int, id)
-            .input('status', sql.VarChar, nextStatus)
+            .input('status', sql.TinyInt, Number(nextStatus))
             .query('UPDATE BOOKING SET Status = @status WHERE BookingID = @bookingId');
 
         res.json({ message: `Cập nhật trạng thái thành ${nextStatus} thành công` });
