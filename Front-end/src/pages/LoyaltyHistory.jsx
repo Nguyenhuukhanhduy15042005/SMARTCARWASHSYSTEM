@@ -23,8 +23,14 @@ export default function LoyaltyHistory() {
 
   // Helper to decode token safely to get customer ID
   const getCustomerId = () => {
-    const token = localStorage.getItem("token") || localStorage.getItem("TOKEN");
-    if (token && token !== "mock-token" && token !== "null" && token !== "undefined") {
+    const token =
+      localStorage.getItem("token") || localStorage.getItem("TOKEN");
+    if (
+      token &&
+      token !== "mock-token" &&
+      token !== "null" &&
+      token !== "undefined"
+    ) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
         return payload.id || payload.userId || 12;
@@ -43,12 +49,14 @@ export default function LoyaltyHistory() {
   useEffect(() => {
     // Dynamic fonts & icons injection
     const font = document.createElement("link");
-    font.href = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap";
+    font.href =
+      "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap";
     font.rel = "stylesheet";
     document.head.appendChild(font);
 
     const icons = document.createElement("link");
-    icons.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
+    icons.href =
+      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
     icons.rel = "stylesheet";
     document.head.appendChild(icons);
 
@@ -64,27 +72,52 @@ export default function LoyaltyHistory() {
   const fetchData = async () => {
     setLoading(true);
     const userId = getCustomerId();
-    const token = localStorage.getItem("token") || localStorage.getItem("TOKEN") || "mock-token";
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("TOKEN") ||
+      "mock-token";
     const headers = { Authorization: `Bearer ${token}` };
 
     try {
       // 1. Fetch Profile info (points, current tier)
-      const profileRes = await axios.get(`${API_BASE}/users/profile?userId=${userId}`, { headers });
+      const profileRes = await axios.get(
+        `${API_BASE}/users/profile?userId=${userId}`,
+        { headers },
+      );
       if (profileRes.data) {
         setProfile({
-          UserID: profileRes.data.UserID !== undefined ? profileRes.data.UserID : (profileRes.data.userId || userId),
-          FullName: profileRes.data.FullName || profileRes.data.fullName || "Khách hàng",
-          PhoneNumber: profileRes.data.PhoneNumber || profileRes.data.phoneNumber || "",
+          UserID:
+            profileRes.data.UserID !== undefined
+              ? profileRes.data.UserID
+              : profileRes.data.userId || userId,
+          FullName:
+            profileRes.data.FullName ||
+            profileRes.data.fullName ||
+            "Khách hàng",
+          PhoneNumber:
+            profileRes.data.PhoneNumber || profileRes.data.phoneNumber || "",
           Email: profileRes.data.Email || profileRes.data.email || "",
-          CurrentPoints: Number(profileRes.data.CurrentPoints ?? profileRes.data.currentPoints ?? 0),
-          AccumulatedPoints: Number(profileRes.data.AccumulatedPoints ?? profileRes.data.accumulatedPoints ?? 0),
-          TierName: profileRes.data.TierName || profileRes.data.tierName || "Bronze",
-          DiscountRate: Number(profileRes.data.DiscountRate ?? profileRes.data.discountRate ?? 0),
+          CurrentPoints: Number(
+            profileRes.data.CurrentPoints ?? profileRes.data.currentPoints ?? 0,
+          ),
+          AccumulatedPoints: Number(
+            profileRes.data.AccumulatedPoints ??
+              profileRes.data.accumulatedPoints ??
+              0,
+          ),
+          TierName:
+            profileRes.data.TierName || profileRes.data.tierName || "Bronze",
+          DiscountRate: Number(
+            profileRes.data.DiscountRate ?? profileRes.data.discountRate ?? 0,
+          ),
         });
       }
 
       // 2. Fetch bookings list
-      const bookingsRes = await axios.get(`${API_BASE}/bookings?customerId=${userId}`, { headers });
+      const bookingsRes = await axios.get(
+        `${API_BASE}/bookings?customerId=${userId}`,
+        { headers },
+      );
       const list = Array.isArray(bookingsRes.data) ? bookingsRes.data : [];
       setBookings(list);
     } catch (err) {
@@ -95,33 +128,37 @@ export default function LoyaltyHistory() {
     }
   };
 
-  // Derive points transactions from actual bookings
+  // Derive points transactions
   const transactionsList = useMemo(() => {
-    return bookings.map((b) => {
-      // Safe date parsing
-      let dateStr = b.date || "";
-      if (!dateStr && b.BookingDate) {
-        const d = new Date(b.BookingDate);
-        dateStr = d.toLocaleDateString("vi-VN") + " " + d.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' });
-      }
+    return bookings
+      .map((b) => {
+        // Parse ngày giờ đẹp đẽ
+        let dateStr = "";
+        if (b.date) {
+          const d = new Date(b.date);
+          dateStr =
+            d.toLocaleDateString("vi-VN") +
+            " " +
+            d.toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+        }
 
-      const id = b.id !== undefined ? b.id : b.BookingID;
-      const price = b.price !== undefined ? b.price : (b.FinalPrice || b.TotalPrice || 0);
-      const status = b.status !== undefined ? b.status : b.Status;
-      const points = Math.floor(price / 1000);
+        // 4: Completed (Earned), 5: Cancelled, Còn lại: Pending
+        let isCompleted = b.status === 4;
+        let isCancelled = b.status === 5;
 
-      let isCompleted = status === 4;
-      let isCancelled = status === 5;
-
-      return {
-        id,
-        date: dateStr,
-        licensePlate: b.licensePlate || b.LicensePlate || "N/A",
-        price,
-        points,
-        type: isCompleted ? "Earned" : isCancelled ? "Cancelled" : "Pending",
-      };
-    }).filter(t => t.type !== "Cancelled"); // Don't show points for cancelled bookings
+        return {
+          id: b.id,
+          date: dateStr,
+          licensePlate: b.licensePlate || "N/A",
+          price: b.price || 0,
+          points: b.points || 0, // Lấy thẳng số điểm Thắng đã tính ở DB
+          type: isCompleted ? "Earned" : isCancelled ? "Cancelled" : "Pending",
+        };
+      })
+      .filter((t) => t.type !== "Cancelled"); // Ẩn các đơn đã bị hủy
   }, [bookings]);
 
   // Filter & search logic
@@ -145,7 +182,7 @@ export default function LoyaltyHistory() {
   // Calculate tier upgrade progression
   const tierProgress = useMemo(() => {
     const pts = profile.AccumulatedPoints;
-    
+
     // Tiers threshold configuration
     // Bronze: 0, Silver: 500, Gold: 1500, Platinum: 5000
     if (pts < 500) {
@@ -169,7 +206,10 @@ export default function LoyaltyHistory() {
         nextTier: "Platinum",
         required: 5000,
         currentInTier: pts,
-        percent: Math.min(100, Math.round(((pts - 1500) / (5000 - 1500)) * 100)),
+        percent: Math.min(
+          100,
+          Math.round(((pts - 1500) / (5000 - 1500)) * 100),
+        ),
         remaining: 5000 - pts,
       };
     } else {
@@ -183,7 +223,11 @@ export default function LoyaltyHistory() {
     }
   }, [profile.AccumulatedPoints]);
 
-  const money = (val) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(val);
+  const money = (val) =>
+    new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(val);
 
   return (
     <div className="loyalty-page-container portal-layout-container">
@@ -193,23 +237,34 @@ export default function LoyaltyHistory() {
         <div className="loyalty-main-wrapper">
           {/* Header section */}
           <header className="loyalty-header-section">
-            <div className="header-badge"><i className="fa-solid fa-award"></i> Thành viên & Điểm thưởng</div>
+            <div className="header-badge">
+              <i className="fa-solid fa-award"></i> Thành viên & Điểm thưởng
+            </div>
             <h1 className="header-title">Hạng Thành Viên & Tích Điểm</h1>
-            <p className="header-subtitle">Theo dõi quá trình nâng hạng, ưu đãi và lịch sử điểm tích lũy của bạn</p>
+            <p className="header-subtitle">
+              Theo dõi quá trình nâng hạng, ưu đãi và lịch sử điểm tích lũy của
+              bạn
+            </p>
           </header>
 
           {/* Cards Row */}
           <section className="loyalty-cards-grid">
             {/* Card 1: Membership card */}
-            <div className={`loyalty-membership-card tier-${profile.TierName.toLowerCase()}`}>
+            <div
+              className={`loyalty-membership-card tier-${profile.TierName.toLowerCase()}`}
+            >
               <div className="card-header">
-                <span className="card-brand"><i className="fa-solid fa-gem"></i> MOTO SHINE</span>
+                <span className="card-brand">
+                  <i className="fa-solid fa-gem"></i> MOTO SHINE
+                </span>
                 <span className="card-tier">{profile.TierName}</span>
               </div>
               <div className="card-body">
                 <div className="points-box">
                   <span className="points-label">Điểm khả dụng hiện tại</span>
-                  <h2 className="points-num">{profile.CurrentPoints} <span>PTS</span></h2>
+                  <h2 className="points-num">
+                    {profile.CurrentPoints} <span>PTS</span>
+                  </h2>
                 </div>
               </div>
               <div className="card-footer">
@@ -228,23 +283,38 @@ export default function LoyaltyHistory() {
             <div className="loyalty-progress-card">
               <div className="card-title-row">
                 <h3>Tiến Trình Nâng Hạng</h3>
-                <span className="progress-label">Tổng tích lũy: <strong>{profile.AccumulatedPoints} PTS</strong></span>
+                <span className="progress-label">
+                  Tổng tích lũy:{" "}
+                  <strong>{profile.AccumulatedPoints} PTS</strong>
+                </span>
               </div>
 
               {tierProgress.nextTier === "Maxed" ? (
                 <div className="max-tier-display">
-                  <div className="trophy-icon"><i className="fa-solid fa-crown text-yellow-500"></i></div>
+                  <div className="trophy-icon">
+                    <i className="fa-solid fa-crown text-yellow-500"></i>
+                  </div>
                   <h4>Chúc mừng! Bạn đã đạt hạng cao nhất</h4>
-                  <p>Hạng Platinum của bạn hiện tại được giảm tối đa 15% cho mọi dịch vụ đặt xe.</p>
+                  <p>
+                    Hạng Platinum của bạn hiện tại được giảm tối đa 15% cho mọi
+                    dịch vụ đặt xe.
+                  </p>
                 </div>
               ) : (
                 <div className="progress-content">
                   <div className="progress-info-row">
-                    <span>Hạng tiếp theo: <strong>{tierProgress.nextTier}</strong></span>
-                    <span>Cần thêm: <strong>{tierProgress.remaining} PTS</strong></span>
+                    <span>
+                      Hạng tiếp theo: <strong>{tierProgress.nextTier}</strong>
+                    </span>
+                    <span>
+                      Cần thêm: <strong>{tierProgress.remaining} PTS</strong>
+                    </span>
                   </div>
                   <div className="progress-bar-container">
-                    <div className="progress-bar-fill" style={{ width: `${tierProgress.percent}%` }}></div>
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${tierProgress.percent}%` }}
+                    ></div>
                   </div>
                   <div className="progress-limits">
                     <span>{profile.AccumulatedPoints} PTS</span>
@@ -252,7 +322,10 @@ export default function LoyaltyHistory() {
                   </div>
                   <div className="upgrade-bonus-tip">
                     <i className="fa-solid fa-lightbulb"></i>
-                    <span>Tích lũy thêm {tierProgress.remaining} điểm bằng cách đặt rửa xe để nhận thêm nhiều quyền lợi ưu đãi hơn!</span>
+                    <span>
+                      Tích lũy thêm {tierProgress.remaining} điểm bằng cách đặt
+                      rửa xe để nhận thêm nhiều quyền lợi ưu đãi hơn!
+                    </span>
                   </div>
                 </div>
               )}
@@ -264,54 +337,114 @@ export default function LoyaltyHistory() {
             <h2 className="section-title">Thông Tin Các Hạng Thành Viên</h2>
             <div className="tiers-grid">
               {/* Bronze */}
-              <div className={`tier-perk-item ${profile.TierName.toLowerCase() === "bronze" ? "active" : ""}`}>
-                {profile.TierName.toLowerCase() === "bronze" && <span className="active-badge">Đang đạt</span>}
-                <div className="tier-icon-circle bronze"><i className="fa-solid fa-award"></i></div>
+              <div
+                className={`tier-perk-item ${profile.TierName.toLowerCase() === "bronze" ? "active" : ""}`}
+              >
+                {profile.TierName.toLowerCase() === "bronze" && (
+                  <span className="active-badge">Đang đạt</span>
+                )}
+                <div className="tier-icon-circle bronze">
+                  <i className="fa-solid fa-award"></i>
+                </div>
                 <h3>Bronze (Đồng)</h3>
                 <span className="tier-req">Yêu cầu: 0 PTS</span>
                 <ul className="perks-list">
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Không giảm giá dịch vụ</li>
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Hạn đặt trước: 1 ngày</li>
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Hỗ trợ đặt lịch cơ bản</li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Không giảm giá dịch vụ
+                  </li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Hạn đặt trước: 1 ngày
+                  </li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Hỗ trợ đặt lịch cơ bản
+                  </li>
                 </ul>
               </div>
 
               {/* Silver */}
-              <div className={`tier-perk-item ${profile.TierName.toLowerCase() === "silver" ? "active" : ""}`}>
-                {profile.TierName.toLowerCase() === "silver" && <span className="active-badge">Đang đạt</span>}
-                <div className="tier-icon-circle silver"><i className="fa-solid fa-gem"></i></div>
+              <div
+                className={`tier-perk-item ${profile.TierName.toLowerCase() === "silver" ? "active" : ""}`}
+              >
+                {profile.TierName.toLowerCase() === "silver" && (
+                  <span className="active-badge">Đang đạt</span>
+                )}
+                <div className="tier-icon-circle silver">
+                  <i className="fa-solid fa-gem"></i>
+                </div>
                 <h3>Silver (Bạc)</h3>
                 <span className="tier-req">Yêu cầu: 500 PTS</span>
                 <ul className="perks-list">
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Giảm giá: <strong>5%</strong> đơn hàng</li>
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Hạn đặt trước: 3 ngày</li>
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Hỗ trợ ưu tiên</li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Giảm giá: <strong>5%</strong> đơn hàng
+                  </li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Hạn đặt trước: 3 ngày
+                  </li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Hỗ trợ ưu tiên
+                  </li>
                 </ul>
               </div>
 
               {/* Gold */}
-              <div className={`tier-perk-item ${profile.TierName.toLowerCase() === "gold" ? "active" : ""}`}>
-                {profile.TierName.toLowerCase() === "gold" && <span className="active-badge">Đang đạt</span>}
-                <div className="tier-icon-circle gold"><i className="fa-solid fa-crown"></i></div>
+              <div
+                className={`tier-perk-item ${profile.TierName.toLowerCase() === "gold" ? "active" : ""}`}
+              >
+                {profile.TierName.toLowerCase() === "gold" && (
+                  <span className="active-badge">Đang đạt</span>
+                )}
+                <div className="tier-icon-circle gold">
+                  <i className="fa-solid fa-crown"></i>
+                </div>
                 <h3>Gold (Vàng)</h3>
                 <span className="tier-req">Yêu cầu: 1,500 PTS</span>
                 <ul className="perks-list">
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Giảm giá: <strong>10%</strong> đơn hàng</li>
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Hạn đặt trước: 7 ngày</li>
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Quà tặng sinh nhật thành viên</li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Giảm giá: <strong>10%</strong> đơn hàng
+                  </li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Hạn đặt trước: 7 ngày
+                  </li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Quà tặng sinh nhật thành viên
+                  </li>
                 </ul>
               </div>
 
               {/* Platinum */}
-              <div className={`tier-perk-item ${profile.TierName.toLowerCase() === "platinum" ? "active" : ""}`}>
-                {profile.TierName.toLowerCase() === "platinum" && <span className="active-badge">Đang đạt</span>}
-                <div className="tier-icon-circle platinum"><i className="fa-solid fa-certificate"></i></div>
+              <div
+                className={`tier-perk-item ${profile.TierName.toLowerCase() === "platinum" ? "active" : ""}`}
+              >
+                {profile.TierName.toLowerCase() === "platinum" && (
+                  <span className="active-badge">Đang đạt</span>
+                )}
+                <div className="tier-icon-circle platinum">
+                  <i className="fa-solid fa-certificate"></i>
+                </div>
                 <h3>Platinum (Bạch Kim)</h3>
                 <span className="tier-req">Yêu cầu: 5,000 PTS</span>
                 <ul className="perks-list">
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Giảm giá: <strong>15%</strong> đơn hàng</li>
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Hạn đặt trước: 14 ngày</li>
-                  <li><i className="fa-solid fa-circle-check text-green-500"></i> Rửa xe ưu tiên, không chờ đợi</li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Giảm giá: <strong>15%</strong> đơn hàng
+                  </li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Hạn đặt trước: 14 ngày
+                  </li>
+                  <li>
+                    <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
+                    Rửa xe ưu tiên, không chờ đợi
+                  </li>
                 </ul>
               </div>
             </div>
@@ -332,9 +465,24 @@ export default function LoyaltyHistory() {
                   />
                 </div>
                 <div className="filter-buttons">
-                  <button className={`filter-btn ${statusFilter === "All" ? "active" : ""}`} onClick={() => setStatusFilter("All")}>Tất cả</button>
-                  <button className={`filter-btn ${statusFilter === "Completed" ? "active" : ""}`} onClick={() => setStatusFilter("Completed")}>Tích lũy xong</button>
-                  <button className={`filter-btn ${statusFilter === "Pending" ? "active" : ""}`} onClick={() => setStatusFilter("Pending")}>Đang chờ duyệt</button>
+                  <button
+                    className={`filter-btn ${statusFilter === "All" ? "active" : ""}`}
+                    onClick={() => setStatusFilter("All")}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    className={`filter-btn ${statusFilter === "Completed" ? "active" : ""}`}
+                    onClick={() => setStatusFilter("Completed")}
+                  >
+                    Tích lũy xong
+                  </button>
+                  <button
+                    className={`filter-btn ${statusFilter === "Pending" ? "active" : ""}`}
+                    onClick={() => setStatusFilter("Pending")}
+                  >
+                    Đang chờ duyệt
+                  </button>
                 </div>
               </div>
             </div>
@@ -366,21 +514,35 @@ export default function LoyaltyHistory() {
                     {filteredTransactions.map((tx) => (
                       <tr key={tx.id}>
                         <td style={{ fontWeight: 700 }}>#{tx.id}</td>
-                        <td><span className="license-plate-badge">{tx.licensePlate}</span></td>
+                        <td>
+                          <span className="license-plate-badge">
+                            {tx.licensePlate}
+                          </span>
+                        </td>
                         <td>{tx.date}</td>
                         <td style={{ fontWeight: 600 }}>
-                          {tx.type === "Earned" ? "Tích lũy từ đơn rửa xe" : "Tích lũy dự kiến"}
+                          {tx.type === "Earned"
+                            ? "Tích lũy từ đơn rửa xe"
+                            : "Tích lũy dự kiến"}
                         </td>
                         <td>
-                          <span className={`points-val ${tx.type === "Earned" ? "positive" : "pending"}`}>
+                          <span
+                            className={`points-val ${tx.type === "Earned" ? "positive" : "pending"}`}
+                          >
                             +{tx.points} PTS
                           </span>
                         </td>
                         <td>
                           {tx.type === "Earned" ? (
-                            <span className="status-badge success-badge"><i className="fa-solid fa-circle-check"></i> Đã tích điểm</span>
+                            <span className="status-badge success-badge">
+                              <i className="fa-solid fa-circle-check"></i> Đã
+                              tích điểm
+                            </span>
                           ) : (
-                            <span className="status-badge pending-badge"><i className="fa-solid fa-spinner fa-spin"></i> Chờ hoàn tất rửa xe</span>
+                            <span className="status-badge pending-badge">
+                              <i className="fa-solid fa-spinner fa-spin"></i>{" "}
+                              Chờ hoàn tất rửa xe
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -395,8 +557,16 @@ export default function LoyaltyHistory() {
 
       {/* Toast alert banner */}
       {toast && (
-        <div className={`loyalty-toast ${toast.type === "error" ? "toast-error" : "toast-success"}`}>
-          <i className={toast.type === "error" ? "fa-solid fa-circle-exclamation" : "fa-regular fa-circle-check"}></i>
+        <div
+          className={`loyalty-toast ${toast.type === "error" ? "toast-error" : "toast-success"}`}
+        >
+          <i
+            className={
+              toast.type === "error"
+                ? "fa-solid fa-circle-exclamation"
+                : "fa-regular fa-circle-check"
+            }
+          ></i>
           <span>{toast.message}</span>
         </div>
       )}
