@@ -23,7 +23,12 @@ const Home = () => {
   };
 
   const getInitials = (name = "") =>
-    name.split(" ").slice(-2).map((w) => w[0]).join("").toUpperCase();
+    name
+      .split(" ")
+      .slice(-2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase();
 
   return (
     <div className="min-h-screen bg-[#FDF8F0] font-sans text-[#192b4d]">
@@ -52,34 +57,49 @@ const Home = () => {
           <Link to="/" className="text-xl font-extrabold text-[#192b4d]">
             Trang chủ
           </Link>
-          <Link to="/services" className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
+          <Link
+            to="/services"
+            className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors"
+          >
             Dịch vụ
           </Link>
 
           {/* Đặt lịch: chỉ user thường thấy */}
           {(!user || isUser()) && (
-            <Link to="/booking" className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
+            <Link
+              to="/booking"
+              className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors"
+            >
               Đặt lịch
             </Link>
           )}
 
           {/* Thành viên: tất cả thấy khi đã login */}
           {user && (
-            <Link to={isAdmin() || isStaff() ? "/admin/dashboard" : "/dashboard"} className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
+            <Link
+              to={isAdmin() || isStaff() ? "/admin/dashboard" : "/dashboard"}
+              className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors"
+            >
               Thành viên
             </Link>
           )}
 
           {/* Quản lý xe (Trang của Thái): tất cả thấy khi đã login */}
           {user && (
-            <Link to="/vehicles" className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
+            <Link
+              to="/vehicles"
+              className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors"
+            >
               Quản lý xe
             </Link>
           )}
 
           {/* Admin Dashboard: chỉ admin và staff thấy */}
           {(isAdmin() || isStaff()) && (
-            <Link to="/admin/dashboard" className="text-xl font-medium text-[#F58607] hover:text-orange-600 transition-colors font-bold">
+            <Link
+              to="/admin/dashboard"
+              className="text-xl font-medium text-[#F58607] hover:text-orange-600 transition-colors font-bold"
+            >
               Quản trị
             </Link>
           )}
@@ -94,24 +114,52 @@ const Home = () => {
                 to="/profile"
                 className="flex items-center gap-2 px-5 py-3 text-base font-bold text-[#192b4d] bg-white rounded-full shadow-sm hover:shadow-md transition-all"
               >
-                <div style={{
-                  width: 32, height: 32, borderRadius: "50%",
-                  background: "#E1F5EE", display: "flex", alignItems: "center",
-                  justifyContent: "center", fontSize: 13, fontWeight: 700,
-                  color: "#0F6E56", border: "1.5px solid #5DCAA5", flexShrink: 0
-                }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: "#E1F5EE",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#0F6E56",
+                    border: "1.5px solid #5DCAA5",
+                    flexShrink: 0,
+                  }}
+                >
                   {getInitials(user.fullName)}
                 </div>
                 {user.fullName}
 
                 {/* Badge role */}
                 {isAdmin() && (
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: "#EEEDFE", color: "#534AB7", fontWeight: 600 }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      padding: "2px 7px",
+                      borderRadius: 20,
+                      background: "#EEEDFE",
+                      color: "#534AB7",
+                      fontWeight: 600,
+                    }}
+                  >
                     Admin
                   </span>
                 )}
                 {isStaff() && (
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: "#FAEEDA", color: "#854F0B", fontWeight: 600 }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      padding: "2px 7px",
+                      borderRadius: 20,
+                      background: "#FAEEDA",
+                      color: "#854F0B",
+                      fontWeight: 600,
+                    }}
+                  >
                     Staff
                   </span>
                 )}
@@ -128,14 +176,15 @@ const Home = () => {
             <>
               <Link
                 to="/login"
-                className="px-5 py-2.5 md:px-8 md:py-3.5 text-sm md:text-lg font-bold text-gray-800 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
+                className="px-8 py-3.5 text-lg font-bold text-gray-800 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
               >
-                Đăng nhập
+                Login
               </Link>
               <Link
                 to="/register"
-                className="px-5 py-2.5 md:px-8 md:py-3.5 text-sm md:text-lg font-bold text-white bg-[#F58607] rounded-full shadow-md hover:bg-orange-600 transition-all"
+                className="px-8 py-3.5 text-lg font-bold text-white bg-[#F58607] rounded-full shadow-md hover:bg-orange-600 transition-all"
               >
+                {/* Trọng thêm: Giải quyết conflict */}
                 Đăng ký
               </Link>
             </>
@@ -162,16 +211,18 @@ const Home = () => {
             >
               Đặt lịch ngay
             </Link>
+            {/* Trọng thêm: Giải quyết conflict */}
             <button className="flex items-center gap-3 md:gap-4 group">
               <div className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300 shrink-0">
                 <svg
-                  className="w-5 h-5 md:w-6 md:h-6 text-[#38BDF8] ml-1"
+                  className="w-6 h-6 text-[#38BDF8] ml-1.5"
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
+              {/* Trọng thêm: Giải quyết conflict */}
               <span className="text-lg md:text-xl font-medium text-[#192b4d] group-hover:text-[#F58607] transition-colors">
                 Xem cách hoạt động
               </span>
@@ -179,6 +230,7 @@ const Home = () => {
           </div>
         </div>
 
+        {/* Trọng thêm: Giải quyết conflict */}
         <div className="flex-1 w-full mt-10 lg:mt-0">
           <div className="rounded-[2rem] overflow-hidden shadow-2xl h-[350px] sm:h-[450px] lg:h-[550px] w-full">
             <img

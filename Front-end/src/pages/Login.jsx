@@ -50,7 +50,7 @@ export default function Login({ setUser }) {
         localStorage.setItem("LOGIN_USER", JSON.stringify(data.user));
         setUser(data.user);
         setAuthUser(data.user); // Đồng bộ cho AuthContext
-        setToken(data.token);   // Đồng bộ cho AuthContext
+        setToken(data.token); // Đồng bộ cho AuthContext
         const role = data.user.role;
         if (role === "admin") {
           navigate("/admin/dashboard");
@@ -107,7 +107,7 @@ export default function Login({ setUser }) {
           localStorage.setItem("LOGIN_USER", JSON.stringify(data.user));
           setUser(data.user);
           setAuthUser(data.user); // Đồng bộ cho AuthContext
-          setToken(data.token);   // Đồng bộ cho AuthContext
+          setToken(data.token); // Đồng bộ cho AuthContext
           const role = data.user.role;
           if (role === "admin") {
             navigate("/admin/dashboard");
