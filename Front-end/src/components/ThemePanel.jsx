@@ -12,10 +12,10 @@ export default function ThemePanel({ compact = false }) {
   const { mode, toggleMode, accent, changeAccent, canChangeAccent } = useTheme();
 
   return (
-    <div style={styles.wrapper}>
+    <div className="theme-panel-wrapper" style={styles.wrapper}> {/* Trọng thêm: Thêm className */}
       {/* ── Dark / Light toggle ────────────────────────── */}
-      <div style={styles.row}>
-        {!compact && <span style={styles.label}>Giao diện</span>}
+      <div className="theme-panel-row" style={styles.row}> {/* Trọng thêm: Thêm className */}
+        {!compact && <span className="theme-panel-label" style={styles.label}>Giao diện</span>} {/* Trọng thêm: Thêm className */}
 
         <button
           onClick={toggleMode}
@@ -27,40 +27,14 @@ export default function ThemePanel({ compact = false }) {
             <span style={styles.thumb(mode)} />
           </span>
           {!compact && (
-            <span style={styles.modeLabel}>
+            <span className="theme-panel-mode-label" style={styles.modeLabel}> {/* Trọng thêm: Thêm className */}
               {mode === "dark" ? "🌙 Tối" : "☀️ Sáng"}
             </span>
           )}
         </button>
       </div>
 
-      {/* ── Accent color swatches (staff / admin only) ── */}
-      {canChangeAccent && (
-        <div style={styles.row}>
-          {!compact && <span style={styles.label}>Màu chủ đạo</span>}
-
-          <div style={styles.swatches}>
-            {ACCENT_COLORS.map((c) => (
-              <button
-                key={c.value}
-                title={c.name}
-                aria-label={`Màu ${c.name}`}
-                onClick={() => changeAccent(c.value)}
-                style={{
-                  ...styles.swatch,
-                  background: c.hex,
-                  outline:
-                    accent === c.value
-                      ? `2px solid ${c.hex}`
-                      : "2px solid transparent",
-                  outlineOffset: "2px",
-                  transform: accent === c.value ? "scale(1.2)" : "scale(1)",
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Trọng thêm: Đã bỏ phần chọn màu chủ đạo theo yêu cầu */}
     </div>
   );
 }

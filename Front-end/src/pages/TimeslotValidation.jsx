@@ -224,6 +224,15 @@ export default function TimeslotValidation() {
       return;
     }
 
+    // Kiểm tra định dạng biển số xe Việt Nam nếu có nhập
+    if (licensePlate.trim()) {
+      const plateRegex = /^[0-9]{2}[- ]?([A-Z]{1,2}|[A-Z][0-9])[- ]?[0-9]{3,5}(\.[0-9]{2})?$/i; // Trọng thêm: Regex kiểm tra biển số xe thật
+      if (!plateRegex.test(licensePlate.trim())) {
+        showToast("Biển số xe không hợp lệ! Định dạng đúng VD: 59A-123.45 hoặc 59G1-123.45", "error"); // Trọng thêm: Khai báo lỗi định dạng biển số
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/api/timeslots/book`, {

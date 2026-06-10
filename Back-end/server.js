@@ -53,7 +53,7 @@ require('dotenv').config();
 
 // Các route đã có
 app.use('/api/auth',     require('./routes/auth'));
-app.use('/api/bookings', require('./routes/bookingrouter'));
+app.use('/api/bookings', require('./routes/booking'));
 app.use('/api/users',    require('./routes/user'));
 app.use('/api/vehicles', require('./routes/vehicle'));
 

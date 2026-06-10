@@ -320,3 +320,70 @@
   border: 1px solid rgba(16, 185, 129, 0.25);
   color: #34d399;
 }
+
+/* ── ThemePanel Collapsible Layout (Trọng thêm) ── */
+
+/* Trạng thái thu gọn mặc định (khi sidebar CHƯA được hover) */
+.portal-sidebar .theme-panel-wrapper {
+  background: transparent !important;
+  border-color: transparent !important;
+  padding: 8px 0 !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.portal-sidebar .theme-panel-row {
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+.portal-sidebar .theme-panel-label {
+  display: none !important;
+}
+
+.portal-sidebar .theme-panel-mode-label {
+  display: none !important;
+}
+
+.portal-sidebar .theme-panel-swatches {
+  justify-content: center !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  max-width: 44px !important; /* Buộc màu sắc tự động xuống hàng thành lưới 2 cột */
+  margin: 0 auto !important;
+}
+
+/* Trạng thái mở rộng (khi sidebar ĐƯỢC hover) */
+.portal-sidebar:hover .theme-panel-wrapper {
+  background: var(--bg-card-portal) !important;
+  border: 1px solid var(--border-color-portal) !important;
+  padding: 10px 12px !important;
+  align-items: stretch !important;
+}
+
+.portal-sidebar:hover .theme-panel-row {
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+.portal-sidebar:hover .theme-panel-label {
+  display: inline-block !important;
+}
+
+.portal-sidebar:hover .theme-panel-mode-label {
+  display: inline-block !important;
+}
+
+.portal-sidebar:hover .theme-panel-swatches {
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  max-width: none !important;
+  margin: 0 !important;
+}

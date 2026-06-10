@@ -135,7 +135,7 @@ export default function UserDashboard() {
     const headers = { Authorization: `Bearer ${token}` };
 
     try {
-      await axios.post(`${API_BASE}/bookings/${id}/transition`, { status: 5 }, { headers });
+      await axios.post(`${API_BASE}/bookings/${id}/transition`, { nextStatus: 5 }, { headers }); // Trọng thêm: Đổi từ status thành nextStatus để khớp với backend
       showToast("Đã hủy lịch đặt xe thành công!", "success");
       
       if (selectedBooking && selectedBooking.id === id) {
