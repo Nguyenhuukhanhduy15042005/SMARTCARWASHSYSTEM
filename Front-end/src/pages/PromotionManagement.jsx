@@ -439,9 +439,9 @@ export default function PromotionManagement() {
 
 const promotionManagementCss = ` .pm-page{
     min-height:100vh;
-    background:#0b1120;
+    background:var(--bg-primary);
     font-family:'Plus Jakarta Sans',sans-serif;
-    color:#172033
+    color:var(--text-primary)
 }
 .pm-main{
     margin-left:76px;
@@ -512,14 +512,14 @@ const promotionManagementCss = ` .pm-page{
     margin:24px 0
 }
 .pm-stat-card{
-    background:#fff;
-    border:1px solid #e6edf5;
+    background:var(--bg-card);
+    border:1px solid var(--border);
     border-radius:24px;
     padding:22px;
     box-shadow:0 18px 50px rgba(16,24,40,.07)
 }
 .pm-stat-card span{
-    color:#64748b;
+    color:var(--text-secondary);
     font-weight:800
 }
 .pm-stat-card strong{
@@ -528,7 +528,7 @@ const promotionManagementCss = ` .pm-page{
     margin:8px 0 4px
 }
 .pm-stat-card small{
-    color:#7b8794;
+    color:var(--text-secondary);
     font-weight:700
 }
 .pm-stat-card.green strong{
@@ -541,7 +541,7 @@ const promotionManagementCss = ` .pm-page{
     color:#2563eb
 }
 .pm-table-card{
-    background:#fff;
+    background:var(--bg-card);
     border:1px solid #e6edf5;
     border-radius:26px;
     box-shadow:0 18px 50px rgba(16,24,40,.08);
@@ -631,11 +631,14 @@ const promotionManagementCss = ` .pm-page{
     padding:0 14px
 }
 .pm-table td{
-    background:#f8fafc;
+    background:var(--bg-secondary);
     padding:16px 14px;
     border-top:1px solid #edf2f7;
     border-bottom:1px solid #edf2f7;
     vertical-align:middle
+}
+.pm-table td b{
+    color:var(--text-primary)
 }
 .pm-table td:first-child{
     border-left:1px solid #edf2f7;
@@ -651,7 +654,7 @@ const promotionManagementCss = ` .pm-page{
     gap:4px
 }
 .pm-name-cell strong{
-    color:#172033
+    color:var(--text-primary);
 }
 .pm-name-cell span{
     color:#64748b;

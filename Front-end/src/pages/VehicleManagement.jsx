@@ -282,7 +282,7 @@ export default function VehicleManagement() {
             <div style={{ fontSize: 40, textAlign: "center", marginBottom: 12 }}>🗑️</div>
             <h3 style={s.modalTitle}>Xóa xe này?</h3>
             <p style={s.modalSub}>
-              Biển số <strong style={{ color: "#f1f5f9" }}>
+              Biển số <strong style={{ color: "var(--text-primary)" }}>
                 {vehicles.find(v => v.id === deleteConfirm)?.plateNumber}
               </strong> sẽ bị xóa vĩnh viễn.
             </p>
@@ -412,12 +412,12 @@ export default function VehicleManagement() {
             {loading ? (
               <div style={s.emptyState}>
                 <div style={{ fontSize: 36 }}>⏳</div>
-                <p style={{ color: "#475569", margin: 0 }}>Đang tải danh sách xe...</p>
+                <p style={{ color: "var(--text-secondary)", margin: 0 }}>Đang tải danh sách xe...</p>
               </div>
             ) : filtered.length === 0 ? (
               <div style={s.emptyState}>
                 <div style={{ fontSize: 40 }}>🚫</div>
-                <p style={{ color: "#475569", margin: 0 }}>Không tìm thấy xe nào</p>
+                <p style={{ color: "var(--text-secondary)", margin: 0 }}>Không tìm thấy xe nào</p>
               </div>
             ) : (
               <div style={s.cardList}>
@@ -441,9 +441,9 @@ export default function VehicleManagement() {
                       {/* Mid */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                         <span style={s.brandModel}>
-                          {v.brand} <span style={{ color: "#94a3b8", fontWeight: 400 }}>{v.model}</span>
+                          {v.brand} <span style={{ color: "var(--text-secondary)", fontWeight: 400 }}>{v.model}</span>
                         </span>
-                        <span style={{ display: "flex", alignItems: "center", gap: 6, color: "#94a3b8", fontSize: 13 }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)", fontSize: 13 }}>
                           <span style={{ width: 10, height: 10, borderRadius: "50%", background: dotColor,
                             border: "1px solid rgba(255,255,255,0.2)", display: "inline-block" }} />
                           {v.color}
@@ -452,8 +452,8 @@ export default function VehicleManagement() {
                       {/* Bottom */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={s.avatar}>{(v.ownerName || "?").slice(0, 2).toUpperCase()}</div>
-                        <span style={{ color: "#64748b", fontSize: 12 }}>{v.ownerName || "—"}</span>
-                        <span style={{ color: "#475569", fontSize: 11, marginLeft: "auto" }}>
+                        <span style={{ color: "var(--text-secondary)", fontSize: 12 }}>{v.ownerName || "—"}</span>
+                        <span style={{ color: "var(--text-secondary)", fontSize: 11, marginLeft: "auto" }}>
                           {v.createdAt ? new Date(v.createdAt).toLocaleDateString("vi-VN") : ""}
                         </span>
                       </div>
@@ -469,19 +469,19 @@ export default function VehicleManagement() {
             {!selectedVehicle ? (
               <div style={s.detailEmpty}>
                 <div style={{ fontSize: 52 }}>🚗</div>
-                <p style={{ color: "#475569", textAlign: "center", fontSize: 14, margin: 0 }}>
+                <p style={{ color: "var(--text-secondary)", textAlign: "center", fontSize: 14, margin: 0 }}>
                   Chọn một xe để xem chi tiết
                 </p>
               </div>
             ) : (
               <div style={{ padding: 24 }}>
                 {/* Header */}
-                <div style={{ textAlign: "center", marginBottom: 20, paddingBottom: 20, borderBottom: "1px solid #334155" }}>
+                <div style={{ textAlign: "center", marginBottom: 20, paddingBottom: 20, borderBottom: "1px solid var(--border)" }}>
                   <div style={{ fontSize: 48, marginBottom: 8 }}>🚗</div>
-                  <h2 style={{ color: "#f1f5f9", fontSize: 24, fontWeight: 800, margin: "0 0 4px", letterSpacing: 1 }}>
+                  <h2 style={{ color: "var(--text-primary)", fontSize: 24, fontWeight: 800, margin: "0 0 4px", letterSpacing: 1 }}>
                     {selectedVehicle.plateNumber}
                   </h2>
-                  <p style={{ color: "#64748b", margin: 0 }}>
+                  <p style={{ color: "var(--text-secondary)", margin: 0 }}>
                     {selectedVehicle.brand} · {selectedVehicle.model}
                   </p>
                 </div>
@@ -497,24 +497,24 @@ export default function VehicleManagement() {
                       ? new Date(selectedVehicle.createdAt).toLocaleDateString("vi-VN") : "—"],
                   ].map(([k, v]) => (
                     <div key={k} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <span style={{ color: "#475569", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{k}</span>
-                      <span style={{ color: "#cbd5e1", fontSize: 14, fontWeight: 500 }}>{v}</span>
+                      <span style={{ color: "var(--text-secondary)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{k}</span>
+                      <span style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 500 }}>{v}</span>
                     </div>
                   ))}
                 </div>
 
                 {/* Owner */}
                 <div style={{ marginBottom: 20 }}>
-                  <span style={{ color: "#475569", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  <span style={{ color: "var(--text-secondary)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
                     Chủ sở hữu
                   </span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#0f172a", borderRadius: 8, padding: "10px 14px", marginTop: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--bg-primary)", borderRadius: 8, padding: "10px 14px", marginTop: 8 }}>
                     <div style={{ ...s.avatar, width: 36, height: 36, fontSize: 13 }}>
                       {(selectedVehicle.ownerName || "?").slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 14 }}>{selectedVehicle.ownerName}</div>
-                      <div style={{ color: "#64748b", fontSize: 12 }}>{selectedVehicle.ownerPhone}</div>
+                      <div style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: 14 }}>{selectedVehicle.ownerName}</div>
+                      <div style={{ color: "var(--text-secondary)", fontSize: 12 }}>{selectedVehicle.ownerPhone}</div>
                     </div>
                   </div>
                 </div>
@@ -539,15 +539,15 @@ export default function VehicleManagement() {
 }
 
 const s = {
-  root: { minHeight: "100vh", width: "100%", boxSizing: "border-box", background: "#0f172a", fontFamily: "'Be Vietnam Pro','Segoe UI',sans-serif", position: "relative", padding: "0 0 24px 0" },
+  root: { minHeight: "100vh", width: "100%", boxSizing: "border-box", background: "var(--bg-primary)", fontFamily: "'Be Vietnam Pro','Segoe UI',sans-serif", position: "relative", padding: "0 0 24px 0" },
   navbar: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     height: 70,
     padding: "0 40px",
-    background: "#111827",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+    background: "var(--bg-secondary)",
+    borderBottom: "1px solid var(--border)",
     position: "sticky",
     top: 0,
     zIndex: 1000,
@@ -559,7 +559,7 @@ const s = {
     gap: 10,
     fontSize: 20,
     fontWeight: 800,
-    color: "white",
+    color: "var(--text-primary)",
     textDecoration: "none",
     cursor: "pointer",
   },
@@ -576,7 +576,7 @@ const s = {
     gap: 24,
   },
   navLink: {
-    color: "#9ca3af",
+    color: "var(--text-secondary)",
     textDecoration: "none",
     fontSize: 14,
     fontWeight: 600,
@@ -613,48 +613,48 @@ const s = {
   bg: { position: "fixed", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% 0%,#1e3a5f44 0%,transparent 60%)", pointerEvents: "none" },
   bgGrid: { position: "fixed", inset: 0, backgroundImage: "linear-gradient(rgba(148,163,184,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,0.03) 1px,transparent 1px)", backgroundSize: "40px 40px", pointerEvents: "none" },
   wrapper: { width: "100%", maxWidth: "100%", margin: "0", boxSizing: "border-box", position: "relative", zIndex: 1 },
-  toast: { position: "fixed", top: 20, right: 20, color: "white", padding: "12px 20px", borderRadius: 10, fontWeight: 600, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" },
+  toast: { position: "fixed", top: 20, right: 20, color: "var(--text-primary)", padding: "12px 20px", borderRadius: 10, fontWeight: 600, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" },
   overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9998 },
-  modal: { background: "#1e293b", border: "1px solid #334155", borderRadius: 16, padding: 32, maxWidth: 380, width: "90%", textAlign: "center" },
-  modalTitle: { color: "#f1f5f9", fontSize: 20, fontWeight: 700, marginBottom: 8, marginTop: 0 },
-  modalSub: { color: "#64748b", fontSize: 14, marginBottom: 24 },
+  modal: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 32, maxWidth: 380, width: "90%", textAlign: "center" },
+  modalTitle: { color: "var(--text-primary)", fontSize: 20, fontWeight: 700, marginBottom: 8, marginTop: 0 },
+  modalSub: { color: "var(--text-secondary)", fontSize: 14, marginBottom: 24 },
   modalActions: { display: "flex", gap: 10, justifyContent: "center" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, flexWrap: "wrap", gap: 16 },
   badge: { display: "inline-block", background: "#1e3a5f", color: "#60a5fa", border: "1px solid #2d5a8e", borderRadius: 20, padding: "4px 14px", fontSize: 13, marginBottom: 8, fontWeight: 500 },
-  title: { color: "#f1f5f9", fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: -1 },
-  subtitle: { color: "#64748b", fontSize: 14, marginTop: 4 },
-  refreshBtn: { background: "#1e293b", border: "1px solid #334155", color: "#94a3b8", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontSize: 14 },
-  addBtn: { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "white", border: "none", borderRadius: 10, padding: "12px 22px", fontWeight: 700, fontSize: 15, cursor: "pointer" },
+  title: { color: "var(--text-primary)", fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: -1 },
+  subtitle: { color: "var(--text-secondary)", fontSize: 14, marginTop: 4 },
+  refreshBtn: { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontSize: 14 },
+  addBtn: { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "var(--text-primary)", border: "none", borderRadius: 10, padding: "12px 22px", fontWeight: 700, fontSize: 15, cursor: "pointer" },
   statsRow: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 },
-  statCard: { background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 },
-  statVal: { color: "#f1f5f9", fontSize: 26, fontWeight: 800 },
-  statLabel: { color: "#64748b", fontSize: 12 },
-  formCard: { background: "#1e293b", border: "1px solid #334155", borderRadius: 16, padding: 24, marginBottom: 24 },
-  formTitle: { color: "#f1f5f9", fontSize: 18, fontWeight: 700, marginBottom: 20, marginTop: 0 },
+  statCard: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 },
+  statVal: { color: "var(--text-primary)", fontSize: 26, fontWeight: 800 },
+  statLabel: { color: "var(--text-secondary)", fontSize: 12 },
+  formCard: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, marginBottom: 24 },
+  formTitle: { color: "var(--text-primary)", fontSize: 18, fontWeight: 700, marginBottom: 20, marginTop: 0 },
   formGrid: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 },
   field: { display: "flex", flexDirection: "column", gap: 6 },
-  label: { color: "#94a3b8", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 },
-  input: { background: "#0f172a", border: "1px solid #334155", borderRadius: 8, color: "#f1f5f9", padding: "10px 12px", fontSize: 14, outline: "none" },
+  label: { color: "var(--text-secondary)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 },
+  input: { background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)", padding: "10px 12px", fontSize: 14, outline: "none" },
   formActions: { display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" },
-  cancelBtn: { background: "transparent", border: "1px solid #334155", color: "#94a3b8", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontSize: 14 },
-  cancelBtn2: { background: "transparent", border: "1px solid #334155", color: "#94a3b8", borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontSize: 14 },
-  submitBtn: { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "white", border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 14 },
-  deleteBtn: { background: "#ef4444", color: "white", border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 14 },
+  cancelBtn: { background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontSize: 14 },
+  cancelBtn2: { background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontSize: 14 },
+  submitBtn: { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "var(--text-primary)", border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 14 },
+  deleteBtn: { background: "#ef4444", color: "var(--text-primary)", border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 14 },
   mainLayout: { display: "grid", gridTemplateColumns: "1fr 360px", gap: 16, alignItems: "start" },
   listPanel: { display: "flex", flexDirection: "column", gap: 12 },
   filterBar: { display: "flex", gap: 10, flexWrap: "wrap" },
-  searchInput: { flex: 1, minWidth: 200, background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#f1f5f9", padding: "10px 14px", fontSize: 14, outline: "none" },
-  filterSelect: { background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#94a3b8", padding: "10px 12px", fontSize: 13, cursor: "pointer", outline: "none" },
-  emptyState: { background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: 60, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 },
+  searchInput: { flex: 1, minWidth: 200, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)", padding: "10px 14px", fontSize: 14, outline: "none" },
+  filterSelect: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-secondary)", padding: "10px 12px", fontSize: 13, cursor: "pointer", outline: "none" },
+  emptyState: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: 60, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 },
   cardList: { display: "flex", flexDirection: "column", gap: 10 },
-  vehicleCard: { background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: 16, cursor: "pointer", transition: "border-color 0.2s" },
+  vehicleCard: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, cursor: "pointer", transition: "border-color 0.2s" },
   vehicleCardActive: { borderColor: "#3b82f6", background: "#1a2d4a" },
-  plate: { color: "#f1f5f9", fontWeight: 800, fontSize: 16, letterSpacing: 1 },
-  brandModel: { color: "#cbd5e1", fontSize: 14, fontWeight: 600 },
-  avatar: { width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 },
+  plate: { color: "var(--text-primary)", fontWeight: 800, fontSize: 16, letterSpacing: 1 },
+  brandModel: { color: "var(--text-primary)", fontSize: 14, fontWeight: 600 },
+  avatar: { width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 },
   editBtnSm: { background: "#1e3a1e", border: "1px solid #166534", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 13 },
   deleteBtnSm: { background: "#3a1e1e", border: "1px solid #991b1b", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 13 },
-  detailPanel: { background: "#1e293b", border: "1px solid #334155", borderRadius: 16, overflow: "hidden", position: "sticky", top: 16, minHeight: 300, display: "flex", alignItems: "center", justifyContent: "center" },
+  detailPanel: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", position: "sticky", top: 16, minHeight: 300, display: "flex", alignItems: "center", justifyContent: "center" },
   detailEmpty: { display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: 40 },
   editBtnFull: { flex: 1, background: "#1e3a5f", border: "1px solid #2d5a8e", color: "#60a5fa", borderRadius: 8, padding: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
   deleteBtnFull: { flex: 1, background: "#3a1e1e", border: "1px solid #991b1b", color: "#f87171", borderRadius: 8, padding: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },

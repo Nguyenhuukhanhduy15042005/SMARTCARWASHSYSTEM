@@ -332,17 +332,20 @@ export default function FeedbackManagement() {
   );
 }
 
-const feedbackManagementCss = ` .fb-page{
+const feedbackManagementCss = `
+.fb-page{
     min-height:100vh;
-    background:#0b1120;
+    background:var(--bg-primary);
     font-family:'Plus Jakarta Sans',sans-serif;
-    color:#172033
+    color:var(--text-primary)
 }
+
 .fb-main{
     margin-left:76px;
     padding:32px;
     min-height:100vh
 }
+
 .fb-toast{
     position:fixed;
     top:20px;
@@ -354,12 +357,15 @@ const feedbackManagementCss = ` .fb-page{
     font-weight:800;
     box-shadow:0 14px 40px rgba(15,23,42,.2)
 }
+
 .fb-toast.success{
     background:#0f9f6e
 }
+
 .fb-toast.error{
     background:#e5484d
 }
+
 .fb-hero{
     display:flex;
     justify-content:space-between;
@@ -371,6 +377,7 @@ const feedbackManagementCss = ` .fb-page{
     color:#fff;
     box-shadow:0 24px 70px rgba(15,23,42,.22)
 }
+
 .fb-eyebrow{
     margin:0 0 8px;
     text-transform:uppercase;
@@ -379,15 +386,20 @@ const feedbackManagementCss = ` .fb-page{
     font-weight:900;
     opacity:.78
 }
+
 .fb-hero h1{
     margin:0;
-    font-size:34px
+    font-size:34px;
+    color:#fff
 }
+
 .fb-hero p{
     margin:10px 0 0;
     opacity:.86;
-    max-width:760px
+    max-width:760px;
+    color:#fff
 }
+
 .fb-rating-card{
     min-width:230px;
     border:1px solid rgba(255,255,255,.25);
@@ -396,99 +408,125 @@ const feedbackManagementCss = ` .fb-page{
     background:rgba(255,255,255,.12);
     backdrop-filter:blur(8px)
 }
+
 .fb-rating-card span{
     display:block;
-    opacity:.82
+    opacity:.82;
+    color:#fff
 }
+
 .fb-rating-card strong{
     display:block;
     font-size:48px;
     line-height:1.1;
-    margin:8px 0
+    margin:8px 0;
+    color:#fff
 }
+
 .fb-stars{
     display:inline-flex;
     gap:3px;
     color:#f6b73c;
     white-space:nowrap
 }
+
 .fb-stat-grid{
     display:grid;
     grid-template-columns:repeat(3,1fr);
     gap:18px;
     margin:24px 0
 }
+
 .fb-stat-card{
-    background:#fff;
-    border:1px solid #e6edf5;
+    background:var(--bg-card);
+    border:1px solid var(--border);
     border-radius:24px;
     padding:22px;
     box-shadow:0 18px 50px rgba(16,24,40,.07)
 }
+
 .fb-stat-card span{
-    color:#64748b;
+    color:var(--text-secondary);
     font-weight:800
 }
+
 .fb-stat-card strong{
     display:block;
     font-size:34px;
-    margin:8px 0 4px
+    margin:8px 0 4px;
+    color:var(--text-primary)
 }
+
 .fb-stat-card small{
-    color:#7b8794;
+    color:var(--text-secondary);
     font-weight:700
 }
+
 .fb-stat-card.green strong{
     color:#0f9f6e
 }
+
 .fb-stat-card.orange strong{
     color:#f59e0b
 }
+
 .fb-layout{
     display:grid;
     grid-template-columns:320px minmax(0,1fr);
     gap:24px
 }
-.fb-side-card,.fb-table-card{
-    background:#fff;
-    border:1px solid #e6edf5;
+
+.fb-side-card,
+.fb-table-card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
     border-radius:26px;
     box-shadow:0 18px 50px rgba(16,24,40,.08)
 }
+
 .fb-side-card{
     padding:24px;
     height:max-content
 }
-.fb-side-card h2,.fb-table-card h2{
+
+.fb-side-card h2,
+.fb-table-card h2{
     margin:0;
-    font-size:22px
+    font-size:22px;
+    color:var(--text-primary)
 }
+
 .fb-rating-bars{
     display:grid;
     gap:16px;
     margin-top:20px
 }
+
 .fb-bar-head{
     display:flex;
     justify-content:space-between;
     font-weight:800;
-    color:#334155
+    color:var(--text-primary)
 }
+
 .fb-bar-track{
     height:10px;
-    background:#edf2f7;
+    background:var(--bg-secondary);
     border-radius:999px;
     overflow:hidden;
     margin-top:8px
 }
+
 .fb-bar-fill{
     height:100%;
     background:linear-gradient(90deg,#f59e0b,#f6c34a);
     border-radius:999px
 }
+
 .fb-table-card{
     padding:24px
 }
+
 .fb-toolbar{
     display:flex;
     justify-content:space-between;
@@ -496,10 +534,12 @@ const feedbackManagementCss = ` .fb-page{
     align-items:flex-start;
     margin-bottom:18px
 }
+
 .fb-toolbar p{
     margin:6px 0 0;
-    color:#687386
+    color:var(--text-secondary)
 }
+
 .fb-actions{
     display:flex;
     gap:10px;
@@ -507,120 +547,148 @@ const feedbackManagementCss = ` .fb-page{
     flex-wrap:wrap;
     justify-content:flex-end
 }
+
 .fb-search{
     height:46px;
     display:flex;
     align-items:center;
     gap:10px;
     padding:0 14px;
-    border:1px solid #dce5ef;
+    border:1px solid var(--border);
     border-radius:16px;
-    background:#f8fafc;
-    min-width:300px
+    background:var(--bg-secondary);
+    min-width:300px;
+    color:var(--text-primary)
 }
+
 .fb-search input{
     border:0;
     outline:0;
     background:transparent;
     width:100%;
     font-weight:700;
-    color:#172033
+    color:var(--text-primary)
 }
+
+.fb-search input::placeholder{
+    color:var(--text-secondary)
+}
+
 .fb-actions select{
     height:46px;
-    border:1px solid #dce5ef;
+    border:1px solid var(--border);
     border-radius:16px;
     padding:0 14px;
-    background:#fff;
+    background:var(--bg-secondary);
     font-weight:800;
-    color:#172033
+    color:var(--text-primary)
 }
+
 .fb-refresh-btn{
     height:46px;
     width:46px;
     border:0;
     border-radius:16px;
-    background:#172033;
+    background:var(--accent);
     color:#fff;
     cursor:pointer
 }
+
 .fb-empty{
     padding:44px;
     text-align:center;
-    color:#64748b;
+    color:var(--text-secondary);
     font-weight:800;
-    background:#f8fafc;
+    background:var(--bg-secondary);
     border-radius:20px
 }
+
 .fb-table-wrap{
     overflow:auto
 }
+
 .fb-table{
     width:100%;
     border-collapse:separate;
     border-spacing:0 10px
 }
+
 .fb-table th{
     text-align:left;
-    color:#64748b;
+    color:var(--text-secondary);
     font-size:12px;
     text-transform:uppercase;
     letter-spacing:.08em;
     padding:0 14px
 }
+
 .fb-table td{
-    background:#f8fafc;
+    background:var(--bg-secondary);
+    color:var(--text-primary);
     padding:16px 14px;
-    border-top:1px solid #edf2f7;
-    border-bottom:1px solid #edf2f7;
+    border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);
     vertical-align:middle
 }
+
 .fb-table td:first-child{
-    border-left:1px solid #edf2f7;
+    border-left:1px solid var(--border);
     border-radius:16px 0 0 16px
 }
+
 .fb-table td:last-child{
-    border-right:1px solid #edf2f7;
+    border-right:1px solid var(--border);
     border-radius:0 16px 16px 0
 }
-.fb-user-cell,.fb-booking-cell{
+
+.fb-user-cell,
+.fb-booking-cell{
     display:flex;
     flex-direction:column;
     gap:4px
 }
-.fb-user-cell strong,.fb-booking-cell b{
-    color:#172033
+
+.fb-user-cell strong,
+.fb-booking-cell b{
+    color:var(--text-primary)
 }
-.fb-user-cell span,.fb-booking-cell span{
-    color:#64748b;
+
+.fb-user-cell span,
+.fb-booking-cell span{
+    color:var(--text-secondary);
     font-size:13px;
     font-weight:700
 }
+
 .fb-comment-cell{
     max-width:320px;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
-    color:#475569;
+    color:var(--text-primary);
     font-weight:700
 }
+
 .fb-row-actions{
     display:flex;
     gap:8px
 }
+
 .fb-row-actions button{
     width:38px;
     height:38px;
     border:0;
     border-radius:12px;
-    background:#e7f0ff;
+    background:rgba(59,130,246,.16);
     color:#2563eb;
     cursor:pointer
 }
+
 .fb-row-actions button.danger{
-    background:#fee2e2;
+    background:rgba(220,38,38,.16);
     color:#dc2626
 }
+
 .fb-modal-backdrop{
     position:fixed;
     inset:0;
@@ -630,70 +698,89 @@ const feedbackManagementCss = ` .fb-page{
     place-items:center;
     padding:20px
 }
-.fb-modal,.fb-confirm{
+
+.fb-modal,
+.fb-confirm{
     width:min(760px,96vw);
-    background:#fff;
+    background:var(--bg-card);
+    color:var(--text-primary);
+    border:1px solid var(--border);
     border-radius:26px;
     padding:24px;
     box-shadow:0 30px 90px rgba(15,23,42,.35)
 }
+
 .fb-modal-head{
     display:flex;
     justify-content:space-between;
     align-items:center;
     margin-bottom:18px
 }
-.fb-modal-head h2,.fb-confirm h2{
-    margin:0
+
+.fb-modal-head h2,
+.fb-confirm h2{
+    margin:0;
+    color:var(--text-primary)
 }
+
 .fb-modal-head button{
     width:40px;
     height:40px;
     border:0;
     border-radius:14px;
-    background:#f1f5f9;
+    background:var(--bg-secondary);
+    color:var(--text-primary);
     cursor:pointer
 }
+
 .fb-detail-grid{
     display:grid;
     grid-template-columns:repeat(2,1fr);
     gap:12px
 }
+
 .fb-detail-grid div{
     padding:14px;
-    border:1px solid #e6edf5;
+    border:1px solid var(--border);
     border-radius:16px;
-    background:#f8fafc
+    background:var(--bg-secondary)
 }
-.fb-detail-grid span,.fb-detail-comment span{
+
+.fb-detail-grid span,
+.fb-detail-comment span{
     display:block;
-    color:#64748b;
+    color:var(--text-secondary);
     font-size:12px;
     font-weight:900;
     text-transform:uppercase;
     letter-spacing:.06em;
     margin-bottom:6px
 }
+
 .fb-detail-grid b{
-    color:#172033
+    color:var(--text-primary)
 }
+
 .fb-detail-comment{
     margin-top:14px;
     padding:16px;
     border-radius:18px;
-    background:#fff9eb;
-    border:1px solid #fde8b5
+    background:var(--bg-secondary);
+    border:1px solid var(--border)
 }
+
 .fb-detail-comment p{
     margin:12px 0 0;
     line-height:1.6;
-    color:#334155;
+    color:var(--text-primary);
     font-weight:700
 }
+
 .fb-confirm{
     text-align:center;
     max-width:420px
 }
+
 .fb-confirm-icon{
     width:70px;
     height:70px;
@@ -701,19 +788,22 @@ const feedbackManagementCss = ` .fb-page{
     border-radius:24px;
     display:grid;
     place-items:center;
-    background:#fee2e2;
+    background:rgba(220,38,38,.16);
     color:#dc2626;
     font-size:30px
 }
+
 .fb-confirm p{
-    color:#64748b;
+    color:var(--text-secondary);
     font-weight:700
 }
+
 .fb-confirm-actions{
     display:flex;
     gap:12px;
     margin-top:22px
 }
+
 .fb-confirm-actions button{
     flex:1;
     border:0;
@@ -721,32 +811,41 @@ const feedbackManagementCss = ` .fb-page{
     padding:13px 16px;
     font-weight:900;
     cursor:pointer;
-    background:#e2e8f0;
-    color:#172033
+    background:var(--bg-secondary);
+    color:var(--text-primary)
 }
+
 .fb-confirm-actions button.danger{
     background:#dc2626;
     color:#fff
 }
+
 @media(max-width:1100px){
     .fb-main{
         margin-left:0;
         padding:18px
     }
-    .fb-hero,.fb-toolbar{
+
+    .fb-hero,
+    .fb-toolbar{
         flex-direction:column
     }
-    .fb-stat-grid,.fb-layout{
+
+    .fb-stat-grid,
+    .fb-layout{
         grid-template-columns:1fr
     }
+
     .fb-actions{
         width:100%;
         justify-content:flex-start
     }
+
     .fb-search{
         min-width:100%;
         width:100%
     }
+
     .fb-detail-grid{
         grid-template-columns:1fr
     }
