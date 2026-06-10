@@ -11,11 +11,8 @@ export default function Register() {
   const [otp, setOtp] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-<<<<<<< HEAD
   const [loading, setLoading] = useState(false);
 
-=======
->>>>>>> Thắng---feature/login-logout
   const navigate = useNavigate();
 
   const isValidVietnamesePhone = (phoneNumber) => {
@@ -64,11 +61,8 @@ export default function Register() {
     if (loading) return;
     setErrorMsg("");
     setSuccessMsg("");
-<<<<<<< HEAD
 
     setLoading(true);
-=======
->>>>>>> Thắng---feature/login-logout
     try {
       const response = await fetch(
         "http://localhost:5000/api/auth/register-step2",
@@ -209,7 +203,6 @@ export default function Register() {
             </div>
             <button
               type="submit"
-<<<<<<< HEAD
               className="btn btn-primary"
               disabled={loading}
               style={{
@@ -218,9 +211,6 @@ export default function Register() {
                 backgroundColor: loading ? "#cbd5e1" : "#F58607",
                 cursor: loading ? "not-allowed" : "pointer",
               }}
-=======
-              className="w-full py-4 bg-[#F58607] hover:bg-orange-600 text-white font-bold rounded-xl shadow-md transition-all duration-300 mt-4"
->>>>>>> Thắng---feature/login-logout
             >
               {loading ? "Đang gửi OTP..." : "Đăng ký nhận mã OTP"}
             </button>
@@ -245,7 +235,6 @@ export default function Register() {
             </div>
             <button
               type="submit"
-<<<<<<< HEAD
               className="btn btn-primary"
               disabled={loading}
               style={{
@@ -254,16 +243,12 @@ export default function Register() {
                 backgroundColor: loading ? "#cbd5e1" : "#F58607",
                 cursor: loading ? "not-allowed" : "pointer",
               }}
-=======
-              className="w-full py-4 bg-[#F58607] hover:bg-orange-600 text-white font-bold rounded-xl shadow-md transition-all duration-300"
->>>>>>> Thắng---feature/login-logout
             >
               {loading ? "Đang xác thực..." : "Xác nhận OTP"}
             </button>
             <button
               type="button"
               onClick={handleRegisterStep1}
-<<<<<<< HEAD
               disabled={loading}
               style={{
                 width: "100%",
@@ -276,9 +261,6 @@ export default function Register() {
                 cursor: loading ? "not-allowed" : "pointer",
                 fontWeight: "bold",
               }}
-=======
-              className="w-full py-4 bg-white hover:bg-gray-50 text-gray-700 font-bold border border-gray-300 rounded-xl transition-all duration-300"
->>>>>>> Thắng---feature/login-logout
             >
               Gửi lại mã
             </button>
