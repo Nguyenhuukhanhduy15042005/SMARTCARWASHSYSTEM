@@ -18,7 +18,6 @@ export default function Login({ setUser }) {
     }
   }, [location]);
 
-<<<<<<< HEAD
   // Nếu đã đăng nhập rồi thì không cho vào trang login nữa
   useEffect(() => {
     const savedUser = localStorage.getItem("LOGIN_USER");
@@ -35,8 +34,6 @@ export default function Login({ setUser }) {
   // ============================================
   // 1. ĐĂNG NHẬP BẰNG TÀI KHOẢN & MẬT KHẨU
   // ============================================
-=======
->>>>>>> Thắng---feature/login-logout
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg("");
@@ -53,7 +50,7 @@ export default function Login({ setUser }) {
         localStorage.setItem("LOGIN_USER", JSON.stringify(data.user));
         setUser(data.user);
         setAuthUser(data.user); // Đồng bộ cho AuthContext
-        setToken(data.token);   // Đồng bộ cho AuthContext
+        setToken(data.token); // Đồng bộ cho AuthContext
         const role = data.user.role;
         if (role === "admin") {
           navigate("/admin/dashboard");
@@ -97,7 +94,7 @@ export default function Login({ setUser }) {
           localStorage.setItem("LOGIN_USER", JSON.stringify(data.user));
           setUser(data.user);
           setAuthUser(data.user); // Đồng bộ cho AuthContext
-          setToken(data.token);   // Đồng bộ cho AuthContext
+          setToken(data.token); // Đồng bộ cho AuthContext
           const role = data.user.role;
           if (role === "admin") {
             navigate("/admin/dashboard");
@@ -182,12 +179,8 @@ export default function Login({ setUser }) {
           </div>
           <button
             type="submit"
-<<<<<<< HEAD
             className="btn btn-primary"
-style={{ width: "100%", marginTop: "10px" }}
-=======
-            className="w-full py-4 bg-[#F58607] hover:bg-orange-600 text-white font-bold rounded-xl shadow-md transition-all duration-300 transform hover:-translate-y-1 mt-2"
->>>>>>> Thắng---feature/login-logout
+            style={{ width: "100%", marginTop: "10px" }}
           >
             Đăng nhập
           </button>
