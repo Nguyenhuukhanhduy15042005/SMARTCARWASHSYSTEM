@@ -44,9 +44,11 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   // Kiểm tra quyền nếu có requiredRole
   if (requiredRole) {
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    // Trọng thêm: Dự phòng xác định role từ roleId nếu role bị thiếu trong session cũ
+    const userRole = user.role || (user.roleId === 1 ? "admin" : user.roleId === 2 ? "staff" : "user");
 
     // Admin luôn được phép vào bất kỳ trang nào
-    if (user.role === "admin") {
+    if (userRole === "admin") {
       return children;
     }
 
@@ -54,7 +56,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     const minRequiredLevel = Math.min(...roles.map((r) => ROLE_LEVEL[r] ?? 99));
 
     // User hiện tại phải có level >= level tối thiểu
-    const userLevel = ROLE_LEVEL[user.role] ?? 0;
+    const userLevel = ROLE_LEVEL[userRole] ?? 0;
 
     if (userLevel < minRequiredLevel) {
       return <Navigate to="/unauthorized" replace />;
