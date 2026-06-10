@@ -1,5 +1,5 @@
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 /**
  * Bọc các route cần đăng nhập và/hoặc role cụ thể.
@@ -23,7 +23,14 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   // Đang load auth state từ localStorage
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
         <span>Đang tải...</span>
       </div>
     );
@@ -39,22 +46,23 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
 
     // Admin luôn được phép vào bất kỳ trang nào
-    if (user.role === 'admin') {
+    if (user.role === "admin") {
       return children;
     }
 
     // Tính level tối thiểu cần có dựa trên danh sách roles cho phép
-    const minRequiredLevel = Math.min(...roles.map(r => ROLE_LEVEL[r] ?? 99));
+    const minRequiredLevel = Math.min(...roles.map((r) => ROLE_LEVEL[r] ?? 99));
 
     // User hiện tại phải có level >= level tối thiểu
     const userLevel = ROLE_LEVEL[user.role] ?? 0;
+
     if (userLevel < minRequiredLevel) {
       return <Navigate to="/unauthorized" replace />;
     }
   }
 
+  // Hợp lệ toàn bộ -> Cho phép vào trang
   return children;
 };
 
 export default ProtectedRoute;
-
