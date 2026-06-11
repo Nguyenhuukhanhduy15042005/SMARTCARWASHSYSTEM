@@ -25,6 +25,7 @@ const userRouter     = require('./routes/user');
 const vehicleRouter  = require('./routes/vehicle');
 const bookingRouter  = require('./routes/booking');
 const timeslotRouter = require('./routes/timeslot');
+const paymentRouter  = require('./routes/paymentRouter');
 
 // MOUNT ROUTERS
 app.use('/api/auth',      authRouter);
@@ -32,6 +33,7 @@ app.use('/api/users',     userRouter);
 app.use('/api/vehicles',  vehicleRouter);
 app.use('/api/bookings',  bookingRouter);
 app.use('/api/timeslots', timeslotRouter);
+app.use('/api/payments',  paymentRouter);
 // Test Endpoint
 app.get("/api/test", (req, res) => {
   res.json({ message: "API Car Wash System hoạt động tốt!" });

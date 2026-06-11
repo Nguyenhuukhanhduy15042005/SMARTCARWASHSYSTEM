@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import "./UserDashboard.css";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = "/api";
 
 export default function UserDashboard() {
-  const navigate = useNavigate(); // ✅ THÊM
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [profile, setProfile] = useState({
     UserID: 12,
@@ -169,6 +170,21 @@ export default function UserDashboard() {
       case "silver": return "tier-silver";
       default: return "tier-standard";
     }
+  };
+
+  const goToPayment = (booking) => {
+    navigate("/payments", {
+      state: {
+        booking: {
+          BookingID:   booking.id,
+          ServiceName: booking.servicePackage,
+          Date:        booking.date,
+          Time:        booking.time,
+          TotalPrice:  booking.price,
+          LicensePlate: booking.licensePlate,
+        }
+      }
+    });
   };
 
   const filteredBookings = bookings.filter(b => {
@@ -371,7 +387,6 @@ export default function UserDashboard() {
             </div>
           )}
         </section>
-        </div>
       </main>
 
       {/* Modal chi tiết */}

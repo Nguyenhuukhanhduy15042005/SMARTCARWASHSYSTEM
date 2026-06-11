@@ -36,6 +36,9 @@ export default function Booking() {
   });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [slotsAvailability, setSlotsAvailability] = useState({});
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState("");
 
   const getCustomerId = () => {
     const token =
@@ -279,15 +282,16 @@ export default function Booking() {
     };
 
     try {
-      await axios.post("http://127.0.0.1:5000/api/bookings", body, { headers });
-      showToast("Đặt lịch rửa xe thành công! Đang chuyển đến Trang cá nhân...", "success");
+      const res = await axios.post("http://127.0.0.1:5000/api/bookings", body, { headers });
+      console.log("Booking response:", res.data); // debug
+      const bookingId = res.data?.BookingID || res.data?.bookingId || res.data?.id || res.data?.insertId || 0;
+      showToast("Đặt lịch rửa xe thành công! Đang chuyển đến trang thanh toán...", "success");
       
-      // Đợi 2s để người dùng xem thông báo rồi chuyển hướng
       setTimeout(() => {
         navigate("/payments", {
           state: {
             booking: {
-              BookingID:    res.data?.BookingID || res.data?.id || 0,
+              BookingID:    bookingId,
               ServiceName:  selectedService.serviceName,
               Date:         date,
               Time:         time,

@@ -14,6 +14,9 @@ import StaffDashboard from "./pages/StaffDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Unauthorized from "./pages/Unauthorized";
 import MemberManagement from "./pages/MemberManagement";
+import Payment from "./pages/Payment";
+import PaymentHistory from "./pages/PaymentHistory";
+import PaymentResult from "./pages/PaymentResult";
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -84,6 +87,24 @@ function App() {
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />
+
+        <Route path="/payments" element={
+          <ProtectedRoute requiredRole="user">
+            <Payment />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/payments/history" element={
+          <ProtectedRoute requiredRole="user">
+            <PaymentHistory />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/payments/result" element={
+          <ProtectedRoute requiredRole="user">
+            <PaymentResult />
+          </ProtectedRoute>
+        } />
       </Routes>
     </BrowserRouter>
   );

@@ -5,7 +5,7 @@ const qs = require('qs');
 
 const VNPAY_CONFIG = {
   tmnCode:    process.env.VNPAY_TMN_CODE    || 'I50786JJ',
-  hashSecret: process.env.VNPAY_HASH_SECRET || 'LC55OKXLNHR7WLGY5MML4XEYEVOFVO0O',
+  hashSecret: process.env.VNPAY_HASH_SECRET || 'Z3H1YFPAW2VN5NZ3ZXLGB2RXSGTWZ3SN',
   url:        process.env.VNPAY_URL         || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
   returnUrl:  process.env.VNPAY_RETURN_URL  || 'http://localhost:5000/api/payments/vnpay-return',
 };
