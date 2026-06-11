@@ -119,7 +119,36 @@ export default function LoyaltyHistory() {
         { headers },
       );
       const list = Array.isArray(bookingsRes.data) ? bookingsRes.data : [];
-      setBookings(list);
+      // Trọng thêm: Chuẩn hóa dữ liệu trả về từ DB (hỗ trợ cả chữ hoa/thường)
+      const normalizedList = list.map(b => {
+        const id = b.id !== undefined ? b.id : b.BookingID;
+        const licensePlate = b.licensePlate || b.LicensePlate || "N/A";
+        const price = b.price !== undefined ? b.price : (b.FinalPrice || b.TotalPrice || 0);
+        const status = b.status !== undefined ? b.status : b.Status;
+        
+        let rawDate = b.date || b.BookingDate;
+        let dateStr = "";
+        if (rawDate) {
+          const d = new Date(rawDate);
+          dateStr = d.toLocaleDateString("vi-VN") + " " + d.toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit"
+          });
+        }
+        
+        // Tính điểm tích lũy: 1.000đ = 1 điểm
+        const points = b.points !== undefined ? b.points : (b.Points !== undefined ? b.Points : Math.floor(price / 1000));
+        
+        return {
+          id,
+          licensePlate,
+          price,
+          status,
+          date: dateStr,
+          points
+        };
+      });
+      setBookings(normalizedList);
     } catch (err) {
       console.error("Failed to load loyalty dashboard data:", err);
       showToast("Không thể tải thông tin tích điểm từ CSDL!", "error");
@@ -129,32 +158,19 @@ export default function LoyaltyHistory() {
   };
 
   // Derive points transactions
+  // Trọng thêm: Đơn giản hóa map từ danh sách đã chuẩn hóa
   const transactionsList = useMemo(() => {
     return bookings
       .map((b) => {
-        // Parse ngày giờ đẹp đẽ
-        let dateStr = "";
-        if (b.date) {
-          const d = new Date(b.date);
-          dateStr =
-            d.toLocaleDateString("vi-VN") +
-            " " +
-            d.toLocaleTimeString("vi-VN", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-        }
-
-        // 4: Completed (Earned), 5: Cancelled, Còn lại: Pending
         let isCompleted = b.status === 4;
         let isCancelled = b.status === 5;
 
         return {
           id: b.id,
-          date: dateStr,
+          date: b.date,
           licensePlate: b.licensePlate || "N/A",
           price: b.price || 0,
-          points: b.points || 0, // Lấy thẳng số điểm Thắng đã tính ở DB
+          points: b.points || 0,
           type: isCompleted ? "Earned" : isCancelled ? "Cancelled" : "Pending",
         };
       })
