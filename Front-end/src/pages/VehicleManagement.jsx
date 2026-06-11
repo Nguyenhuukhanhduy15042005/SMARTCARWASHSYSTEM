@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import MemberHeader from "../components/MemberHeader";
+import Sidebar from "../components/Sidebar"; // Trọng thêm: Import Sidebar cho Admin/Staff
 import { useTheme } from "../context/ThemeContext";
 
 const API_BASE = "http://localhost:5000";
@@ -264,10 +265,29 @@ export default function VehicleManagement() {
     window.location.href = "/login";
   };
 
+  const isMember = !currentUser || (currentUser.role !== "admin" && currentUser.role !== "staff"); // Trọng thêm
+
   return (
-    <div className="vehicles-page-container" style={{ ...s.root, padding: 0 }}>
-      <MemberHeader />
-      <div className="user-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "24px 32px 60px", position: "relative", width: "100%", boxSizing: "border-box" }}>
+    <div className={isMember ? "vehicles-page-container" : "portal-layout-container"} style={{ ...s.root, padding: 0, minHeight: isMember ? "" : "100vh" }}>
+      {isMember ? <MemberHeader /> : <Sidebar />}
+      <div 
+        className={isMember ? "user-main-content" : "portal-main-content"} 
+        style={isMember ? { 
+          display: "flex", 
+          flexDirection: "column", 
+          flex: 1, 
+          padding: "24px 32px 60px", 
+          position: "relative", 
+          width: "100%", 
+          boxSizing: "border-box" 
+        } : { 
+          display: "flex", 
+          flexDirection: "column", 
+          flex: 1, 
+          padding: "24px 32px", 
+          position: "relative" 
+        }}
+      >
         <div style={s.bg} /><div style={s.bgGrid} />
 
         {/* Toast */}

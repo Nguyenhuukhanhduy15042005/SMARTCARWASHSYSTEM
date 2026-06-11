@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import MemberHeader from "../components/MemberHeader";
+import Sidebar from "../components/Sidebar"; // Trọng thêm: Import Sidebar cho Admin/Staff
 
 const API = "http://localhost:5000/api/users";
 
@@ -81,10 +82,27 @@ export default function Profile({ setUser }) {
     );
   }
 
+  const isMember = !user || (user.RoleID !== 1 && user.RoleID !== 2); // Trọng thêm
+
   return (
-    <div className="profile-page-container">
-      <MemberHeader />
-      <main className="user-main-content" style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "40px 20px", width: "100%", boxSizing: "border-box" }}>
+    <div className={isMember ? "profile-page-container" : "portal-layout-container"} style={isMember ? {} : { minHeight: "100vh" }}>
+      {isMember ? <MemberHeader /> : <Sidebar />}
+      <main 
+        className={isMember ? "user-main-content" : "portal-main-content"} 
+        style={isMember ? { 
+          display: "flex", 
+          justifyContent: "center", 
+          alignItems: "center", 
+          padding: "40px 20px", 
+          width: "100%", 
+          boxSizing: "border-box" 
+        } : { 
+          display: "flex", 
+          justifyContent: "center", 
+          alignItems: "center", 
+          padding: "40px 20px" 
+        }}
+      >
         <div className="auth-card" style={{ maxWidth: 520, width: "100%", textAlign: "left" }}>
           <h2>Hồ Sơ Của Tôi</h2>
 
