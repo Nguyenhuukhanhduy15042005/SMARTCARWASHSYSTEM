@@ -6,6 +6,13 @@ import "./Booking.css";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 
+// Trọng thêm: Danh sách các khung giờ hoạt động tiêu chuẩn (8:00 - 17:00, mỗi 30 phút)
+const TIME_SLOTS = [
+  "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
+  "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+  "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"
+];
+
 export default function Booking() {
   const navigate = useNavigate();
   const { user, isAdmin, isStaff, logout } = useAuth();
@@ -17,6 +24,11 @@ export default function Booking() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
+
+  // Trọng thêm: State quản lý thông tin timeslots
+  const [slotsAvailability, setSlotsAvailability] = useState({});
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState("");
 
   // State quản lý dịch vụ từ DB và thông tin khách hàng
   const [services, setServices] = useState([]);
@@ -152,6 +164,101 @@ export default function Booking() {
 
     fetchServices();
   }, [vehicleType]);
+
+  // Trọng thêm: Kiểm tra xem slotTime có nằm trong quá khứ không nếu ngày được chọn là ngày hôm nay
+  const checkIfPast = (slotTime) => {
+    if (!date) return false;
+    
+    const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+    if (date !== todayStr) return false;
+
+    const now = new Date();
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
+
+    const [slotHours, slotMinutes] = slotTime.split(":").map(Number);
+
+    if (slotHours < currentHours) return true;
+    if (slotHours === currentHours && slotMinutes <= currentMinutes) return true;
+
+    return false;
+  };
+
+  // Trọng thêm: Click vào timeslot
+  const handleSlotClick = (slotTime) => {
+    setTime(slotTime);
+  };
+
+  // Trọng thêm: Hook tự động tải danh sách và kiểm tra slot trống mỗi khi thay đổi loại xe hoặc ngày
+  useEffect(() => {
+    if (!date) {
+      setSlotsAvailability({});
+      return;
+    }
+
+    const fetchSlotsAvailability = async () => {
+      setSlotsLoading(true);
+      setFetchError("");
+      try {
+        const typeParam = vehicleType === "BIKE" ? "BIKE" : "CAR";
+        const machinesRes = await axios.get(`http://127.0.0.1:5000/api/timeslots/machines?type=${typeParam}`);
+        const machines = Array.isArray(machinesRes.data) ? machinesRes.data : [];
+
+        if (machines.length === 0) {
+          const initialSlots = {};
+          TIME_SLOTS.forEach(t => { initialSlots[t] = "booked"; });
+          setSlotsAvailability(initialSlots);
+          setFetchError(`Không tìm thấy máy rửa hoạt động nào cho ${vehicleType === "BIKE" ? "Xe máy" : "Ô tô"}!`);
+          return;
+        }
+
+        const promises = machines.map(m =>
+          axios.get(`http://127.0.0.1:5000/api/timeslots?machineId=${m.machineId}&date=${date}`)
+            .then(res => res.data)
+            .catch(err => {
+              console.error(`Lỗi fetch slots máy ${m.machineId}:`, err);
+              return null;
+            })
+        );
+
+        const results = await Promise.all(promises);
+
+        const aggregated = {};
+        TIME_SLOTS.forEach(slotTime => {
+          let hasFreeMachine = false;
+          results.forEach(machineResult => {
+            if (machineResult && Array.isArray(machineResult.slots)) {
+              const found = machineResult.slots.find(s => s.time === slotTime);
+              if (found && found.status === "free") {
+                hasFreeMachine = true;
+              }
+            }
+          });
+          aggregated[slotTime] = hasFreeMachine ? "free" : "booked";
+        });
+
+        setSlotsAvailability(aggregated);
+
+        // Reset selected time if it becomes invalid/unavailable
+        if (time) {
+          const isBooked = aggregated[time] === "booked";
+          const isPast = checkIfPast(time);
+          if (isBooked || isPast) {
+            setTime("");
+            showToast("Khung giờ bạn chọn trước đó hiện tại không còn trống, vui lòng chọn lại!", "error");
+          }
+        }
+
+      } catch (err) {
+        console.error("Lỗi tải thông tin chi tiết các timeslot:", err);
+        setFetchError("Có lỗi xảy ra khi đồng bộ lịch trống từ hệ thống máy rửa.");
+      } finally {
+        setSlotsLoading(false);
+      }
+    };
+
+    fetchSlotsAvailability();
+  }, [date, vehicleType]);
 
   // Tính toán chi phí
   const basePrice = selectedService ? selectedService.basePrice : 0;
@@ -386,14 +493,14 @@ export default function Booking() {
                 )}
               </div>
 
-              {/* Mục 3: Ngày & Giờ */}
+              {/* Mục 3: Ngày & Giờ - Trọng thêm: Thiết kế dạng timeslot grid trực quan */}
               <div className="form-section-card">
                 <h3 className="form-section-title">
                   <i className="fa-regular fa-calendar-check text-orange-500"></i>{" "}
                   Thời gian hẹn gặp
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                   <div>
                     <label className="form-label" htmlFor="date">
                       Ngày rửa xe *
@@ -402,24 +509,81 @@ export default function Booking() {
                       id="date"
                       type="date"
                       value={date}
-                      onChange={(e) => setDate(e.target.value)}
+                      onChange={(e) => {
+                        setDate(e.target.value);
+                        setTime(""); // Trọng thêm: reset giờ khi đổi ngày
+                      }}
                       required
                       className="form-input"
                     />
                   </div>
 
                   <div>
-                    <label className="form-label" htmlFor="time">
-                      Giờ rửa xe *
+                    <label className="form-label">
+                      Giờ rửa xe * {time && <span style={{ color: "#f97316", textTransform: "none" }}> (Đang chọn: {time})</span>}
                     </label>
-                    <input
-                      id="time"
-                      type="time"
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      required
-                      className="form-input"
-                    />
+                    {!date ? (
+                      <div className="select-date-prompt">
+                        <i className="fa-regular fa-calendar-days" style={{ marginRight: '8px' }}></i>
+                        Vui lòng chọn ngày rửa xe để xem các khung giờ trống.
+                      </div>
+                    ) : slotsLoading ? (
+                      <div className="slots-loading">
+                        <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>
+                        Đang đồng bộ tình trạng máy rửa xe...
+                      </div>
+                    ) : fetchError ? (
+                      <div className="slots-error">
+                        <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '8px' }}></i>
+                        {fetchError}
+                      </div>
+                    ) : (
+                      <div className="slots-container">
+                        <div className="slots-grid">
+                          {TIME_SLOTS.map((slotTime) => {
+                            const isBooked = slotsAvailability[slotTime] === "booked";
+                            const isPast = checkIfPast(slotTime);
+                            const isAvailable = !isBooked && !isPast;
+                            const isSelected = time === slotTime;
+                            
+                            return (
+                              <button
+                                key={slotTime}
+                                type="button"
+                                className={`slot-button ${isSelected ? "selected" : ""} ${isBooked ? "booked" : ""} ${isPast ? "past" : ""} ${isAvailable ? "available" : ""}`}
+                                disabled={!isAvailable}
+                                onClick={() => handleSlotClick(slotTime)}
+                              >
+                                <span className="slot-time">{slotTime}</span>
+                                <span className="slot-status">
+                                  {isBooked ? "Hết máy" : isPast ? "Đã qua" : isSelected ? "Đang chọn" : "Còn trống"}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Legend */}
+                        <div className="slots-legend">
+                          <div className="legend-item">
+                            <span className="legend-dot legend-available"></span>
+                            <span>Trống</span>
+                          </div>
+                          <div className="legend-item">
+                            <span className="legend-dot legend-booked"></span>
+                            <span>Hết máy</span>
+                          </div>
+                          <div className="legend-item">
+                            <span className="legend-dot legend-past"></span>
+                            <span>Đã qua</span>
+                          </div>
+                          <div className="legend-item">
+                            <span className="legend-dot legend-selected"></span>
+                            <span>Đang chọn</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

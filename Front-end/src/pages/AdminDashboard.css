@@ -23,6 +23,22 @@
   --header-height: 70px;
 }
 
+[data-theme="light"] { /* Trọng thêm */
+  --bg-primary: #f4f3ef;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.75);
+  --border-color: rgba(0, 0, 0, 0.08);
+  --text-primary: #1a1a18;
+  --text-secondary: #6b6b64;
+  --color-accent: #0284c7;
+  --color-accent-hover: #0369a1;
+  --color-accent-glow: rgba(2, 132, 199, 0.1);
+  --color-success-bg: rgba(16, 185, 129, 0.08);
+  --color-warning-bg: rgba(245, 158, 11, 0.08);
+  --color-danger-bg: rgba(239, 68, 68, 0.08);
+  --color-info-bg: rgba(59, 130, 246, 0.08);
+}
+
 /* Reset and Outer Box */
 .admin-dashboard-container {
   display: flex;
@@ -238,7 +254,7 @@
   font-size: 28px;
   font-weight: 800;
   margin: 0;
-  color: #fff;
+  color: var(--text-primary); /* Trọng thêm */
 }
 
 .admin-metric-icon {
@@ -434,7 +450,7 @@
 
 .customer-name {
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary); /* Trọng thêm */
 }
 
 .customer-phone {
@@ -445,13 +461,13 @@
 
 /* Vehicle Cell */
 .vehicle-badge {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(148, 163, 184, 0.15); /* Trọng thêm */
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 13px;
   font-family: monospace;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary); /* Trọng thêm */
   border: 1px solid var(--border-color);
   display: inline-block;
 }
@@ -664,7 +680,7 @@
 }
 
 .close-modal-btn:hover {
-  color: white;
+  color: var(--text-primary); /* Trọng thêm */
 }
 
 .admin-modal-body {
@@ -704,7 +720,7 @@
 .modal-field span {
   font-size: 15px;
   font-weight: 600;
-  color: white;
+  color: var(--text-primary); /* Trọng thêm */
 }
 
 /* Timeline Flow */
@@ -772,7 +788,7 @@
 }
 
 .timeline-step.active .timeline-label {
-  color: white;
+  color: var(--text-primary); /* Trọng thêm */
 }
 
 .timeline-step.completed .timeline-label {

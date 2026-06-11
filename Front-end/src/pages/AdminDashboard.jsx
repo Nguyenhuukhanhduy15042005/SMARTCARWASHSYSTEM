@@ -333,7 +333,7 @@ export default function AdminDashboard() {
                           <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{b.date}</span>
                         </div>
                       </td>
-                      <td style={{ fontWeight: 700, color: "#fff" }}>{b.price?.toLocaleString("vi-VN")} đ</td>
+                      <td style={{ fontWeight: 700, color: "var(--text-primary)" }}>{b.price?.toLocaleString("vi-VN")} đ</td> {/* Trọng thêm */}
                       <td>{getStatusPill(b.status)}</td>
                       <td>
                         <div className="table-actions">
