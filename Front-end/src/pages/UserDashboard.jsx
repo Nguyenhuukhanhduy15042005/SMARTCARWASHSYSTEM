@@ -3,7 +3,7 @@ import "./UserDashboard.css";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom"; // Trọng thêm
-import Sidebar from "../components/Sidebar";
+import MemberHeader from "../components/MemberHeader";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
@@ -277,13 +277,12 @@ export default function UserDashboard() {
   const totalSpend = bookings.filter(b => b.status === 4).reduce((acc, b) => acc + (b.price || 0), 0);
 
   return (
-    <div className="user-dashboard-container portal-layout-container">
-      <Sidebar />
+    <div className="user-dashboard-container">
+      <MemberHeader />
 
-      {/* Main Wrapper */}
-      <main className="portal-main-content" style={{ padding: 0 }}>
-        <div className="user-main-content">
-          <section className="welcome-section">
+      {/* Main Wrapper - Trọng thêm */}
+      <main className="user-main-content">
+        <section className="welcome-section">
           <h1>Xin Chào, {profile.FullName}!</h1>
           <p>Chào mừng quay trở lại. Theo dõi trạng thái đặt lịch và hạng thành viên của bạn.</p>
         </section>
@@ -502,7 +501,6 @@ export default function UserDashboard() {
             </div>
           )}
         </section>
-        </div>
       </main>
 
       {/* Booking Details Modal */}

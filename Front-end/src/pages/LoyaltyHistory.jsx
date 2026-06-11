@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import Sidebar from "../components/Sidebar";
+import MemberHeader from "../components/MemberHeader";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
@@ -246,11 +246,11 @@ export default function LoyaltyHistory() {
     }).format(val);
 
   return (
-    <div className="loyalty-page-container portal-layout-container">
-      <Sidebar />
+    <div className="loyalty-page-container">
+      <MemberHeader />
 
-      <main className="portal-main-content" style={{ padding: 0 }}>
-        <div className="loyalty-main-wrapper">
+      <main className="user-main-content" style={{ padding: 0 }}>
+        <div className="loyalty-main-wrapper" style={{ padding: "40px" }}>
           {/* Header section */}
           <header className="loyalty-header-section">
             <div className="header-badge">

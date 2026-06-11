@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
+import MemberHeader from "../components/MemberHeader";
 
 const API = "http://localhost:5000/api/users";
 
@@ -82,9 +82,9 @@ export default function Profile({ setUser }) {
   }
 
   return (
-    <div className="portal-layout-container" style={{ minHeight: "100vh" }}>
-      <Sidebar />
-      <main className="portal-main-content" style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", padding: "40px 20px" }}>
+    <div className="profile-page-container">
+      <MemberHeader />
+      <main className="user-main-content" style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "40px 20px", width: "100%", boxSizing: "border-box" }}>
         <div className="auth-card" style={{ maxWidth: 520, width: "100%", textAlign: "left" }}>
           <h2>Hồ Sơ Của Tôi</h2>
 

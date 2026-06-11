@@ -1,7 +1,7 @@
 
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import Sidebar from "../components/Sidebar";
+import MemberHeader from "../components/MemberHeader";
 import { useTheme } from "../context/ThemeContext";
 
 const API_BASE = "http://localhost:5000";
@@ -265,9 +265,9 @@ export default function VehicleManagement() {
   };
 
   return (
-    <div className="portal-layout-container" style={{ ...s.root, padding: 0 }}>
-      <Sidebar />
-      <div className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "24px 32px", position: "relative" }}>
+    <div className="vehicles-page-container" style={{ ...s.root, padding: 0 }}>
+      <MemberHeader />
+      <div className="user-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "24px 32px 60px", position: "relative", width: "100%", boxSizing: "border-box" }}>
         <div style={s.bg} /><div style={s.bgGrid} />
 
         {/* Toast */}

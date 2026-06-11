@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import Sidebar from "../components/Sidebar";
+import MemberHeader from "../components/MemberHeader";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
@@ -127,8 +127,8 @@ export default function RewardRedemption() {
 
   return (
     <div className="reward-page">
-      <Sidebar />
-      <main className="reward-main">
+      <MemberHeader />
+      <main className="reward-main user-main-content">
         {toast && <div className={`reward-toast ${toast.type}`}>{toast.message}</div>}
 
         <section className="reward-hero">
@@ -231,7 +231,7 @@ const rewardRedemptionCss = `
 }
 
 .reward-main{
-  margin-left:76px;
+  margin-left:0;
   padding:32px;
   min-height:100vh;
 }
