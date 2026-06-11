@@ -490,26 +490,31 @@
 }
 
 /* Actions in row */
-.btn-user-cancel {
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+.action-icon-btn.btn-user-cancel {
+  /* Trọng thêm: Thay thế background và border bằng giá trị rõ hơn để hiển thị nút hủy trong giao diện sáng */
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: var(--color-danger) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
 }
 
-.btn-user-cancel:hover {
-  background: var(--color-danger);
-  color: white;
+.action-icon-btn.btn-user-cancel:hover {
+  background: var(--color-danger) !important;
+  color: white !important;
+  border-color: var(--color-danger) !important;
 }
 
-.btn-user-delete {
-  background: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.15);
+.action-icon-btn.btn-user-delete {
+  /* Trọng thêm: Tăng độ mờ nền đỏ để nhìn rõ khối nút thùng rác ở cả nền sáng/tối */
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+  /* Trọng thêm: Tăng độ mờ viền đỏ để thấy rõ viền nút thùng rác ở nền sáng */
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
 }
 
-.btn-user-delete:hover {
-  background: #ef4444;
-  color: white;
+.action-icon-btn.btn-user-delete:hover {
+  background: #ef4444 !important;
+  color: white !important;
+  border-color: #ef4444 !important;
 }
 
 /* Section Divider */
@@ -648,15 +653,16 @@
   border-color: rgba(255, 255, 255, 0.15);
 }
 
-.btn-details {
-  background: rgba(59, 130, 246, 0.08);
-  color: #60a5fa;
-  border-color: rgba(59, 130, 246, 0.15);
+.action-icon-btn.btn-details {
+  background: rgba(59, 130, 246, 0.08) !important;
+  color: #60a5fa !important;
+  border-color: rgba(59, 130, 246, 0.15) !important;
 }
 
-.btn-details:hover {
-  background: #3b82f6;
-  color: white;
+.action-icon-btn.btn-details:hover {
+  background: #3b82f6 !important;
+  color: white !important;
+  border-color: #3b82f6 !important;
 }
 
 /* Status Pills */

@@ -13,6 +13,17 @@ export const ACCENT_COLORS = [
 ];
 
 export function ThemeProvider({ children, userRole }) {
+  // Trọng thêm: Đọc user role từ localStorage làm dự phòng nếu không truyền qua prop
+  const getRole = () => {
+    if (userRole) return userRole;
+    try {
+      const saved = localStorage.getItem("LOGIN_USER");
+      return saved ? JSON.parse(saved)?.role : "user";
+    } catch {
+      return "user";
+    }
+  };
+
   // dark | light
   const [mode, setMode] = useState(
     () => localStorage.getItem("scw_mode") || "dark"
@@ -22,7 +33,8 @@ export function ThemeProvider({ children, userRole }) {
     () => localStorage.getItem("scw_accent") || "blue"
   );
 
-  const canChangeAccent = userRole === "admin" || userRole === "staff";
+  const role = getRole();
+  const canChangeAccent = role === "admin" || role === "staff";
 
   // Áp CSS variables lên :root mỗi khi mode hoặc accent thay đổi
   useEffect(() => {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Sidebar from "../components/Sidebar";
+import { useTheme } from "../context/ThemeContext";
 
 const API_BASE = "http://localhost:5000";
 
@@ -37,6 +38,7 @@ const getLoggedInUser = () => {
 };
 
 export default function VehicleManagement() {
+  const { mode } = useTheme(); // Trọng thêm: Đọc giao diện sáng/tối hiện tại
   const [vehicles, setVehicles]           = useState([]);
   const [users, setUsers]                 = useState([]);
   const [formData, setFormData]           = useState(EMPTY_FORM);
@@ -279,7 +281,9 @@ export default function VehicleManagement() {
       {deleteConfirm && (
         <div style={s.overlay}>
           <div style={s.modal}>
-            <div style={{ fontSize: 40, textAlign: "center", marginBottom: 12 }}>🗑️</div>
+            <div style={{ fontSize: 40, color: "#ef4444", textAlign: "center", marginBottom: 12 }}>
+              <i className="fa-solid fa-trash-can"></i>
+            </div>
             <h3 style={s.modalTitle}>Xóa xe này?</h3>
             <p style={s.modalSub}>
               Biển số <strong style={{ color: "var(--text-primary)" }}>
@@ -426,16 +430,48 @@ export default function VehicleManagement() {
                   const dotColor = COLOR_MAP[v.color] || "#94a3b8";
                   return (
                     <div key={v.id}
-                      style={{ ...s.vehicleCard, ...(isActive ? s.vehicleCardActive : {}) }}
+                      style={{
+                        ...s.vehicleCard,
+                        ...(isActive ? {
+                          borderColor: "var(--accent)",
+                          background: mode === "light" ? "rgba(6, 182, 212, 0.12)" : "#1a2d4a"
+                        } : {})
+                      }}
                       onClick={() => setSelectedVehicle(v)}>
                       {/* Top */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <span style={s.plate}>{v.plateNumber}</span>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button style={s.editBtnSm}
-                            onClick={e => { e.stopPropagation(); handleEdit(v); }}>✏️</button>
-                          <button style={s.deleteBtnSm}
-                            onClick={e => { e.stopPropagation(); setDeleteConfirm(v.id); }}>🗑️</button>
+                          <button
+                            style={{
+                              ...s.editBtnSm,
+                              background: mode === "light" ? "rgba(16, 185, 129, 0.12)" : "#1e3a1e",
+                              borderColor: mode === "light" ? "rgba(16, 185, 129, 0.35)" : "#166534",
+                              color: mode === "light" ? "#10b981" : "#22c55e",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                            title="Chỉnh sửa"
+                            onClick={e => { e.stopPropagation(); handleEdit(v); }}
+                          >
+                            <i className="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button
+                            style={{
+                              ...s.deleteBtnSm,
+                              background: mode === "light" ? "rgba(239, 68, 68, 0.12)" : "#3a1e1e",
+                              borderColor: mode === "light" ? "rgba(239, 68, 68, 0.35)" : "#991b1b",
+                              color: "#ef4444",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                            title="Xóa xe"
+                            onClick={e => { e.stopPropagation(); setDeleteConfirm(v.id); }}
+                          >
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
                         </div>
                       </div>
                       {/* Mid */}
@@ -521,11 +557,35 @@ export default function VehicleManagement() {
 
                 {/* Actions */}
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button style={s.editBtnFull} onClick={() => handleEdit(selectedVehicle)}>
-                    ✏️ Chỉnh sửa
+                  <button
+                    style={{
+                      ...s.editBtnFull,
+                      background: mode === "light" ? "rgba(59, 130, 246, 0.12)" : "#1e3a5f",
+                      borderColor: mode === "light" ? "rgba(59, 130, 246, 0.35)" : "#2d5a8e",
+                      color: mode === "light" ? "#2563eb" : "#60a5fa",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px"
+                    }}
+                    onClick={() => handleEdit(selectedVehicle)}
+                  >
+                    <i className="fa-solid fa-pen-to-square"></i> Chỉnh sửa
                   </button>
-                  <button style={s.deleteBtnFull} onClick={() => setDeleteConfirm(selectedVehicle.id)}>
-                    🗑️ Xóa xe
+                  <button
+                    style={{
+                      ...s.deleteBtnFull,
+                      background: mode === "light" ? "rgba(239, 68, 68, 0.12)" : "#3a1e1e",
+                      borderColor: mode === "light" ? "rgba(239, 68, 68, 0.35)" : "#991b1b",
+                      color: mode === "light" ? "#dc2626" : "#f87171",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px"
+                    }}
+                    onClick={() => setDeleteConfirm(selectedVehicle.id)}
+                  >
+                    <i className="fa-solid fa-trash-can"></i> Xóa xe
                   </button>
                 </div>
               </div>
@@ -624,7 +684,7 @@ const s = {
   title: { color: "var(--text-primary)", fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: -1 },
   subtitle: { color: "var(--text-secondary)", fontSize: 14, marginTop: 4 },
   refreshBtn: { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontSize: 14 },
-  addBtn: { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "var(--text-primary)", border: "none", borderRadius: 10, padding: "12px 22px", fontWeight: 700, fontSize: 15, cursor: "pointer" },
+  addBtn: { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "#ffffff", border: "none", borderRadius: 10, padding: "12px 22px", fontWeight: 700, fontSize: 15, cursor: "pointer" },
   statsRow: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 },
   statCard: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 },
   statVal: { color: "var(--text-primary)", fontSize: 26, fontWeight: 800 },
@@ -638,8 +698,8 @@ const s = {
   formActions: { display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" },
   cancelBtn: { background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontSize: 14 },
   cancelBtn2: { background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontSize: 14 },
-  submitBtn: { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "var(--text-primary)", border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 14 },
-  deleteBtn: { background: "#ef4444", color: "var(--text-primary)", border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 14 },
+  submitBtn: { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "#ffffff", border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 14 },
+  deleteBtn: { background: "#ef4444", color: "#ffffff", border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 14 },
   mainLayout: { display: "grid", gridTemplateColumns: "1fr 360px", gap: 16, alignItems: "start" },
   listPanel: { display: "flex", flexDirection: "column", gap: 12 },
   filterBar: { display: "flex", gap: 10, flexWrap: "wrap" },
