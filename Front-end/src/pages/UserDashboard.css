@@ -608,13 +608,15 @@
 }
 
 .vehicle-badge {
-  background: rgba(255, 255, 255, 0.04);
+  /* Trọng thêm: Đổi background sang màu trung tính có độ mờ nhẹ để tương thích cả sáng và tối */
+  background: rgba(148, 163, 184, 0.15);
   padding: 4px 10px;
   border-radius: 6px;
   font-family: monospace;
   font-weight: 700;
-  color: #e2e8f0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Trọng thêm: Đổi từ #e2e8f0 sang var(--text-primary) để không bị mất chữ */
+  color: var(--text-primary);
+  border: 1px solid var(--border);
   font-size: 13px;
 }
 
