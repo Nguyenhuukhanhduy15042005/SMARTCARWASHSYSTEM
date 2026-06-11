@@ -202,7 +202,9 @@ export default function Booking() {
       try {
         const typeParam = vehicleType === "BIKE" ? "BIKE" : "CAR";
         const machinesRes = await axios.get(`http://127.0.0.1:5000/api/timeslots/machines?type=${typeParam}`);
-        const machines = Array.isArray(machinesRes.data) ? machinesRes.data : [];
+        // Trọng thêm: Loại bỏ các máy đang trong trạng thái bảo trì (statusCode === 3)
+        const machines = (Array.isArray(machinesRes.data) ? machinesRes.data : [])
+          .filter(m => Number(m.statusCode) !== 3);
 
         if (machines.length === 0) {
           const initialSlots = {};
