@@ -339,11 +339,8 @@ router.post('/:id/transition', async (req, res) => {
         }
 
         const pool = await poolPromise;
-        // Thực hiện cập nhật trạng thái mới
-        await pool.request()
-            .input('bookingId', sql.Int, id)
-            .input('status', sql.VarChar, nextStatus)
-            .query('UPDATE BOOKING SET Status = @status WHERE BookingID = @bookingId');
+        // Trọng thêm: Sử dụng processBookingStatusChange để cập nhật trạng thái đồng bộ FSM (giải phóng máy, tính điểm, vv) và tránh lỗi sql.VarChar với TinyInt
+        await processBookingStatusChange(parseInt(id, 10), statusInt, pool);
 
         res.json({ message: `Cập nhật trạng thái thành công (Status: ${statusInt})` });
     } catch (err) {
