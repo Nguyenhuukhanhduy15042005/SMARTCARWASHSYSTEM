@@ -221,12 +221,13 @@ export default function RewardRedemption() {
   );
 }
 
+// Trọng thêm: Cập nhật CSS sử dụng CSS Variables để đồng bộ giao diện sáng tối
 const rewardRedemptionCss = `
 .reward-page{
   min-height:100vh;
-  background:#0b1120;
+  background:var(--bg-primary);
   font-family:'Plus Jakarta Sans',sans-serif;
-  color:#172033;
+  color:var(--text-primary);
 }
 
 .reward-main{
@@ -315,10 +316,10 @@ const rewardRedemptionCss = `
 }
 
 .reward-left-card,.reward-summary{
-  background:#fff;
-  border:1px solid #e6edf5;
+  background:var(--bg-card);
+  border:1px solid var(--border);
   border-radius:26px;
-  box-shadow:0 18px 50px rgba(16,24,40,.08);
+  box-shadow:0 18px 50px rgba(16,24,40,.04);
 }
 
 .reward-left-card{
@@ -336,19 +337,23 @@ const rewardRedemptionCss = `
 .reward-section-title h2,.reward-summary h2{
   margin:0;
   font-size:22px;
+  color:var(--text-primary);
 }
 
 .reward-section-title p{
   margin:6px 0 0;
-  color:#687386;
+  color:var(--text-secondary);
 }
 
 .reward-section-title input{
   width:180px;
-  border:1px solid #dce5ef;
+  border:1px solid var(--border);
+  background:var(--bg-primary);
+  color:var(--text-primary);
   border-radius:16px;
   padding:13px 14px;
   font-weight:800;
+  outline:none;
 }
 
 .reward-list{
@@ -362,20 +367,22 @@ const rewardRedemptionCss = `
   gap:16px;
   align-items:center;
   padding:18px;
-  border:1px solid #e6edf5;
+  border:1px solid var(--border);
   border-radius:22px;
-  background:#fff;
+  background:var(--bg-card);
+  color:var(--text-primary);
   transition:.2s;
 }
 
 .reward-item:hover{
   transform:translateY(-2px);
   box-shadow:0 16px 40px rgba(15,23,42,.08);
+  border-color:var(--accent);
 }
 
 .reward-item.active{
   border-color:#10a37f;
-  background:#f0fff9;
+  background:rgba(16, 185, 129, 0.08);
 }
 
 .reward-item.disabled{
@@ -386,7 +393,7 @@ const rewardRedemptionCss = `
   width:58px;
   height:58px;
   border-radius:20px;
-  background:#e7f8f2;
+  background:var(--bg-primary);
   color:#0b8f6b;
   display:grid;
   place-items:center;
@@ -403,20 +410,21 @@ const rewardRedemptionCss = `
 .reward-row h3{
   margin:0;
   font-size:18px;
+  color:var(--text-primary);
 }
 
 .reward-row span{
   padding:6px 10px;
   border-radius:999px;
-  background:#fff3d8;
-  color:#9a6200;
+  background:rgba(245, 158, 11, 0.15);
+  color:#e5a500;
   font-weight:900;
   font-size:12px;
 }
 
 .reward-info p{
   margin:8px 0;
-  color:#687386;
+  color:var(--text-secondary);
 }
 
 .reward-meta{
@@ -428,8 +436,8 @@ const rewardRedemptionCss = `
 .reward-meta small{
   padding:7px 10px;
   border-radius:999px;
-  background:#f5f7fb;
-  color:#475569;
+  background:var(--bg-primary);
+  color:var(--text-secondary);
   font-weight:700;
 }
 
@@ -444,7 +452,8 @@ const rewardRedemptionCss = `
 }
 
 .reward-item button:disabled{
-  background:#ccd5df;
+  background:var(--border);
+  color:var(--text-secondary);
   cursor:not-allowed;
 }
 
@@ -460,12 +469,12 @@ const rewardRedemptionCss = `
   justify-content:space-between;
   gap:14px;
   padding:14px 0;
-  border-bottom:1px dashed #e1e8f0;
-  color:#637083;
+  border-bottom:1px dashed var(--border);
+  color:var(--text-secondary);
 }
 
 .summary-line strong,.summary-code b{
-  color:#172033;
+  color:var(--text-primary);
 }
 
 .summary-line.discount strong{
@@ -482,6 +491,7 @@ const rewardRedemptionCss = `
 
 .summary-total span{
   font-weight:800;
+  color:var(--text-primary);
 }
 
 .summary-total strong{
@@ -494,12 +504,12 @@ const rewardRedemptionCss = `
   margin-top:18px;
   padding:15px 18px;
   border-radius:18px;
-  background:#172033;
+  background:var(--accent);
 }
 
 .summary-btn:disabled{
-  background:#cbd5e1;
-  color:#64748b;
+  background:var(--border);
+  color:var(--text-secondary);
   cursor:not-allowed;
   opacity:.8;
 }

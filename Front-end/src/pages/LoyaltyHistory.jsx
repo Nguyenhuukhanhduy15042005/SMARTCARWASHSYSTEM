@@ -574,14 +574,21 @@ export default function LoyaltyHistory() {
   );
 }
 
+// Trọng thêm: Cập nhật CSS sử dụng CSS Variables để đồng bộ giao diện sáng tối
 const loyaltyCss = `
+.loyalty-page-container {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
 .loyalty-main-wrapper {
   padding: 32px;
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
   font-family: 'Plus Jakarta Sans', sans-serif;
-  color: #f8fafc;
+  color: var(--text-primary);
 }
 
 .loyalty-header-section {
@@ -605,14 +612,14 @@ const loyaltyCss = `
 .header-title {
   font-size: 32px;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--text-primary);
   margin: 0 0 8px 0;
   letter-spacing: -0.02em;
 }
 
 .header-subtitle {
   font-size: 15px;
-  color: #94a3b8;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -743,8 +750,8 @@ const loyaltyCss = `
 
 /* Progress card */
 .loyalty-progress-card {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 24px;
   padding: 28px;
   display: flex;
@@ -757,7 +764,7 @@ const loyaltyCss = `
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 16px;
 }
 
@@ -765,12 +772,12 @@ const loyaltyCss = `
   font-size: 18px;
   font-weight: 700;
   margin: 0;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .progress-label {
   font-size: 14px;
-  color: #94a3b8;
+  color: var(--text-secondary);
 }
 
 .progress-label strong {
@@ -791,11 +798,12 @@ const loyaltyCss = `
   font-size: 16px;
   font-weight: 700;
   margin: 0 0 6px 0;
+  color: var(--text-primary);
 }
 
 .max-tier-display p {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -808,16 +816,16 @@ const loyaltyCss = `
   justify-content: space-between;
   font-size: 14px;
   margin-bottom: 10px;
-  color: #cbd5e1;
+  color: var(--text-secondary);
 }
 
 .progress-info-row strong {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .progress-bar-container {
   height: 10px;
-  background: #334155;
+  background: var(--bg-primary);
   border-radius: 99px;
   overflow: hidden;
   margin-bottom: 8px;
@@ -834,7 +842,7 @@ const loyaltyCss = `
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-secondary);
   margin-bottom: 16px;
 }
 
@@ -856,7 +864,7 @@ const loyaltyCss = `
 .upgrade-bonus-tip span {
   font-size: 12px;
   line-height: 1.5;
-  color: #94a3b8;
+  color: var(--text-secondary);
 }
 
 /* Perks section */
@@ -867,7 +875,7 @@ const loyaltyCss = `
 .section-title {
   font-size: 22px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
   margin: 0 0 20px 0;
 }
 
@@ -878,8 +886,8 @@ const loyaltyCss = `
 }
 
 .tier-perk-item {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 24px;
   display: flex;
@@ -889,9 +897,8 @@ const loyaltyCss = `
 }
 
 .tier-perk-item.active {
-  border-color: #6366f1;
-  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.15);
-  background: linear-gradient(180deg, #1e293b 0%, #172033 100%);
+  border-color: var(--accent);
+  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.05);
 }
 
 .active-badge {
@@ -901,7 +908,7 @@ const loyaltyCss = `
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
-  background: #6366f1;
+  background: var(--accent);
   color: #fff;
   padding: 2px 8px;
   border-radius: 99px;
@@ -927,12 +934,12 @@ const loyaltyCss = `
   font-size: 16px;
   font-weight: 700;
   margin: 0 0 4px 0;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .tier-req {
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-secondary);
   margin-bottom: 18px;
 }
 
@@ -941,7 +948,7 @@ const loyaltyCss = `
   padding: 0;
   margin: 0;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-secondary);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -954,13 +961,13 @@ const loyaltyCss = `
 }
 
 .perks-list li strong {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 /* Transactions list */
 .loyalty-transactions-section {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 24px;
   padding: 28px;
 }
@@ -977,7 +984,7 @@ const loyaltyCss = `
 .section-header-row h2 {
   font-size: 20px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -997,25 +1004,26 @@ const loyaltyCss = `
   left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 .search-box input {
   width: 100%;
   padding: 10px 14px 10px 38px;
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
   border-radius: 14px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 13px;
   font-family: inherit;
   box-sizing: border-box;
+  outline: none;
 }
 
 .search-box input:focus {
   outline: none;
-  border-color: #6366f1;
+  border-color: var(--accent);
 }
 
 .filter-buttons {
@@ -1024,9 +1032,9 @@ const loyaltyCss = `
 }
 
 .filter-btn {
-  background: #0f172a;
-  border: 1px solid #334155;
-  color: #94a3b8;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
   padding: 8px 14px;
   border-radius: 12px;
   font-size: 12px;
@@ -1036,22 +1044,22 @@ const loyaltyCss = `
 }
 
 .filter-btn.active {
-  background: #6366f1;
-  border-color: #6366f1;
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
 .data-loading-spinner {
   text-align: center;
   padding: 40px;
-  color: #94a3b8;
+  color: var(--text-secondary);
 }
 
 .spinner {
   width: 28px;
   height: 28px;
   border: 3px solid rgba(99, 102, 241, 0.1);
-  border-top-color: #6366f1;
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 0 auto 12px auto;
@@ -1060,7 +1068,7 @@ const loyaltyCss = `
 .empty-state-box {
   text-align: center;
   padding: 48px 0;
-  color: #64748b;
+  color: var(--text-secondary);
 }
 
 .empty-state-box i {
@@ -1086,16 +1094,20 @@ const loyaltyCss = `
 
 .transactions-table th, .transactions-table td {
   padding: 16px;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--border);
 }
 
 .transactions-table th {
   font-weight: 700;
-  color: #cbd5e1;
-  background: #111827;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.transactions-table td {
+  color: var(--text-primary);
 }
 
 .transactions-table tbody tr {
@@ -1107,12 +1119,12 @@ const loyaltyCss = `
 }
 
 .license-plate-badge {
-  background: #0f172a;
-  color: #a5b4fc;
+  background: var(--bg-primary);
+  color: var(--accent);
   padding: 4px 8px;
   border-radius: 6px;
   font-weight: 800;
-  border: 1px solid #334155;
+  border: 1px solid var(--border);
   font-size: 12px;
 }
 
