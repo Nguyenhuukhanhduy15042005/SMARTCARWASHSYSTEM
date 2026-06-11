@@ -434,7 +434,8 @@ export default function UserDashboard() {
                           <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{b.date}</span>
                         </div>
                       </td>
-                      <td style={{ fontWeight: 700, color: "white" }}>{b.price?.toLocaleString("vi-VN")} đ</td>
+                      {/* Trọng thêm: Thay đổi color từ white sang var(--text-primary) để tránh mất chữ khi đổi giao diện sáng */}
+                      <td style={{ fontWeight: 700, color: "var(--text-primary)" }}>{b.price?.toLocaleString("vi-VN")} đ</td>
                       <td>{getStatusPill(b.status)}</td>
                       <td>
                         <div className="table-actions">
