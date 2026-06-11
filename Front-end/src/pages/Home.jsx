@@ -23,7 +23,12 @@ const Home = () => {
   };
 
   const getInitials = (name = "") =>
-    name.split(" ").slice(-2).map((w) => w[0]).join("").toUpperCase();
+    name
+      .split(" ")
+      .slice(-2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase();
 
   return (
     <div className="min-h-screen bg-[#FDF8F0] font-sans text-[#192b4d]">
@@ -52,41 +57,56 @@ const Home = () => {
           <Link to="/" className="text-xl font-extrabold text-[#192b4d]">
             Trang chủ
           </Link>
-          <Link to="/services" className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
+          <Link
+            to="/services"
+            className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors"
+          >
             Dịch vụ
           </Link>
 
           {/* Đặt lịch: chỉ user thường thấy */}
           {(!user || isUser()) && (
-            <Link to="/booking" className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
+            <Link
+              to="/booking"
+              className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors"
+            >
               Đặt lịch
             </Link>
           )}
 
           {/* Thành viên: tất cả thấy khi đã login */}
           {user && (
-            <Link to={isAdmin() || isStaff() ? "/admin/dashboard" : "/dashboard"} className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
+            <Link
+              to={isAdmin() || isStaff() ? "/admin/dashboard" : "/dashboard"}
+              className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors"
+            >
               Thành viên
             </Link>
           )}
 
           {/* Quản lý xe (Trang của Thái): tất cả thấy khi đã login */}
           {user && (
-            <Link to="/vehicles" className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors">
+            <Link
+              to="/vehicles"
+              className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors"
+            >
               Quản lý xe
             </Link>
           )}
 
           {/* Admin Dashboard: chỉ admin và staff thấy */}
           {(isAdmin() || isStaff()) && (
-            <Link to="/admin/dashboard" className="text-xl font-medium text-[#F58607] hover:text-orange-600 transition-colors font-bold">
+            <Link
+              to="/admin/dashboard"
+              className="text-xl font-medium text-[#F58607] hover:text-orange-600 transition-colors font-bold"
+            >
               Quản trị
             </Link>
           )}
         </nav>
 
         {/* Auth Buttons */}
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-3 md:gap-5 w-full md:w-auto justify-center md:justify-end">
           {user ? (
             <>
               {/* Avatar + tên */}
@@ -94,24 +114,52 @@ const Home = () => {
                 to="/profile"
                 className="flex items-center gap-2 px-5 py-3 text-base font-bold text-[#192b4d] bg-white rounded-full shadow-sm hover:shadow-md transition-all"
               >
-                <div style={{
-                  width: 32, height: 32, borderRadius: "50%",
-                  background: "#E1F5EE", display: "flex", alignItems: "center",
-                  justifyContent: "center", fontSize: 13, fontWeight: 700,
-                  color: "#0F6E56", border: "1.5px solid #5DCAA5", flexShrink: 0
-                }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: "#E1F5EE",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#0F6E56",
+                    border: "1.5px solid #5DCAA5",
+                    flexShrink: 0,
+                  }}
+                >
                   {getInitials(user.fullName)}
                 </div>
                 {user.fullName}
 
                 {/* Badge role */}
                 {isAdmin() && (
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: "#EEEDFE", color: "#534AB7", fontWeight: 600 }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      padding: "2px 7px",
+                      borderRadius: 20,
+                      background: "#EEEDFE",
+                      color: "#534AB7",
+                      fontWeight: 600,
+                    }}
+                  >
                     Admin
                   </span>
                 )}
                 {isStaff() && (
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: "#FAEEDA", color: "#854F0B", fontWeight: 600 }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      padding: "2px 7px",
+                      borderRadius: 20,
+                      background: "#FAEEDA",
+                      color: "#854F0B",
+                      fontWeight: 600,
+                    }}
+                  >
                     Staff
                   </span>
                 )}
@@ -126,11 +174,18 @@ const Home = () => {
             </>
           ) : (
             <>
-              <Link to="/login" className="px-8 py-3.5 text-lg font-bold text-gray-800 bg-white rounded-full shadow-sm hover:shadow-md transition-all">
+              <Link
+                to="/login"
+                className="px-8 py-3.5 text-lg font-bold text-gray-800 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
+              >
                 Login
               </Link>
-              <Link to="/register" className="px-8 py-3.5 text-lg font-bold text-white bg-[#F58607] rounded-full shadow-md hover:bg-orange-600 transition-all">
-                Sign Up
+              <Link
+                to="/register"
+                className="px-8 py-3.5 text-lg font-bold text-white bg-[#F58607] rounded-full shadow-md hover:bg-orange-600 transition-all"
+              >
+                {/* Trọng thêm: Giải quyết conflict */}
+                Đăng ký
               </Link>
             </>
           )}
@@ -149,27 +204,35 @@ const Home = () => {
             Moto Shine giúp bạn đặt lịch dễ dàng, theo dõi quá trình rửa xe và
             tích điểm thành viên để nhận nhiều ưu đãi hấp dẫn.
           </p>
-          <div className="flex items-center gap-6 pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 md:gap-6 pt-4">
             <Link
               to="/booking"
-              className="px-10 py-4 bg-[#F58607] text-white text-xl font-bold rounded-full shadow-lg hover:bg-orange-600 hover:-translate-y-1 transition transform duration-300"
+              className="w-full sm:w-auto px-8 md:px-10 py-4 bg-[#F58607] text-white text-lg md:text-xl font-bold rounded-full shadow-lg hover:bg-orange-600 hover:-translate-y-1 transition transform duration-300 text-center"
             >
               Đặt lịch ngay
             </Link>
-            <button className="flex items-center gap-4 group">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300">
-                <svg className="w-6 h-6 text-[#38BDF8] ml-1.5" fill="currentColor" viewBox="0 0 24 24">
+            {/* Trọng thêm: Giải quyết conflict */}
+            <button className="flex items-center gap-3 md:gap-4 group">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300 shrink-0">
+                <svg
+                  className="w-6 h-6 text-[#38BDF8] ml-1.5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
-              <span className="text-xl font-medium text-[#192b4d] group-hover:text-[#F58607] transition-colors">
-                Watch how it works
+              {/* Trọng thêm: Giải quyết conflict */}
+              <span className="text-lg md:text-xl font-medium text-[#192b4d] group-hover:text-[#F58607] transition-colors">
+                Xem cách hoạt động
               </span>
             </button>
           </div>
         </div>
-        <div className="flex-1 w-full relative">
-          <div className="rounded-[2rem] overflow-hidden shadow-2xl h-[550px] relative">
+
+        {/* Trọng thêm: Giải quyết conflict */}
+        <div className="flex-1 w-full mt-10 lg:mt-0">
+          <div className="rounded-[2rem] overflow-hidden shadow-2xl h-[350px] sm:h-[450px] lg:h-[550px] w-full">
             <img
               src="https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1200&q=80"
               alt="Moto Shine"

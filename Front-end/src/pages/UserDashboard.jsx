@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import "./UserDashboard.css";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useNavigate } from "react-router-dom"; // ✅ THÊM
 
 const API_BASE = "/api";
 
@@ -23,6 +22,9 @@ export default function UserDashboard() {
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [toast, setToast] = useState(null);
+  const [feedbackBooking, setFeedbackBooking] = useState(null);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackComment, setFeedbackComment] = useState("");
 
   const getCustomerId = () => {
     const token = localStorage.getItem("token");
@@ -116,7 +118,7 @@ export default function UserDashboard() {
     const token = localStorage.getItem("token") || "mock-token";
     const headers = { Authorization: `Bearer ${token}` };
     try {
-      await axios.post(`${API_BASE}/bookings/${id}/transition`, { nextStatus: 5 }, { headers });
+      await axios.post(`${API_BASE}/bookings/${id}/transition`, { status: 5 }, { headers });
       showToast("Đã hủy lịch đặt xe thành công!", "success");
       if (selectedBooking && selectedBooking.id === id) setSelectedBooking({ ...selectedBooking, status: 5 });
       fetchData();
@@ -139,22 +141,6 @@ export default function UserDashboard() {
       const errMsg = err.response?.data?.message || err.message;
       showToast(`Không thể xóa: ${errMsg}`, "error");
     }
-  };
-
-  // ✅ Helper navigate to payment
-  const goToPayment = (b) => {
-    navigate("/payments", {
-      state: {
-        booking: {
-          BookingID:    b.id,
-          ServiceName:  b.servicePackage,
-          Date:         b.date,
-          Time:         b.time,
-          TotalPrice:   b.price,
-          LicensePlate: b.licensePlate,
-        }
-      }
-    });
   };
 
   const getStatusPill = (status) => {
@@ -199,6 +185,7 @@ export default function UserDashboard() {
 
   return (
     <div className="user-dashboard-container">
+      {/* Header bar */}
       <header className="user-header">
         <div className="user-header-brand">
           <img src="/logo.png" alt="Moto Shine Logo" className="header-logo-img" />
@@ -209,8 +196,6 @@ export default function UserDashboard() {
           <a href="/booking" className="nav-link">Đặt Lịch Ngay</a>
           <a href="/vehicles" className="nav-link">Xe của tôi</a>
           <a href="/profile" className="nav-link">Hồ sơ cá nhân</a>
-          {/* ✅ THÊM: Link lịch sử thanh toán */}
-          <a href="/payments/history" className="nav-link">Thanh toán</a>
           <div className="user-header-actions">
             <a href="/login" className="btn-logout" onClick={() => localStorage.clear()}>
               <i className="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất
@@ -219,6 +204,7 @@ export default function UserDashboard() {
         </div>
       </header>
 
+      {/* Main Wrapper */}
       <main className="user-main-content">
         <section className="welcome-section">
           <h1>Xin Chào, {profile.FullName}!</h1>
@@ -229,7 +215,9 @@ export default function UserDashboard() {
           <div className={`membership-card-glow ${getTierClass(profile.TierName)}`}>
             <div className="card-top">
               <span className="card-label">Thẻ Thành Viên</span>
-              <div className="card-chip"></div>
+              <div className="card-logo">
+                <i className="fa-solid fa-gem"></i> MOTO SHINE
+              </div>
             </div>
             <div className="card-middle">
               <div className="points-display">
@@ -322,7 +310,10 @@ export default function UserDashboard() {
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           <span style={{ color: "var(--color-accent)" }}>{getVehicleIcon(b.vehicleType)}</span>
-                          <span className="vehicle-badge">{b.licensePlate}</span>
+                          {/* Trọng thêm: Thêm style inline để ép trình duyệt nhận màu động, tránh bị cache CSS cũ làm mất chữ biển số xe */}
+                          <span className="vehicle-badge" style={{ color: "var(--text-primary)", borderColor: "var(--border)", backgroundColor: "rgba(148, 163, 184, 0.15)" }}>
+                            {b.licensePlate}
+                          </span>
                         </div>
                       </td>
                       <td>{b.servicePackage}</td>
@@ -332,7 +323,8 @@ export default function UserDashboard() {
                           <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{b.date}</span>
                         </div>
                       </td>
-                      <td style={{ fontWeight: 700, color: "white" }}>{b.price?.toLocaleString("vi-VN")} đ</td>
+                      {/* Trọng thêm: Thay đổi color từ white sang var(--text-primary) để tránh mất chữ khi đổi giao diện sáng */}
+                      <td style={{ fontWeight: 700, color: "var(--text-primary)" }}>{b.price?.toLocaleString("vi-VN")} đ</td>
                       <td>{getStatusPill(b.status)}</td>
                       <td>
                         <div className="table-actions">
@@ -357,6 +349,11 @@ export default function UserDashboard() {
                               <i className="fa-solid fa-ban"></i>
                             </button>
                           )}
+                          {b.status === 4 && (
+                            <button className="action-icon-btn btn-details" title="Đánh giá dịch vụ" onClick={() => setFeedbackBooking(b)}>
+                              <i className="fa-solid fa-star"></i>
+                            </button>
+                          )}
                           {(b.status === 4 || b.status === 5) && (
                             <button className="action-icon-btn btn-user-delete" title="Xóa lịch sử" onClick={() => handleDeleteBooking(b.id)}>
                               <i className="fa-solid fa-trash-can"></i>
@@ -374,6 +371,7 @@ export default function UserDashboard() {
             </div>
           )}
         </section>
+        </div>
       </main>
 
       {/* Modal chi tiết */}
@@ -444,6 +442,92 @@ export default function UserDashboard() {
           </div>
         </div>
       )}
+
+      {feedbackBooking && (
+  <div className="admin-modal-overlay" onClick={() => setFeedbackBooking(null)}>
+    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="admin-modal-header">
+        <h3>Đánh giá dịch vụ #{feedbackBooking.id}</h3>
+        <button className="close-modal-btn" onClick={() => setFeedbackBooking(null)}>
+          <i className="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div className="admin-modal-body">
+        <div className="modal-section">
+          <h4 className="modal-section-title">Dịch vụ đã sử dụng</h4>
+          <div className="modal-grid">
+            <div className="modal-field" style={{ gridColumn: "span 2" }}>
+              <label>Gói dịch vụ</label>
+              <span>{feedbackBooking.servicePackage}</span>
+            </div>
+            <div className="modal-field">
+              <label>Biển số xe</label>
+              <span className="vehicle-badge">{feedbackBooking.licensePlate}</span>
+            </div>
+            <div className="modal-field">
+              <label>Ngày sử dụng</label>
+              <span>{feedbackBooking.date}</span>
+            </div>
+          </div>
+        </div>
+
+        <hr style={{ border: "none", borderTop: "1px solid var(--border-color)", margin: "24px 0" }} />
+
+        <div className="modal-section">
+          <h4 className="modal-section-title">Bạn đánh giá dịch vụ thế nào?</h4>
+
+          <div style={{ display: "flex", gap: "8px", marginBottom: "18px" }}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={() => setFeedbackRating(star)}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: star <= feedbackRating ? "#f59e0b" : "#64748b",
+                  fontSize: "28px",
+                  cursor: "pointer",
+                }}
+              >
+                <i className="fa-solid fa-star"></i>
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            value={feedbackComment}
+            onChange={(e) => setFeedbackComment(e.target.value)}
+            placeholder="Nhập cảm nhận của bạn về dịch vụ..."
+            rows={5}
+            maxLength={1000}
+            style={{
+              width: "100%",
+              padding: "14px",
+              borderRadius: "14px",
+              border: "1px solid var(--border-color)",
+              background: "var(--bg-secondary)",
+              color: "white",
+              outline: "none",
+              resize: "vertical",
+            }}
+          />
+
+          <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <button className="action-icon-btn btn-details" style={{ width: "auto", padding: "10px 16px" }} onClick={() => setFeedbackBooking(null)}>
+              Hủy
+            </button>
+            <button className="action-icon-btn btn-user-cancel" style={{ width: "auto", padding: "10px 16px", background: "var(--color-success)" }} onClick={handleSubmitFeedback}>
+              <i className="fa-solid fa-paper-plane" style={{ marginRight: "6px" }}></i>
+              Gửi đánh giá
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       {toast && (
         <div className={`admin-toast ${toast.type === "error" ? "toast-error" : "toast-success"}`}>

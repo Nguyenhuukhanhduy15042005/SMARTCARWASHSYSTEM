@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./AdminDashboard.css";
 import axios from "axios";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api/bookings/admin";
 
@@ -170,45 +171,11 @@ export default function AdminDashboard() {
   });
 
   return (
-    <div className="admin-dashboard-container">
-      {/* Sidebar navigation */}
-      <aside className="admin-sidebar">
-        <div className="admin-sidebar-brand">
-          <img src="/logo.png" alt="Moto Shine Logo" className="header-logo-img" />
-          <span>Moto Shine</span>
-        </div>
-        <ul className="admin-sidebar-menu">
-          <li className="admin-menu-item active">
-            <i className="fa-solid fa-chart-line"></i>
-            <span>Dashboard</span>
-          </li>
-          <li className="admin-menu-item">
-            <i className="fa-regular fa-calendar-check"></i>
-            <span>Đặt lịch</span>
-          </li>
-          <li className="admin-menu-item">
-            <i className="fa-solid fa-car-side"></i>
-            <span>Bàn làm việc</span>
-          </li>
-          <li className="admin-menu-item" style={{ cursor: "pointer" }} onClick={() => window.location.href = "/admin/members"}>
-            <i className="fa-solid fa-users"></i>
-            <span>Khách hàng</span>
-          </li>
-          <li className="admin-menu-item">
-            <i className="fa-solid fa-sliders"></i>
-            <span>Cài đặt</span>
-          </li>
-        </ul>
-        <div className="admin-sidebar-footer">
-          <a href="/login" className="admin-menu-item" onClick={() => localStorage.clear()}>
-            <i className="fa-solid fa-arrow-right-from-bracket"></i>
-            <span>Đăng xuất</span>
-          </a>
-        </div>
-      </aside>
+    <div className="admin-dashboard-container portal-layout-container">
+      <Sidebar />
 
       {/* Main Container */}
-      <main className="admin-main-content">
+      <main className="admin-main-content portal-main-content">
         {/* Header */}
         <header className="admin-header">
           <div className="admin-header-title">
@@ -366,7 +333,7 @@ export default function AdminDashboard() {
                           <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{b.date}</span>
                         </div>
                       </td>
-                      <td style={{ fontWeight: 700, color: "#fff" }}>{b.price?.toLocaleString("vi-VN")} đ</td>
+                      <td style={{ fontWeight: 700, color: "var(--text-primary)" }}>{b.price?.toLocaleString("vi-VN")} đ</td> {/* Trọng thêm */}
                       <td>{getStatusPill(b.status)}</td>
                       <td>
                         <div className="table-actions">

@@ -7,8 +7,10 @@ const Unauthorized = () => {
     const saved = localStorage.getItem('LOGIN_USER');
     if (saved) {
       const user = JSON.parse(saved);
-      if (user.role === 'admin') navigate('/admin/dashboard');
-      else if (user.role === 'staff') navigate('/staff/dashboard');
+      // Trọng thêm: Dự phòng xác định role từ roleId nếu role bị thiếu trong session cũ
+      const userRole = user.role || (user.roleId === 1 ? "admin" : user.roleId === 2 ? "staff" : "user");
+      if (userRole === 'admin') navigate('/admin/dashboard');
+      else if (userRole === 'staff') navigate('/staff/dashboard');
       else navigate('/dashboard');
     } else {
       navigate('/login');
@@ -17,6 +19,8 @@ const Unauthorized = () => {
 
   const savedUser = localStorage.getItem('LOGIN_USER');
   const user = savedUser ? JSON.parse(savedUser) : null;
+  // Trọng thêm: Dự phòng xác định role từ roleId
+  const userRole = user ? (user.role || (user.roleId === 1 ? "admin" : user.roleId === 2 ? "staff" : "user")) : null;
 
   return (
     <div style={styles.page}>
@@ -25,7 +29,7 @@ const Unauthorized = () => {
         <h2 style={styles.title}>Không có quyền truy cập</h2>
         <p style={styles.desc}>
           Bạn không có quyền vào trang này.
-          {user && <><br />Tài khoản của bạn là: <strong>{user.role}</strong></>}
+          {user && <><br />Tài khoản của bạn là: <strong>{userRole}</strong></>}
         </p>
         <button onClick={handleBack} style={styles.btn}>
           Về trang của tôi

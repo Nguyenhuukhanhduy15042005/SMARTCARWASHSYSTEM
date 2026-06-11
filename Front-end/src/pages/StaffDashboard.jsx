@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
+import Sidebar from "../components/Sidebar";
+import { useTheme } from "../context/ThemeContext"; // Trọng thêm
 
 export default function StaffDashboard() {
+  const { mode } = useTheme(); // Trọng thêm
+  const styles = getStyles(mode); // Trọng thêm
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState("All");
@@ -79,16 +83,19 @@ export default function StaffDashboard() {
 
   // Transition Handler
   const handleTransition = async (bookingId, nextStatus) => {
+    const token = localStorage.getItem("TOKEN") || localStorage.getItem("token") || "";
     try {
       const res = await fetch(`${API_URL}/${bookingId}/transition`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({ nextStatus }),
       });
 
-      if (!res.ok) throw new Error("Cập nhật trạng thái thất bại.");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Cập nhật trạng thái thất bại.");
 
       fetchBookings();
       if (selectedBooking && selectedBooking.BookingID === bookingId) {
@@ -118,50 +125,16 @@ export default function StaffDashboard() {
   };
 
   return (
-    <div style={styles.container}>
-      {/* Background cyber-glow spheres */}
-      <div style={styles.glowSphereLeft}></div>
-      <div style={styles.glowSphereRight}></div>
+    <div className="portal-layout-container" style={{ ...styles.container, padding: 0 }}>
+      <Sidebar />
+      <div className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "40px 20px", position: "relative" }}>
+        {/* Background cyber-glow spheres */}
+        <div style={styles.glowSphereLeft}></div>
+        <div style={styles.glowSphereRight}></div>
 
-      {/* TOP HEADER NAVIGATION BAR */}
-      <nav style={styles.navbar}>
-        <div style={styles.navLogo}>
-          <img src="/logo.png" alt="Moto Shine Logo" style={styles.logoImg} />
-          <span>Moto Shine</span>
-        </div>
-        <div style={styles.navLinks}>
-          <button style={{...styles.navLink, ...styles.activeNavLink}} onClick={() => window.location.href = currentUser?.role === 'staff' ? '/staff/dashboard' : '/admin/dashboard'}><i className="fa-solid fa-house"></i> Trang chủ</button>
-          <button style={styles.navLink} onClick={() => window.location.href = '/timeslots'}><i className="fa-solid fa-bell-concierge"></i> Dịch vụ</button>
-          <button style={styles.navLink} onClick={() => window.location.href = '/admin/members'}><i className="fa-solid fa-id-card"></i> Thành viên</button>
-        </div>
-        <div style={styles.navUser}>
-          <div 
-            style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
-            onClick={() => window.location.href = "/profile"}
-            title="Xem hồ sơ cá nhân"
-          >
-            <div style={styles.avatar}><i className="fa-solid fa-user-tie"></i></div>
-            <div style={styles.userInfo}>
-              <div style={styles.userName}>{currentUser?.fullName || "Staff Member"}</div>
-              <div style={styles.userRole}>
-                {currentUser?.role === 'admin' ? 'Admin Account' : 'Staff Account'}
-              </div>
-            </div>
-          </div>
-          <button style={styles.logoutBtn} onClick={() => {
-            localStorage.removeItem("TOKEN");
-            localStorage.removeItem("token");
-            localStorage.removeItem("LOGIN_USER");
-            window.location.href = "/login";
-          }}>
-            <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất
-          </button>
-        </div>
-      </nav>
-
-      {/* Main glass card wrapper */}
-      <div style={styles.dashboardCard}>
-        <header style={styles.header}>
+        {/* Main glass card wrapper */}
+        <div style={styles.dashboardCard}>
+          <header style={styles.header}>
           <div>
             <div style={styles.logoBadge}><i className="fa-solid fa-users-gear"></i> Staff Workspace</div>
             <h1 style={styles.title}>Lịch Đặt Xe & Điều Phối</h1>
@@ -330,7 +303,7 @@ export default function StaffDashboard() {
                 {filteredBookings.length === 0 && (
                   <tr>
                     <td colSpan="6" style={styles.noData}>
-                      <i className="fa-regular fa-folder-open" style={{ fontSize: "40px", color: "#4b5563", marginBottom: "15px", display: "block" }}></i>
+                      <i className="fa-regular fa-folder-open" style={{ fontSize: "40px", color: "var(--text-secondary)", marginBottom: "15px", display: "block" }}></i> {/* Trọng thêm */}
                       Không tìm thấy lịch đặt xe nào ở trạng thái này.
                     </td>
                   </tr>
@@ -348,7 +321,7 @@ export default function StaffDashboard() {
             <div style={styles.modalHeader}>
               <div>
                 <span style={styles.idBadge}>#{selectedBooking.BookingID}</span>
-                <h2 style={{ margin: "5px 0 0 0", color: "#fff", fontSize: "20px" }}>Thông Tin Đặt Lịch Chi Tiết</h2>
+                <h2 style={{ margin: "5px 0 0 0", color: "var(--text-primary)", fontSize: "20px" }}>Thông Tin Đặt Lịch Chi Tiết</h2> {/* Trọng thêm */}
               </div>
               <button style={styles.closeBtn} onClick={() => setSelectedBooking(null)}>✕</button>
             </div>
@@ -364,7 +337,7 @@ export default function StaffDashboard() {
                 </div>
                 <div style={styles.modalField}>
                   <label style={styles.modalLabel}>Biển số xe</label>
-                  <div style={{ ...styles.modalValue, color: "#3b82f6", fontWeight: "700" }}>{selectedBooking.LicensePlate || "N/A"}</div>
+                  <div style={{ ...styles.modalValue, color: "var(--accent-light)", fontWeight: "700" }}>{selectedBooking.LicensePlate || "N/A"}</div> {/* Trọng thêm */}
                 </div>
                 <div style={styles.modalField}>
                   <label style={styles.modalLabel}>Dòng xe / Loại xe</label>
@@ -398,7 +371,7 @@ export default function StaffDashboard() {
                   <span>Giá dịch vụ gốc:</span>
                   <span>{(selectedBooking.TotalPrice || 0).toLocaleString("vi-VN")} đ</span>
                 </div>
-                <div style={{ ...styles.priceRow, color: "#10b981", fontWeight: "600", fontSize: "18px", borderTop: "1px solid #2d2d34", paddingTop: "10px", marginTop: "10px" }}>
+                <div style={{ ...styles.priceRow, color: "#10b981", fontWeight: "600", fontSize: "18px", borderTop: "1px solid var(--border)", paddingTop: "10px", marginTop: "10px" }}> {/* Trọng thêm */}
                   <span>Tổng thanh toán:</span>
                   <span>{(selectedBooking.FinalPrice || selectedBooking.TotalPrice || 0).toLocaleString("vi-VN")} đ</span>
                 </div>
@@ -417,6 +390,7 @@ export default function StaffDashboard() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -424,11 +398,11 @@ export default function StaffDashboard() {
 // ========================================================
 // PREMIUM UI CSS SYSTEM (Pure Javascript Objects)
 // ========================================================
-const styles = {
+const getStyles = (mode) => ({ // Trọng thêm
   container: {
-    backgroundColor: "#030712",
-    backgroundImage: "radial-gradient(at 0% 0%, rgba(17, 24, 39, 0.8) 0, transparent 50%), radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.05) 0, transparent 50%)",
-    color: "#f3f4f6",
+    backgroundColor: "var(--bg-primary)", // Trọng thêm
+    backgroundImage: mode === "dark" ? "radial-gradient(at 0% 0%, rgba(17, 24, 39, 0.8) 0, transparent 50%), radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.05) 0, transparent 50%)" : "none", // Trọng thêm
+    color: "var(--text-primary)", // Trọng thêm
     minHeight: "100vh",
     padding: "40px 20px",
     fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -436,25 +410,25 @@ const styles = {
     overflow: "hidden"
   },
   navbar: {
-    maxWidth: "1280px",
+    maxWidth: "100%", // Giêu nguyên theo plan cũ (maxWidth: "100%")
     margin: "0 auto 25px auto",
-    backgroundColor: "rgba(17, 24, 39, 0.6)",
+    backgroundColor: mode === "dark" ? "rgba(17, 24, 39, 0.6)" : "rgba(255, 255, 255, 0.6)", // Trọng thêm
     backdropFilter: "blur(20px)",
     WebkitBackdropFilter: "blur(20px)",
     borderRadius: "16px",
-    border: "1px solid rgba(255, 255, 255, 0.06)",
+    border: "1px solid var(--border)", // Trọng thêm
     padding: "15px 30px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4)",
+    boxShadow: mode === "dark" ? "0 10px 30px rgba(0, 0, 0, 0.4)" : "0 10px 30px rgba(0, 0, 0, 0.05)", // Trọng thêm
     zIndex: 2,
     position: "relative"
   },
   navLogo: {
     fontSize: "18px",
     fontWeight: "800",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     display: "flex",
     alignItems: "center",
     gap: "8px"
@@ -464,7 +438,7 @@ const styles = {
     width: "38px",
     objectFit: "cover",
     borderRadius: "50%",
-    border: "1px solid rgba(255, 255, 255, 0.15)"
+    border: "1px solid var(--border)" // Trọng thêm
   },
   navLinks: {
     display: "flex",
@@ -473,7 +447,7 @@ const styles = {
   navLink: {
     backgroundColor: "transparent",
     border: "none",
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     padding: "10px 16px",
     borderRadius: "10px",
     cursor: "pointer",
@@ -485,8 +459,8 @@ const styles = {
     gap: "6px"
   },
   activeNavLink: {
-    backgroundColor: "rgba(99, 102, 241, 0.15)",
-    color: "#818cf8"
+    backgroundColor: "var(--accent)", // Trọng thêm
+    color: "#ffffff" // Trọng thêm
   },
   navUser: {
     display: "flex",
@@ -497,12 +471,12 @@ const styles = {
     width: "36px",
     height: "36px",
     borderRadius: "50%",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
+    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)", // Trọng thêm
+    border: "1px solid var(--border)", // Trọng thêm
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    color: "#818cf8"
+    color: "var(--accent-light)" // Trọng thêm
   },
   userInfo: {
     display: "flex",
@@ -511,11 +485,11 @@ const styles = {
   userName: {
     fontSize: "13px",
     fontWeight: "700",
-    color: "#ffffff"
+    color: "var(--text-primary)" // Trọng thêm
   },
   userRole: {
     fontSize: "10px",
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     marginTop: "2px"
   },
   logoutBtn: {
@@ -530,18 +504,14 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "6px",
-    transition: "all 0.2s ease",
-    ":hover": {
-      backgroundColor: "rgba(239, 68, 68, 0.2)",
-      boxShadow: "0 0 10px rgba(239, 68, 68, 0.2)"
-    }
+    transition: "all 0.2s ease"
   },
   glowSphereLeft: {
     position: "absolute",
     width: "400px",
     height: "400px",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 70%)",
+    background: mode === "dark" ? "radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 70%)" : "radial-gradient(circle, rgba(99, 102, 241, 0.04) 0%, rgba(99, 102, 241, 0) 70%)", // Trọng thêm
     top: "10%",
     left: "-10%",
     zIndex: 0,
@@ -552,22 +522,22 @@ const styles = {
     width: "450px",
     height: "450px",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, rgba(6, 182, 212, 0) 70%)",
+    background: mode === "dark" ? "radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, rgba(6, 182, 212, 0) 70%)" : "radial-gradient(circle, rgba(6, 182, 212, 0.03) 0%, rgba(6, 182, 212, 0) 70%)", // Trọng thêm
     bottom: "10%",
     right: "-10%",
     zIndex: 0,
     pointerEvents: "none"
   },
   dashboardCard: {
-    maxWidth: "1280px",
-    margin: "0 auto",
-    backgroundColor: "rgba(17, 24, 39, 0.45)",
+    maxWidth: "100%", // Giêu nguyên theo plan cũ (maxWidth: "100%")
+    margin: "0",
+    backgroundColor: mode === "dark" ? "rgba(17, 24, 39, 0.45)" : "rgba(255, 255, 255, 0.75)", // Trọng thêm
     backdropFilter: "blur(20px)",
     WebkitBackdropFilter: "blur(20px)",
     borderRadius: "24px",
-    border: "1px solid rgba(255, 255, 255, 0.06)",
+    border: "1px solid var(--border)", // Trọng thêm
     padding: "40px",
-    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+    boxShadow: mode === "dark" ? "0 25px 50px -12px rgba(0, 0, 0, 0.5)" : "0 15px 35px rgba(0, 0, 0, 0.05)", // Trọng thêm
     position: "relative",
     zIndex: 1
   },
@@ -596,17 +566,17 @@ const styles = {
   title: {
     fontSize: "32px",
     fontWeight: "800",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     margin: 0,
     letterSpacing: "-0.5px"
   },
   subtitle: {
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "15px",
     margin: "8px 0 0 0"
   },
   refreshBtn: {
-    backgroundColor: "#6366f1",
+    backgroundColor: "var(--accent-light)", // Trọng thêm
     border: "none",
     color: "#ffffff",
     padding: "12px 20px",
@@ -618,11 +588,7 @@ const styles = {
     transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
     display: "flex",
     alignItems: "center",
-    gap: "8px",
-    ":hover": {
-      backgroundColor: "#4f46e5",
-      boxShadow: "0 6px 20px 0 rgba(99, 102, 241, 0.45)"
-    }
+    gap: "8px"
   },
   statsGrid: {
     display: "grid",
@@ -631,41 +597,41 @@ const styles = {
     marginBottom: "35px"
   },
   statItem: {
-    backgroundColor: "rgba(31, 41, 55, 0.3)",
-    border: "1px solid rgba(255, 255, 255, 0.04)",
+    backgroundColor: mode === "dark" ? "rgba(31, 41, 55, 0.3)" : "var(--bg-secondary)", // Trọng thêm
+    border: "1px solid var(--border)", // Trọng thêm
     borderRadius: "16px",
     padding: "24px",
     display: "flex",
     alignItems: "center",
     gap: "20px",
-    boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.05)"
+    boxShadow: mode === "dark" ? "inset 0 1px 0 0 rgba(255, 255, 255, 0.05)" : "0 4px 6px -1px rgba(0,0,0,0.02)" // Trọng thêm
   },
   statIconWrapper: {
     width: "50px",
     height: "50px",
     borderRadius: "12px",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)", // Trọng thêm
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     fontSize: "20px",
-    border: "1px solid rgba(255, 255, 255, 0.05)"
+    border: "1px solid var(--border)" // Trọng thêm
   },
   statValue: {
     fontSize: "28px",
     fontWeight: "800",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     lineHeight: 1
   },
   statLabel: {
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "13px",
     marginTop: "6px",
     fontWeight: "500"
   },
   filterSection: {
     marginBottom: "25px",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+    borderBottom: "1px solid var(--border)", // Trọng thêm
     paddingBottom: "15px"
   },
   filterBar: {
@@ -676,7 +642,7 @@ const styles = {
   filterTab: {
     backgroundColor: "transparent",
     border: "1px solid transparent",
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     padding: "10px 20px",
     borderRadius: "12px",
     cursor: "pointer",
@@ -686,15 +652,15 @@ const styles = {
     whiteSpace: "nowrap"
   },
   activeFilterTab: {
-    backgroundColor: "rgba(99, 102, 241, 0.1)",
-    color: "#818cf8",
-    borderColor: "rgba(99, 102, 241, 0.2)"
+    backgroundColor: "rgba(99, 102, 241, 0.15)", // Trọng thêm
+    color: "var(--accent-light)", // Trọng thêm
+    borderColor: "rgba(99, 102, 241, 0.25)" // Trọng thêm
   },
   tableWrapper: {
-    backgroundColor: "rgba(17, 24, 39, 0.2)",
+    backgroundColor: mode === "dark" ? "rgba(17, 24, 39, 0.2)" : "var(--bg-secondary)", // Trọng thêm
     borderRadius: "16px",
     overflow: "hidden",
-    border: "1px solid rgba(255, 255, 255, 0.05)"
+    border: "1px solid var(--border)" // Trọng thêm
   },
   table: {
     width: "100%",
@@ -702,19 +668,19 @@ const styles = {
     textAlign: "left"
   },
   thRow: {
-    backgroundColor: "rgba(31, 41, 55, 0.4)",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.06)"
+    backgroundColor: mode === "dark" ? "rgba(31, 41, 55, 0.4)" : "var(--bg-primary)", // Trọng thêm
+    borderBottom: "1px solid var(--border)" // Trọng thêm
   },
   th: {
     padding: "18px 24px",
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "13px",
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: "1px"
   },
   tr: {
-    borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
+    borderBottom: "1px solid var(--border)", // Trọng thêm
     transition: "background-color 0.2s ease"
   },
   td: {
@@ -724,20 +690,20 @@ const styles = {
   },
   idBadge: {
     fontFamily: "monospace",
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-    color: "#ffffff",
+    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)", // Trọng thêm
+    color: "var(--text-primary)", // Trọng thêm
     padding: "4px 8px",
     borderRadius: "6px",
     fontWeight: "600",
-    border: "1px solid rgba(255, 255, 255, 0.1)"
+    border: "1px solid var(--border)" // Trọng thêm
   },
   customerName: {
     fontWeight: "600",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     fontSize: "15px"
   },
   customerPhone: {
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "13px",
     marginTop: "4px",
     display: "flex",
@@ -745,22 +711,22 @@ const styles = {
   },
   licensePlate: {
     fontWeight: "700",
-    color: "#60a5fa",
+    color: "var(--accent-light)", // Trọng thêm
     fontSize: "15px"
   },
   vehicleType: {
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "13px",
     marginTop: "4px",
     display: "flex",
     alignItems: "center"
   },
   bookingDate: {
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     fontWeight: "500"
   },
   bookingTime: {
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "13px",
     marginTop: "4px",
     display: "flex",
@@ -788,9 +754,9 @@ const styles = {
     alignItems: "center"
   },
   viewBtn: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
-    color: "#f3f4f6",
+    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)", // Trọng thêm
+    border: "1px solid var(--border)", // Trọng thêm
+    color: "var(--text-primary)", // Trọng thêm
     padding: "8px 14px",
     borderRadius: "8px",
     cursor: "pointer",
@@ -799,7 +765,7 @@ const styles = {
     transition: "all 0.2s ease"
   },
   btnConfirm: {
-    backgroundColor: "#2563eb",
+    backgroundColor: mode === "dark" ? "#2563eb" : "#1d4ed8", // Trọng thêm
     border: "none",
     color: "#ffffff",
     padding: "8px 14px",
@@ -810,7 +776,7 @@ const styles = {
     transition: "all 0.2s"
   },
   btnStart: {
-    backgroundColor: "#06b6d4",
+    backgroundColor: mode === "dark" ? "#06b6d4" : "#0891b2", // Trọng thêm
     border: "none",
     color: "#ffffff",
     padding: "8px 14px",
@@ -821,7 +787,7 @@ const styles = {
     transition: "all 0.2s"
   },
   btnComplete: {
-    backgroundColor: "#10b981",
+    backgroundColor: mode === "dark" ? "#10b981" : "#059669", // Trọng thêm
     border: "none",
     color: "#ffffff",
     padding: "8px 14px",
@@ -832,9 +798,9 @@ const styles = {
     transition: "all 0.2s"
   },
   btnCancel: {
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
-    border: "1px solid rgba(239, 68, 68, 0.3)",
-    color: "#f87171",
+    backgroundColor: mode === "dark" ? "rgba(239, 68, 68, 0.12)" : "rgba(220, 38, 38, 0.08)", // Trọng thêm
+    border: mode === "dark" ? "1px solid rgba(239, 68, 68, 0.25)" : "1px solid rgba(220, 38, 38, 0.15)", // Trọng thêm
+    color: mode === "dark" ? "#f87171" : "#dc2626", // Trọng thêm
     padding: "8px 14px",
     borderRadius: "8px",
     cursor: "pointer",
@@ -845,19 +811,19 @@ const styles = {
   noData: {
     textAlign: "center",
     padding: "60px 20px",
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "15px"
   },
   loader: {
     textAlign: "center",
     padding: "60px",
-    color: "#9ca3af"
+    color: "var(--text-secondary)" // Trọng thêm
   },
   spinner: {
     width: "40px",
     height: "40px",
-    border: "3px solid rgba(99, 102, 241, 0.2)",
-    borderTop: "3px solid #6366f1",
+    border: mode === "dark" ? "3px solid rgba(255, 255, 255, 0.1)" : "3px solid rgba(0, 0, 0, 0.1)", // Trọng thêm
+    borderTop: "3px solid var(--accent-light)", // Trọng thêm
     borderRadius: "50%",
     margin: "0 auto 15px auto",
     animation: "spin 1s linear infinite"
@@ -878,7 +844,7 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(3, 7, 18, 0.8)",
+    backgroundColor: mode === "dark" ? "rgba(3, 7, 18, 0.8)" : "rgba(0, 0, 0, 0.4)", // Trọng thêm
     backdropFilter: "blur(8px)",
     WebkitBackdropFilter: "blur(8px)",
     display: "flex",
@@ -887,18 +853,18 @@ const styles = {
     zIndex: 1000
   },
   modalContent: {
-    backgroundColor: "#111827",
-    backgroundImage: "radial-gradient(at 0% 0%, rgba(31, 41, 55, 0.5) 0, transparent 60%)",
+    backgroundColor: "var(--bg-card)", // Trọng thêm
+    backgroundImage: mode === "dark" ? "radial-gradient(at 0% 0%, rgba(31, 41, 55, 0.5) 0, transparent 60%)" : "none", // Trọng thêm
     borderRadius: "20px",
     width: "550px",
     maxWidth: "95%",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
+    border: "1px solid var(--border)", // Trọng thêm
     overflow: "hidden",
-    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.8)"
+    boxShadow: mode === "dark" ? "0 25px 50px -12px rgba(0, 0, 0, 0.8)" : "0 15px 35px rgba(0, 0, 0, 0.1)" // Trọng thêm
   },
   modalHeader: {
     padding: "24px",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+    borderBottom: "1px solid var(--border)", // Trọng thêm
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center"
@@ -906,7 +872,7 @@ const styles = {
   closeBtn: {
     background: "none",
     border: "none",
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "20px",
     cursor: "pointer"
   },
@@ -928,27 +894,27 @@ const styles = {
   modalLabel: {
     fontSize: "12px",
     fontWeight: "700",
-    color: "#6b7280",
+    color: "var(--text-secondary)", // Trọng thêm
     textTransform: "uppercase",
     letterSpacing: "0.5px"
   },
   modalValue: {
     fontSize: "15px",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     fontWeight: "500"
   },
   priceContainer: {
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.02)" : "rgba(0, 0, 0, 0.02)", // Trọng thêm
     borderRadius: "12px",
     padding: "16px",
     marginTop: "20px",
-    border: "1px solid rgba(255, 255, 255, 0.04)"
+    border: "1px solid var(--border)" // Trọng thêm
   },
   priceRow: {
     display: "flex",
     justifyContent: "space-between",
     fontSize: "14px",
-    color: "#9ca3af"
+    color: "var(--text-secondary)" // Trọng thêm
   },
   notesBox: {
     backgroundColor: "rgba(245, 158, 11, 0.05)",
@@ -962,18 +928,18 @@ const styles = {
   },
   modalFooter: {
     padding: "18px 24px",
-    borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+    borderTop: "1px solid var(--border)", // Trọng thêm
     display: "flex",
     justifyContent: "flex-end"
   },
   modalCloseBtn: {
-    backgroundColor: "#1f2937",
-    border: "1px solid rgba(255, 255, 255, 0.05)",
-    color: "#ffffff",
+    backgroundColor: mode === "dark" ? "#1f2937" : "#e5e7eb", // Trọng thêm
+    border: "1px solid var(--border)", // Trọng thêm
+    color: "var(--text-primary)", // Trọng thêm
     padding: "10px 20px",
     borderRadius: "10px",
     cursor: "pointer",
     fontSize: "14px",
     fontWeight: "600"
   }
-};
+});

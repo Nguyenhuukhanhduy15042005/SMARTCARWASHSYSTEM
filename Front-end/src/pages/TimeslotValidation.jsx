@@ -1,21 +1,7 @@
-// ============================================================
-// 📁 VỊ TRÍ FILE:
-//    Front-end/src/pages/timeslot/TimeslotValidation.jsx
-//    (Tạo folder timeslot/ trong pages/ nếu chưa có)
-//
-// 📌 THÊM VÀO Front-end/src/App.jsx:
-//    import TimeslotValidation from "./pages/timeslot/TimeslotValidation";
-//    <Route path="/timeslots" element={
-//      <ProtectedRoute><TimeslotValidation /></ProtectedRoute>
-//    } />
-//
-// 📌 THÊM VÀO Back-end/server.js:
-//    const { timeslotRouter } = require('./timeslotRouter');
-//    app.use(timeslotRouter);
-// ============================================================
 
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://localhost:5000";
 
@@ -223,6 +209,15 @@ export default function TimeslotValidation() {
       return;
     }
 
+    // Kiểm tra định dạng biển số xe Việt Nam nếu có nhập
+    if (licensePlate.trim()) {
+      const plateRegex = /^[0-9]{2}[- ]?([A-Z]{1,2}|[A-Z][0-9])[- ]?[0-9]{3,5}(\.[0-9]{2})?$/i; // Trọng thêm: Regex kiểm tra biển số xe thật
+      if (!plateRegex.test(licensePlate.trim())) {
+        showToast("Biển số xe không hợp lệ! Định dạng đúng VD: 59A-123.45 hoặc 59G1-123.45", "error"); // Trọng thêm: Khai báo lỗi định dạng biển số
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/api/timeslots/book`, {
@@ -259,58 +254,17 @@ export default function TimeslotValidation() {
   const freeCount   = slots.filter(s => s.status === "free").length;
 
   return (
-    <div style={s.root}>
-      <div style={s.bg} /><div style={s.bgGrid} />
+    <div className="portal-layout-container" style={{ ...s.root, padding: 0 }}>
+      <Sidebar />
+      <div className="portal-main-content" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "40px 20px", position: "relative" }}>
+        <div style={s.bg} /><div style={s.bgGrid} />
 
-      {/* Toast */}
-      {toast && (
-        <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#10b981" }}>
-          {toast.msg}
-        </div>
-      )}
-
-      {/* TOP HEADER NAVIGATION BAR */}
-      <nav style={s.navbar}>
-        <div style={s.navLogo}>
-          <img src="/logo.png" alt="Moto Shine Logo" style={s.logoImg} />
-          <span>Moto Shine</span>
-        </div>
-        <div style={s.navLinks}>
-          <a href={currentUser?.role === 'staff' ? '/staff/dashboard' : currentUser?.role === 'admin' ? '/admin/dashboard' : '/dashboard'} style={s.navLink}>
-            <i className="fa-solid fa-house"></i> Trang chủ
-          </a>
-          <a href="/timeslots" style={{ ...s.navLink, ...s.activeNavLink }}>
-            <i className="fa-solid fa-bell-concierge"></i> Dịch vụ
-          </a>
-          {/* Only show member management button to staff and admin */}
-          {(currentUser?.role === 'admin' || currentUser?.role === 'staff') && (
-            <a href="/admin/members" style={s.navLink}>
-              <i className="fa-solid fa-id-card"></i> Thành viên
-            </a>
-          )}
-        </div>
-        <div style={s.navUser}>
-          <div 
-            style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
-            onClick={() => navigate("/profile")}
-            title="Xem hồ sơ cá nhân"
-          >
-            <div style={s.avatar}><i className="fa-solid fa-user-tie"></i></div>
-            <div style={s.userInfo}>
-              <div style={s.userName}>{currentUser?.fullName || "Member"}</div>
-              <div style={s.userRole}>
-                {currentUser?.role === 'admin' ? 'Admin Account' : currentUser?.role === 'staff' ? 'Staff Account' : 'Member Account'}
-              </div>
-            </div>
+        {/* Toast */}
+        {toast && (
+          <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#10b981" }}>
+            {toast.msg}
           </div>
-          <button style={s.logoutBtn} onClick={() => {
-            localStorage.clear();
-            navigate("/login");
-          }}>
-            <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất
-          </button>
-        </div>
-      </nav>
+        )}
 
       {/* Success Modal */}
       {successBooking && (
@@ -399,8 +353,8 @@ export default function TimeslotValidation() {
                   ))}
                 </select>
               </div>
-              <div style={{ background: "#0f172a", borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#64748b", fontSize: 13 }}>Giá</span>
+              <div style={{ background: "var(--bg-primary)", borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Giá</span>
                 <span style={{ color: "#4ade80", fontSize: 15, fontWeight: 800 }}>
                   {(services.find(sv => String(sv.serviceId) === String(bookingForm.serviceId))?.basePrice || 0).toLocaleString("vi-VN")}đ
                 </span>
@@ -466,7 +420,7 @@ export default function TimeslotValidation() {
                 {loadingMachines && <span style={s.loadingTxt}> đang tải...</span>}
               </div>
               {!loadingMachines && machines.length === 0 && (
-                <div style={{ color: "#475569", fontSize: 13, textAlign: "center", padding: "12px 0" }}>
+                <div style={{ color: "var(--text-secondary)", fontSize: 13, textAlign: "center", padding: "12px 0" }}>
                   Không có máy nào
                 </div>
               )}
@@ -480,8 +434,8 @@ export default function TimeslotValidation() {
                       style={{ ...s.machineItem, ...(isActive ? { background: "#1a2d4a", borderColor: sc.border } : {}), opacity: isMaint ? 0.5 : 1, cursor: isMaint ? "not-allowed" : "pointer" }}
                       onClick={() => { if (isMaint) { showToast("Máy đang bảo trì!", "error"); return; } setSelectedMachine(m); setSelectedTime(null); }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        <span style={{ color: "#f1f5f9", fontSize: 13, fontWeight: 600 }}>{m.name}</span>
-                        <span style={{ color: "#64748b", fontSize: 11 }}>{m.type === "CAR" ? "🚗 Ô tô" : "🏍️ Xe máy"}</span>
+                        <span style={{ color: "var(--text-primary)", fontSize: 13, fontWeight: 600 }}>{m.name}</span>
+                        <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>{m.type === "CAR" ? "🚗 Ô tô" : "🏍️ Xe máy"}</span>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                         <span style={{ width: 9, height: 9, borderRadius: "50%", background: sc.dot }} />
@@ -518,7 +472,7 @@ export default function TimeslotValidation() {
               ].map(item => (
                 <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                   <div style={{ width: 10, height: 10, borderRadius: 3, background: item.dot, flexShrink: 0 }} />
-                  <span style={{ color: "#94a3b8", fontSize: 13 }}>{item.label}</span>
+                  <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>{item.label}</span>
                 </div>
               ))}
             </div>
@@ -531,17 +485,17 @@ export default function TimeslotValidation() {
             {selectedMachine && (
               <div style={s.statsBar}>
                 {[
-                  { val: TIME_SLOTS.length, label: "Tổng slot",  color: "#f1f5f9" },
+                  { val: TIME_SLOTS.length, label: "Tổng slot",  color: "var(--text-primary)" },
                   { val: freeCount,         label: "Còn trống",  color: "#4ade80" },
                   { val: bookedCount,       label: "Đã đặt",     color: "#f87171" },
                 ].map((st, i) => (
                   <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                     <span style={{ color: st.color, fontSize: 22, fontWeight: 800 }}>{st.val}</span>
-                    <span style={{ color: "#64748b", fontSize: 11 }}>{st.label}</span>
+                    <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>{st.label}</span>
                   </div>
                 ))}
                 <div style={{ width: 1, height: 32, background: "#334155" }} />
-                <div style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 8, padding: "6px 14px", color: "#94a3b8", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 14px", color: "var(--text-secondary)", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
                   🔧 {selectedMachine.name} · {selectedDate}
                   <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10,
                     background: STATUS_COLORS[selectedMachine.status]?.bg,
@@ -557,12 +511,12 @@ export default function TimeslotValidation() {
             {!selectedMachine ? (
               <div style={s.emptyState}>
                 <div style={{ fontSize: 52 }}>🔧</div>
-                <p style={{ color: "#475569", fontSize: 15, margin: 0 }}>Chọn máy bên trái để xem slot</p>
+                <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>Chọn máy bên trái để xem slot</p>
               </div>
             ) : loadingSlots ? (
               <div style={s.emptyState}>
                 <div style={{ fontSize: 40 }}>⏳</div>
-                <p style={{ color: "#475569", margin: 0 }}>Đang tải timeslot...</p>
+                <p style={{ color: "var(--text-secondary)", margin: 0 }}>Đang tải timeslot...</p>
               </div>
             ) : (
               <>
@@ -574,8 +528,8 @@ export default function TimeslotValidation() {
                     const isChecking = checkingSlot === slot.time;
                     const isHovered  = hoveredSlot === slot.time && !isBooked;
 
-                    let cardBg = "rgba(30, 41, 59, 0.4)";
-                    let cardBorder = "1px solid rgba(255, 255, 255, 0.08)";
+                    let cardBg = "var(--bg-card)";
+                    let cardBorder = "1px solid var(--border)";
                     let dotColor = "#4ade80";
                     let statusText = "Còn trống";
                     let statusColor = "#4ade80";
@@ -651,9 +605,37 @@ export default function TimeslotValidation() {
                         <div style={{ fontSize: "12px", color: isBooked ? "#94a3b8" : "#64748b", minHeight: "44px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
                           {isBooked && slot.booking ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                              <div style={{ fontWeight: "700", color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>👤 {slot.booking.customerName}</div>
-                              <div style={{ fontSize: "11px", color: "#94a3b8" }}>📞 {slot.booking.customerPhone}</div>
-                              <div style={{ fontSize: "11px", color: "#475569" }}>🛠️ {slot.booking.serviceName}</div>
+                              <div
+                                style={{
+                                  fontWeight: "700",
+                                  color: "var(--text-primary)",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap"
+                                }}
+                              >
+                                👤 {slot.booking.customerName}
+                              </div>
+
+                              <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+                                📞 {slot.booking.customerPhone}
+                              </div>
+
+                              {slot.booking.licensePlate && (
+                                <div
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "#fbbf24",
+                                    fontWeight: "600"
+                                  }}
+                                >
+                                  🚘 {slot.booking.licensePlate}
+                                </div>
+                              )}
+
+                              <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+                                🛠️ {slot.booking.serviceName}
+                              </div>
                             </div>
                           ) : isChecking ? (
                             <span style={{ color: "#a3e635", fontWeight: "600" }}>⏳ Đang kiểm tra lịch...</span>
@@ -669,8 +651,8 @@ export default function TimeslotValidation() {
                 </div>
 
                 {/* Overview */}
-                <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: 20 }}>
-                  <div style={{ color: "#94a3b8", fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
+                <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: 20 }}>
+                  <div style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
                     📊 Tổng quan tất cả máy — {selectedDate}
                     {loadingOverview && <span style={s.loadingTxt}> đang tải...</span>}
                   </div>
@@ -681,22 +663,22 @@ export default function TimeslotValidation() {
                       const sc       = STATUS_COLORS[m.machineStatus] || STATUS_COLORS.Available;
                       return (
                         <div key={m.id}
-                          style={{ background: "#0f172a", border: `1px solid ${selectedMachine?.id === m.id ? "#3b82f6" : "#334155"}`, borderRadius: 10, padding: 14, cursor: "pointer" }}
+                          style={{ background: "var(--bg-primary)", border: `1px solid ${selectedMachine?.id === m.id ? "#3b82f6" : "var(--border)"}`, borderRadius: 10, padding: 14, cursor: "pointer" }}
                           onClick={() => { const found = machines.find(x => x.id === m.id); if (found) { setSelectedMachine(found); setSelectedTime(null); } }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 }}>
-                            <span style={{ color: "#f1f5f9", fontSize: 13, fontWeight: 700 }}>{m.name}</span>
+                            <span style={{ color: "var(--text-primary)", fontSize: 13, fontWeight: 700 }}>{m.name}</span>
                             <span style={{ width: 8, height: 8, borderRadius: "50%", background: sc.dot, marginTop: 3, flexShrink: 0 }} />
                           </div>
-                          <div style={{ color: "#64748b", fontSize: 11, marginBottom: 10 }}>
+                          <div style={{ color: "var(--text-secondary)", fontSize: 11, marginBottom: 10 }}>
                             {m.type === "CAR" ? "🚗" : "🏍️"} · {m.machineStatus}
                           </div>
-                          <div style={{ height: 5, background: "#1e293b", borderRadius: 99, overflow: "hidden", marginBottom: 8 }}>
+                          <div style={{ height: 5, background: "var(--bg-card)", borderRadius: 99, overflow: "hidden", marginBottom: 8 }}>
                             <div style={{ height: "100%", borderRadius: 99, width: `${pct}%`, background: barColor }} />
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <span style={{ color: "#f87171", fontSize: 12, fontWeight: 600 }}>{m.bookedSlots} đặt</span>
                             <span style={{ color: "#4ade80", fontSize: 12, fontWeight: 600 }}>{m.freeSlots} trống</span>
-                            <span style={{ color: "#64748b", fontSize: 11 }}>{pct}%</span>
+                            <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>{pct}%</span>
                           </div>
                         </div>
                       );
@@ -708,15 +690,16 @@ export default function TimeslotValidation() {
           </div>
         </div>
       </div>
+      </div>
     </div>
   );
 }
 
 const s = {
-  root: { minHeight: "100vh", width: "100%", boxSizing: "border-box", background: "#0f172a", fontFamily: "'Be Vietnam Pro','Segoe UI',sans-serif", position: "relative", padding: "40px 20px" },
+  root: { minHeight: "100vh", width: "100%", boxSizing: "border-box", background: "var(--bg-primary)", fontFamily: "'Be Vietnam Pro','Segoe UI',sans-serif", position: "relative", padding: "40px 20px" },
   bg: { position: "fixed", inset: 0, background: "radial-gradient(ellipse 80% 60% at 30% 0%,#1a3a2a44 0%,transparent 60%)", pointerEvents: "none" },
   bgGrid: { position: "fixed", inset: 0, backgroundImage: "linear-gradient(rgba(148,163,184,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,0.03) 1px,transparent 1px)", backgroundSize: "40px 40px", pointerEvents: "none" },
-  wrapper: { maxWidth: "1280px", margin: "0 auto", boxSizing: "border-box", position: "relative", zIndex: 1 },
+  wrapper: { maxWidth: "1280px", margin: "0", boxSizing: "border-box", position: "relative", zIndex: 1 },
   navbar: {
     maxWidth: "1280px",
     margin: "0 auto 25px auto",
@@ -736,7 +719,7 @@ const s = {
   navLogo: {
     fontSize: "18px",
     fontWeight: "800",
-    color: "#ffffff",
+    color: "var(--text-primary)",
     display: "flex",
     alignItems: "center",
     gap: "8px"
@@ -754,7 +737,7 @@ const s = {
   },
   navLink: {
     textDecoration: "none",
-    color: "#9ca3af",
+    color: "var(--text-secondary)",
     padding: "10px 16px",
     borderRadius: "10px",
     fontSize: "13px",
@@ -791,11 +774,11 @@ const s = {
   userName: {
     fontSize: "13px",
     fontWeight: "700",
-    color: "#ffffff"
+    color: "var(--text-primary)"
   },
   userRole: {
     fontSize: "10px",
-    color: "#9ca3af",
+    color: "var(--text-secondary)",
     marginTop: "2px"
   },
   logoutBtn: {
@@ -812,35 +795,35 @@ const s = {
     gap: "6px",
     transition: "all 0.2s ease"
   },
-  toast: { position: "fixed", top: 20, right: 20, color: "white", padding: "12px 20px", borderRadius: 10, fontWeight: 600, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" },
+  toast: { position: "fixed", top: 20, right: 20, color: "var(--text-primary)", padding: "12px 20px", borderRadius: 10, fontWeight: 600, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" },
   overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9998, padding: 16 },
-  modal: { background: "#1e293b", border: "1px solid #334155", borderRadius: 16, padding: 28, width: "100%", maxWidth: 420, maxHeight: "90vh", overflowY: "auto" },
-  modalTitle: { color: "#f1f5f9", fontSize: 18, fontWeight: 700, textAlign: "center", marginBottom: 16, marginTop: 0 },
-  modalInfo: { background: "#0f172a", borderRadius: 10, padding: 14, marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 },
+  modal: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 28, width: "100%", maxWidth: 420, maxHeight: "90vh", overflowY: "auto" },
+  modalTitle: { color: "var(--text-primary)", fontSize: 18, fontWeight: 700, textAlign: "center", marginBottom: 16, marginTop: 0 },
+  modalInfo: { background: "var(--bg-primary)", borderRadius: 10, padding: 14, marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 },
   modalRow: { display: "flex", justifyContent: "space-between" },
-  modalKey: { color: "#64748b", fontSize: 13 },
-  modalVal: { color: "#f1f5f9", fontSize: 13, fontWeight: 600 },
+  modalKey: { color: "var(--text-secondary)", fontSize: 13 },
+  modalVal: { color: "var(--text-primary)", fontSize: 13, fontWeight: 600 },
   modalActions: { display: "flex", gap: 10 },
-  cancelBtn: { flex: 1, background: "transparent", border: "1px solid #334155", color: "#94a3b8", borderRadius: 8, padding: 10, cursor: "pointer", fontSize: 14 },
-  confirmBtn: { flex: 1, background: "linear-gradient(135deg,#10b981,#059669)", color: "white", border: "none", borderRadius: 8, padding: 10, cursor: "pointer", fontWeight: 700, fontSize: 14 },
-  flabel: { color: "#94a3b8", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 },
-  finput: { background: "#0f172a", border: "1px solid #334155", borderRadius: 8, color: "#f1f5f9", padding: "10px 12px", fontSize: 14, outline: "none" },
+  cancelBtn: { flex: 1, background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 8, padding: 10, cursor: "pointer", fontSize: 14 },
+  confirmBtn: { flex: 1, background: "linear-gradient(135deg,#10b981,#059669)", color: "var(--text-primary)", border: "none", borderRadius: 8, padding: 10, cursor: "pointer", fontWeight: 700, fontSize: 14 },
+  flabel: { color: "var(--text-secondary)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 },
+  finput: { background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)", padding: "10px 12px", fontSize: 14, outline: "none" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, flexWrap: "wrap", gap: 16 },
   badge: { display: "inline-block", background: "#1a3a2a", color: "#4ade80", border: "1px solid #166534", borderRadius: 20, padding: "4px 14px", fontSize: 13, marginBottom: 8, fontWeight: 500 },
-  title: { color: "#f1f5f9", fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: -1 },
-  subtitle: { color: "#64748b", fontSize: 14, marginTop: 4 },
-  refreshBtn: { background: "#1e293b", border: "1px solid #334155", color: "#94a3b8", borderRadius: 10, padding: "10px 18px", cursor: "pointer", fontSize: 14 },
+  title: { color: "var(--text-primary)", fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: -1 },
+  subtitle: { color: "var(--text-secondary)", fontSize: 14, marginTop: 4 },
+  refreshBtn: { background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 10, padding: "10px 18px", cursor: "pointer", fontSize: 14 },
   layout: { display: "grid", gridTemplateColumns: "272px 1fr", gap: 16, alignItems: "start" },
   sidebar: { display: "flex", flexDirection: "column", gap: 12 },
-  card: { background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: 16 },
-  cardTitle: { color: "#94a3b8", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 },
-  loadingTxt: { color: "#64748b", fontWeight: 400, textTransform: "none", fontSize: 11 },
-  dateInput: { width: "100%", boxSizing: "border-box", background: "#0f172a", border: "1px solid #334155", borderRadius: 8, color: "#f1f5f9", padding: "10px 12px", fontSize: 14, outline: "none" },
-  filterBtn: { flex: 1, background: "#0f172a", border: "1px solid #334155", color: "#64748b", borderRadius: 8, padding: "8px 4px", cursor: "pointer", fontSize: 12, fontWeight: 600 },
+  card: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 },
+  cardTitle: { color: "var(--text-secondary)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 },
+  loadingTxt: { color: "var(--text-secondary)", fontWeight: 400, textTransform: "none", fontSize: 11 },
+  dateInput: { width: "100%", boxSizing: "border-box", background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)", padding: "10px 12px", fontSize: 14, outline: "none" },
+  filterBtn: { flex: 1, background: "var(--bg-primary)", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 8, padding: "8px 4px", cursor: "pointer", fontSize: 12, fontWeight: 600 },
   filterBtnActive: { borderColor: "#10b981", background: "#1a3a2a", color: "#4ade80" },
-  machineItem: { background: "#0f172a", border: "1px solid #334155", borderRadius: 8, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "border-color 0.15s" },
-  durationItem: { flex: 1, background: "#0f172a", border: "1px solid #334155", borderRadius: 8, padding: "8px 4px", cursor: "pointer", color: "#94a3b8", fontSize: 12, textAlign: "center", fontWeight: 600 },
+  machineItem: { background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "border-color 0.15s" },
+  durationItem: { flex: 1, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 4px", cursor: "pointer", color: "var(--text-secondary)", fontSize: 12, textAlign: "center", fontWeight: 600 },
   durationActive: { borderColor: "#f59e0b", background: "#2a1f0a", color: "#fbbf24" },
-  statsBar: { background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: "14px 20px", display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" },
-  emptyState: { background: "#1e293b", border: "1px solid #334155", borderRadius: 16, padding: 80, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 },
+  statsBar: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 20px", display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" },
+  emptyState: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 80, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 },
 };

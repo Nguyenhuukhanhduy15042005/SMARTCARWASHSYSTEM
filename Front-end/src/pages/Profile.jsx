@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 
 const API = "http://localhost:5000/api/users";
 
@@ -87,9 +86,10 @@ export default function Profile() {
     <div className="auth-container" style={{ alignItems: "flex-start", paddingTop: "2rem" }}>
       <div className="auth-card" style={{ maxWidth: 520, width: "100%" }}>
 
-        {/* Quay lại */}
+        {/* Back button — dùng cùng style với Login.jsx */}
         <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 15 }}>
-          <Link to="/"
+          <Link
+            to="/"
             style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none", color: "#475569", fontSize: 14, fontWeight: 600 }}
             onMouseOver={(e) => (e.currentTarget.style.color = "#F58607")}
             onMouseOut={(e) => (e.currentTarget.style.color = "#475569")}
@@ -118,7 +118,7 @@ export default function Profile() {
             <div style={{ fontWeight: 600, fontSize: 17, color: "#1e293b" }}>{profile?.FullName}</div>
             <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>{profile?.Email}</div>
             <span style={{ display: "inline-block", marginTop: 6, padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 500, background: "#E1F5EE", color: "#0F6E56" }}>
-              {ROLE_LABEL[profile?.RoleID] || "Khách hàng"}
+              Khách hàng
             </span>
           </div>
           {!editing && (
@@ -139,19 +139,25 @@ export default function Profile() {
             <label>Họ và tên</label>
             {editing
               ? <input type="text" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{profile?.FullName}</div>}
+              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{user?.FullName}</div>}
           </div>
           <div className="input-group">
             <label>Số điện thoại</label>
             {editing
               ? <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{profile?.PhoneNumber}</div>}
+              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{user?.PhoneNumber}</div>}
           </div>
           <div className="input-group" style={{ gridColumn: "1 / -1" }}>
             <label>Email</label>
             {editing
               ? <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{profile?.Email}</div>}
+              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{user?.Email}</div>}
+          </div>
+          <div className="input-group" style={{ gridColumn: "1 / -1" }}>
+            <label>Ngày tham gia</label>
+            <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#64748b" }}>
+              {user?.CreatedAt ? new Date(user.CreatedAt).toLocaleDateString("vi-VN") : "—"}
+            </div>
           </div>
           {editing && (
             <div className="input-group" style={{ gridColumn: "1 / -1" }}>
@@ -176,7 +182,8 @@ export default function Profile() {
           </div>
         )}
 
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

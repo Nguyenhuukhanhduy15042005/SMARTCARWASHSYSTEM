@@ -22,6 +22,26 @@
   --header-height: 70px;
 }
 
+[data-theme="light"] { /* Trọng thêm */
+  --bg-primary: #f4f3ef;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.75);
+  --border-color: rgba(0, 0, 0, 0.08);
+  --text-primary: #1a1a18;
+  --text-secondary: #6b6b64;
+  --color-accent: #0284c7;
+  --color-accent-hover: #0369a1;
+  --color-accent-glow: rgba(2, 132, 199, 0.15);
+  --color-success: #10b981;
+  --color-success-bg: rgba(16, 185, 129, 0.08);
+  --color-warning: #b45309;
+  --color-warning-bg: rgba(245, 158, 11, 0.08);
+  --color-danger: #dc2626;
+  --color-danger-bg: rgba(239, 68, 68, 0.08);
+  --color-info: #2563eb;
+  --color-info-bg: rgba(59, 130, 246, 0.08);
+}
+
 /* Base Layout */
 .user-dashboard-container {
   min-height: 100vh;
@@ -118,9 +138,9 @@
 
 /* Main Content Wrapper */
 .user-main-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 40px 20px;
+  max-width: 100%;
+  margin: 0;
+  padding: 40px 32px;
   display: flex;
   flex-direction: column;
   gap: 30px;
@@ -227,23 +247,15 @@
   letter-spacing: 1.5px;
 }
 
-.card-chip {
-  width: 40px;
-  height: 30px;
-  background: linear-gradient(135deg, #e2e8f0, #94a3b8);
-  border-radius: 6px;
-  position: relative;
-}
-
-.card-chip::after {
-  content: '';
-  position: absolute;
-  top: 5px;
-  left: 10px;
-  right: 10px;
-  bottom: 5px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+.card-logo {
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.9;
 }
 
 .card-middle {
@@ -371,7 +383,8 @@
 
 .profile-field-row strong {
   font-size: 14px;
-  color: white;
+  /* Trọng thêm: Đổi từ white sang var(--text-primary) để hiển thị chữ đúng màu khi đổi giao diện sáng/tối */
+  color: var(--text-primary);
 }
 
 /* Spend Metrics cards */
@@ -431,7 +444,8 @@
   font-size: 22px;
   font-weight: 800;
   margin: 4px 0 0 0;
-  color: white;
+  /* Trọng thêm: Đổi từ white sang var(--text-primary) để hiển thị chữ đúng màu khi đổi giao diện sáng/tối */
+  color: var(--text-primary);
 }
 
 /* User Filter Bar */
@@ -496,26 +510,31 @@
 }
 
 /* Actions in row */
-.btn-user-cancel {
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+.action-icon-btn.btn-user-cancel {
+  /* Trọng thêm: Thay thế background và border bằng giá trị rõ hơn để hiển thị nút hủy trong giao diện sáng */
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: var(--color-danger) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
 }
 
-.btn-user-cancel:hover {
-  background: var(--color-danger);
-  color: white;
+.action-icon-btn.btn-user-cancel:hover {
+  background: var(--color-danger) !important;
+  color: white !important;
+  border-color: var(--color-danger) !important;
 }
 
-.btn-user-delete {
-  background: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.15);
+.action-icon-btn.btn-user-delete {
+  /* Trọng thêm: Tăng độ mờ nền đỏ để nhìn rõ khối nút thùng rác ở cả nền sáng/tối */
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+  /* Trọng thêm: Tăng độ mờ viền đỏ để thấy rõ viền nút thùng rác ở nền sáng */
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
 }
 
-.btn-user-delete:hover {
-  background: #ef4444;
-  color: white;
+.action-icon-btn.btn-user-delete:hover {
+  background: #ef4444 !important;
+  color: white !important;
+  border-color: #ef4444 !important;
 }
 
 /* Section Divider */
@@ -530,7 +549,8 @@
 .section-divider-title h2 {
   font-size: 18px;
   font-weight: 800;
-  color: white;
+  /* Trọng thêm: Đổi từ white sang var(--text-primary) để hiển thị chữ đúng màu khi chuyển giao diện sáng/tối */
+  color: var(--text-primary);
   margin: 0;
   white-space: nowrap;
   letter-spacing: -0.3px;
@@ -613,13 +633,15 @@
 }
 
 .vehicle-badge {
-  background: rgba(255, 255, 255, 0.04);
+  /* Trọng thêm: Đổi background sang màu trung tính có độ mờ nhẹ để tương thích cả sáng và tối */
+  background: rgba(148, 163, 184, 0.15);
   padding: 4px 10px;
   border-radius: 6px;
   font-family: monospace;
   font-weight: 700;
-  color: #e2e8f0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Trọng thêm: Đổi từ #e2e8f0 sang var(--text-primary) để không bị mất chữ */
+  color: var(--text-primary);
+  border: 1px solid var(--border);
   font-size: 13px;
 }
 
@@ -635,8 +657,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  /* Trọng thêm: Đổi border sang var(--border) động để hiển thị viền nút ở giao diện sáng */
+  border: 1px solid var(--border);
+  /* Trọng thêm: Đổi background sang màu trung tính để hiển thị khối nút ở giao diện sáng */
+  background: rgba(148, 163, 184, 0.1);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -649,15 +673,16 @@
   border-color: rgba(255, 255, 255, 0.15);
 }
 
-.btn-details {
-  background: rgba(59, 130, 246, 0.08);
-  color: #60a5fa;
-  border-color: rgba(59, 130, 246, 0.15);
+.action-icon-btn.btn-details {
+  background: rgba(59, 130, 246, 0.08) !important;
+  color: #60a5fa !important;
+  border-color: rgba(59, 130, 246, 0.15) !important;
 }
 
-.btn-details:hover {
-  background: #3b82f6;
-  color: white;
+.action-icon-btn.btn-details:hover {
+  background: #3b82f6 !important;
+  color: white !important;
+  border-color: #3b82f6 !important;
 }
 
 /* Status Pills */
@@ -718,7 +743,7 @@
 }
 
 .admin-modal {
-  background: #0f172a;
+  background: var(--bg-secondary); /* Trọng thêm */
   border: 1px solid var(--border-color);
   border-radius: 24px;
   width: 100%;
@@ -745,7 +770,7 @@
   margin: 0;
   font-size: 18px;
   font-weight: 800;
-  color: white;
+  color: var(--text-primary); /* Trọng thêm */
 }
 
 .close-modal-btn {
@@ -758,7 +783,7 @@
 }
 
 .close-modal-btn:hover {
-  color: white;
+  color: var(--text-primary); /* Trọng thêm */
 }
 
 .admin-modal-body {
@@ -789,7 +814,7 @@
 .modal-field span {
   font-size: 14px;
   font-weight: 600;
-  color: white;
+  color: var(--text-primary); /* Trọng thêm */
 }
 
 /* Timeline */
@@ -824,7 +849,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #0f172a;
+  background: var(--bg-primary); /* Trọng thêm */
   border: 2px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
@@ -857,7 +882,7 @@
 }
 
 .timeline-step.active .timeline-label {
-  color: white;
+  color: var(--text-primary); /* Trọng thêm */
 }
 
 /* Loading Spinner & Toast Alerts */
@@ -873,7 +898,7 @@
 .spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid rgba(255, 255, 255, 0.03);
+  border: 3px solid var(--border); /* Trọng thêm */
   border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -898,7 +923,7 @@
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: #0f172a;
+  background: var(--bg-card); /* Trọng thêm */
   border: 1px solid var(--border-color);
   padding: 14px 20px;
   border-radius: 12px;

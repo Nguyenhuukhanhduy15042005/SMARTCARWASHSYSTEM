@@ -50,7 +50,7 @@ export default function Login({ setUser }) {
         localStorage.setItem("LOGIN_USER", JSON.stringify(data.user));
         setUser(data.user);
         setAuthUser(data.user); // Đồng bộ cho AuthContext
-        setToken(data.token);   // Đồng bộ cho AuthContext
+        setToken(data.token); // Đồng bộ cho AuthContext
         const role = data.user.role;
         if (role === "admin") {
           navigate("/admin/dashboard");
@@ -107,7 +107,7 @@ export default function Login({ setUser }) {
           localStorage.setItem("LOGIN_USER", JSON.stringify(data.user));
           setUser(data.user);
           setAuthUser(data.user); // Đồng bộ cho AuthContext
-          setToken(data.token);   // Đồng bộ cho AuthContext
+          setToken(data.token); // Đồng bộ cho AuthContext
           const role = data.user.role;
           if (role === "admin") {
             navigate("/admin/dashboard");
@@ -145,8 +145,8 @@ export default function Login({ setUser }) {
   // 3. GIAO DIỆN
   // ============================================
   return (
-    <div className="auth-container">
-      <div className="auth-card" style={{ position: "relative" }}>
+    <div className="auth-container"> {/* Trọng thêm: Khôi phục CSS cũ */}
+      <div className="auth-card" style={{ position: "relative" }}> {/* Trọng thêm: Khôi phục CSS cũ */}
         <div
           style={{
             display: "flex",
@@ -190,7 +190,7 @@ export default function Login({ setUser }) {
         {errorMsg && <div className="error-msg">{errorMsg}</div>}
 
         <form onSubmit={handleLogin}>
-          <div className="input-group">
+          <div className="input-group"> {/* Trọng thêm: Khôi phục CSS cũ */}
             <label>Tài khoản</label>
             <input
               type="text"
@@ -200,7 +200,7 @@ export default function Login({ setUser }) {
               required
             />
           </div>
-          <div className="input-group">
+          <div className="input-group"> {/* Trọng thêm: Khôi phục CSS cũ */}
             <label>Mật khẩu</label>
             <input
               type="password"
@@ -213,7 +213,7 @@ export default function Login({ setUser }) {
           <button
             type="submit"
             className="btn btn-primary"
-style={{ width: "100%", marginTop: "10px" }}
+            style={{ width: "100%", marginTop: "10px" }}
           >
             Đăng nhập
           </button>
@@ -272,7 +272,7 @@ style={{ width: "100%", marginTop: "10px" }}
               />
               <path fill="none" d="M0 0h48v48H0z" />
             </svg>
-            Đăng nhập bằng Google
+            Google
           </button>
         </div>
 

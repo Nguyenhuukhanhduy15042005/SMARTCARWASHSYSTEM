@@ -17,6 +17,7 @@ export default function Register() {
 
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -30,7 +31,8 @@ export default function Register() {
   // BƯỚC 1: GỬI THÔNG TIN VÀ NHẬN OTP
   // ==========================================
   const handleRegisterStep1 = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    if (loading) return;
     setErrorMsg("");
     setSuccessMsg("");
 
@@ -46,6 +48,7 @@ export default function Register() {
       return;
     }
 
+    setLoading(true);
     try {
       // Gọi API gửi OTP (Backend của bạn cần tạo endpoint này)
       const response = await fetch(
@@ -54,7 +57,6 @@ export default function Register() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, phone, fullName }),
-          // Lưu ý: Ở bước 1 có thể chưa cần gửi password vội, hoặc gửi để backend lưu tạm (Redis/RAM)
         },
       );
 
@@ -68,6 +70,8 @@ export default function Register() {
       }
     } catch (err) {
       setErrorMsg("Không thể kết nối đến Server Backend!");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,9 +80,11 @@ export default function Register() {
   // ==========================================
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setErrorMsg("");
     setSuccessMsg("");
 
+    setLoading(true);
     try {
       // Gọi API xác thực OTP và lưu Database
       const response = await fetch(
@@ -102,12 +108,14 @@ export default function Register() {
       }
     } catch (err) {
       setErrorMsg("Lỗi kết nối khi xác thực OTP!");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card" style={{ position: "relative" }}>
+    <div className="auth-container"> {/* Trọng thêm: Khôi phục CSS cũ */}
+      <div className="auth-card" style={{ position: "relative" }}> {/* Trọng thêm: Khôi phục CSS cũ */}
         {/* NÚT QUAY LẠI */}
         <div
           style={{
@@ -185,7 +193,7 @@ export default function Register() {
         {/* ================= FORM BƯỚC 1: ĐIỀN THÔNG TIN ================= */}
         {step === 1 && (
           <form onSubmit={handleRegisterStep1}>
-            <div className="input-group">
+            <div className="input-group"> {/* Trọng thêm: Khôi phục CSS cũ */}
               <label>Họ và tên</label>
               <input
                 type="text"
@@ -196,7 +204,7 @@ export default function Register() {
               />
             </div>
 
-            <div className="input-group">
+            <div className="input-group"> {/* Trọng thêm: Khôi phục CSS cũ */}
               <label>Số điện thoại</label>
               <input
                 type="tel"
@@ -212,7 +220,7 @@ export default function Register() {
               />
             </div>
 
-            <div className="input-group">
+            <div className="input-group"> {/* Trọng thêm: Khôi phục CSS cũ */}
               <label>Email</label>
               <input
                 type="email"
@@ -223,7 +231,7 @@ export default function Register() {
               />
             </div>
 
-            <div className="input-group">
+            <div className="input-group"> {/* Trọng thêm: Khôi phục CSS cũ */}
               <label>Mật khẩu</label>
               <input
                 type="password"
@@ -235,7 +243,7 @@ export default function Register() {
               />
             </div>
 
-            <div className="input-group">
+            <div className="input-group"> {/* Trọng thêm: Khôi phục CSS cũ */}
               <label>Xác nhận mật khẩu</label>
               <input
                 type="password"
@@ -249,13 +257,15 @@ export default function Register() {
             <button
               type="submit"
               className="btn btn-primary"
+              disabled={loading}
               style={{
                 width: "100%",
                 marginTop: "15px",
-                backgroundColor: "#F58607",
+                backgroundColor: loading ? "#cbd5e1" : "#F58607",
+                cursor: loading ? "not-allowed" : "pointer",
               }}
             >
-              Đăng ký nhận mã OTP
+              {loading ? "Đang gửi OTP..." : "Đăng ký nhận mã OTP"}
             </button>
           </form>
         )}
@@ -274,7 +284,7 @@ export default function Register() {
               <b>{email}</b> của bạn.
             </p>
 
-            <div className="input-group">
+            <div className="input-group"> {/* Trọng thêm: Khôi phục CSS cũ */}
               <label>Mã xác thực OTP</label>
               <input
                 type="text"
@@ -295,18 +305,21 @@ export default function Register() {
             <button
               type="submit"
               className="btn btn-primary"
+              disabled={loading}
               style={{
                 width: "100%",
                 marginTop: "10px",
-                backgroundColor: "#F58607",
+                backgroundColor: loading ? "#cbd5e1" : "#F58607",
+                cursor: loading ? "not-allowed" : "pointer",
               }}
             >
-              Xác nhận OTP
+              {loading ? "Đang xác thực..." : "Xác nhận OTP"}
             </button>
 
             <button
               type="button"
               onClick={handleRegisterStep1}
+              disabled={loading}
               style={{
                 width: "100%",
                 marginTop: "10px",
@@ -314,8 +327,8 @@ export default function Register() {
                 background: "none",
                 border: "1px solid #cbd5e1",
                 borderRadius: "10px",
-                color: "#475569",
-                cursor: "pointer",
+                color: loading ? "#94a3b8" : "#475569",
+                cursor: loading ? "not-allowed" : "pointer",
                 fontWeight: "bold",
               }}
             >
@@ -333,7 +346,7 @@ export default function Register() {
               color: "#475569",
             }}
           >
-            Đã có tài khoản?{" "}
+            Chưa có tài khoản?{" "}
             <Link
               to="/login"
               style={{

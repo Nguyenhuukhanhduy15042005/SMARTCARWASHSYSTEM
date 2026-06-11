@@ -41,13 +41,66 @@ router.put("/me", verifyToken, async (req, res) => {
       .input("email", sql.VarChar, email)
       .input("userId", sql.Int, req.user.userId)
       .query(`
-        SELECT UserID FROM [USER]
+        SELECT UserID, RoleID FROM [USER]
         WHERE (PhoneNumber = @phone OR Email = @email)
         AND UserID != @userId
       `);
 
     if (checkDuplicate.recordset.length > 0) {
-      return res.status(400).json({ message: "Email hoặc Số điện thoại đã được người khác sử dụng!" });
+      console.log("checkDuplicate.recordset:", checkDuplicate.recordset);
+      const hasNonGuest = checkDuplicate.recordset.some(u => u.RoleID !== 4);
+      if (hasNonGuest) {
+        return res.status(400).json({ message: "Email hoặc Số điện thoại đã được người khác sử dụng!" });
+      }
+
+      // Ghép toàn bộ tài khoản vãng lai trùng lặp (RoleID = 4)
+      const transaction = new sql.Transaction(pool);
+      await transaction.begin();
+      try {
+        for (const dupUser of checkDuplicate.recordset) {
+          const request = transaction.request();
+          request.input("userId", sql.Int, req.user.userId);
+          request.input("dupUserId", sql.Int, dupUser.UserID);
+
+          // 1. Chuyển BOOKING
+          await request.query(`
+            UPDATE BOOKING 
+            SET CustomerID = @userId 
+            WHERE CustomerID = @dupUserId
+          `);
+
+          // 2. Chuyển VEHICLE
+          await request.query(`
+            UPDATE VEHICLE 
+            SET UserID = @userId 
+            WHERE UserID = @dupUserId
+          `);
+
+          // 3. Chuyển SURVEY
+          await request.query(`
+            UPDATE SURVEY 
+            SET UserID = @userId 
+            WHERE UserID = @dupUserId
+          `);
+
+          // 4. Xóa MEMBER_PROFILE của khách vãng lai nếu có
+          await request.query(`
+            DELETE FROM MEMBER_PROFILE 
+            WHERE UserID = @dupUserId
+          `);
+
+          // 5. Xóa USER khách vãng lai
+          await request.query(`
+            DELETE FROM [USER] 
+            WHERE UserID = @dupUserId
+          `);
+        }
+
+        await transaction.commit();
+      } catch (err) {
+        await transaction.rollback();
+        return res.status(500).json({ message: "Lỗi ghép tài khoản vãng lai: " + err.message });
+      }
     }
 
     if (newPassword) {
@@ -84,7 +137,7 @@ router.put("/me", verifyToken, async (req, res) => {
   }
 });
 
-// HEAD (main): Lấy danh sách toàn bộ người dùng (chỉ Admin)
+// HEAD (main): Lấy danh sách toàn bộ người dùng kèm theo tên vai trò (chỉ Admin)
 router.get("/", verifyToken, async (req, res) => {
   if (req.user.roleId !== 1) {
     return res.status(403).json({ message: "Chỉ admin mới được xem danh sách người dùng!" });
@@ -95,12 +148,50 @@ router.get("/", verifyToken, async (req, res) => {
     const result = await pool
       .request()
       .query(`
-        SELECT UserID, FullName, Email, PhoneNumber, RoleID
-        FROM [USER]
-        ORDER BY UserID DESC
+        SELECT 
+          u.UserID AS id, 
+          u.FullName AS name, 
+          u.Email AS email, 
+          u.PhoneNumber AS phone, 
+          u.RoleID AS roleId,
+          COALESCE(r.RoleName, 'MEMBER') AS roleName
+        FROM [USER] u
+        LEFT JOIN [ROLE] r ON u.RoleID = r.RoleID
+        ORDER BY u.UserID DESC
       `);
 
     res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server: " + err.message });
+  }
+});
+
+// PUT /api/users/:userId/role
+// Cập nhật vai trò người dùng (Chỉ Admin)
+router.put("/:userId/role", verifyToken, async (req, res) => {
+  if (req.user.roleId !== 1) {
+    return res.status(403).json({ message: "Chỉ admin mới được thực hiện hành động này!" });
+  }
+
+  const userId = parseInt(req.params.userId, 10);
+  const { roleId } = req.body;
+
+  if (isNaN(userId)) {
+    return res.status(400).json({ message: "UserID không hợp lệ!" });
+  }
+
+  if (roleId === undefined || isNaN(parseInt(roleId, 10))) {
+    return res.status(400).json({ message: "Vai trò không hợp lệ!" });
+  }
+
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input("userId", sql.Int, userId)
+      .input("roleId", sql.Int, roleId)
+      .query("UPDATE [USER] SET RoleID = @roleId WHERE UserID = @userId");
+
+    res.json({ message: "Cập nhật vai trò thành công!" });
   } catch (err) {
     res.status(500).json({ message: "Lỗi server: " + err.message });
   }
@@ -258,6 +349,77 @@ router.get("/tiers", verifyToken, async (req, res) => {
     res.json(result.recordset);
   } catch (err) {
     res.status(500).json({ message: "Lỗi server: " + err.message });
+  }
+});
+
+// DELETE /api/users/:userId
+// Xóa tài khoản hệ thống (Chỉ Admin)
+router.delete("/:userId", verifyToken, async (req, res) => {
+  if (req.user.roleId !== 1) {
+    return res.status(403).json({ message: "Chỉ admin mới được thực hiện hành động này!" });
+  }
+
+  const userId = parseInt(req.params.userId, 10);
+  if (isNaN(userId)) {
+    return res.status(400).json({ message: "UserID không hợp lệ!" });
+  }
+
+  if (userId === req.user.userId) {
+    return res.status(400).json({ message: "Bạn không thể tự xóa tài khoản của chính mình!" });
+  }
+
+  try {
+    const pool = await poolPromise;
+    
+    // Check if user exists
+    const userCheck = await pool.request()
+      .input("userId", sql.Int, userId)
+      .query("SELECT UserID, RoleID FROM [USER] WHERE UserID = @userId");
+      
+    if (userCheck.recordset.length === 0) {
+      return res.status(404).json({ message: "Người dùng không tồn tại!" });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    try {
+      const request = transaction.request();
+      request.input("userId", sql.Int, userId);
+
+      // 1. Delete MEMBER_PROFILE
+      await request.query("DELETE FROM MEMBER_PROFILE WHERE UserID = @userId");
+
+      // 2. Delete SURVEY (Feedback/Survey feedback)
+      await request.query("DELETE FROM SURVEY WHERE UserID = @userId");
+
+      // 3. Delete VEHICLE
+      await request.query("DELETE FROM VEHICLE WHERE UserID = @userId");
+
+      // 4. Delete BOOKING details & payments first, then BOOKING
+      await request.query(`
+        DELETE FROM PAYMENT 
+        WHERE BookingID IN (SELECT BookingID FROM BOOKING WHERE CustomerID = @userId)
+      `);
+      
+      await request.query(`
+        DELETE FROM BOOKING_DETAIL 
+        WHERE BookingID IN (SELECT BookingID FROM BOOKING WHERE CustomerID = @userId)
+      `);
+
+      await request.query("DELETE FROM BOOKING WHERE CustomerID = @userId");
+
+      // 5. Delete [USER]
+      await request.query("DELETE FROM [USER] WHERE UserID = @userId");
+
+      await transaction.commit();
+      res.json({ message: "Xóa tài khoản thành công!" });
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  } catch (err) {
+    console.error("Lỗi khi xóa tài khoản:", err);
+    res.status(500).json({ message: "Lỗi server khi xóa tài khoản: " + err.message });
   }
 });
 

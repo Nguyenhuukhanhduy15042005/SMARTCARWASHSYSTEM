@@ -14,9 +14,6 @@ import StaffDashboard from "./pages/StaffDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Unauthorized from "./pages/Unauthorized";
 import MemberManagement from "./pages/MemberManagement";
-import Payment from "./pages/Payment";
-import PaymentHistory from "./pages/PaymentHistory";
-import PaymentResult from "./pages/PaymentResult";
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -50,11 +47,14 @@ function App() {
           </ProtectedRoute>
         } />
 
-        <Route path="/booking" element={
-          <ProtectedRoute requiredRole="user">
-            <Booking />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/booking"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <Booking />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="/timeslots" element={
           <ProtectedRoute requiredRole={["admin", "staff"]}>
@@ -74,30 +74,14 @@ function App() {
           </ProtectedRoute>
         } />
 
-        <Route path="/admin/members" element={
-          <ProtectedRoute requiredRole={["admin", "staff"]}>
-            <MemberManagement />
-          </ProtectedRoute>
-        } />
-
-        {/* ✅ Payment routes */}
-        <Route path="/payments" element={
-          <ProtectedRoute requiredRole="user">
-            <Payment />
-          </ProtectedRoute>
-        } />
-
-        <Route path="/payments/history" element={
-          <ProtectedRoute requiredRole="user">
-            <PaymentHistory />
-          </ProtectedRoute>
-        } />
-
-        <Route path="/payments/result" element={
-          <ProtectedRoute requiredRole="user">
-            <PaymentResult />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/admin/members"
+          element={
+            <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <MemberManagement />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

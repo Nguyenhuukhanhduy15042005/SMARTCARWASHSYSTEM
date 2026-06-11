@@ -1,5 +1,5 @@
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 /**
  * Bọc các route cần đăng nhập và/hoặc role cụ thể.
@@ -7,8 +7,15 @@ import { useAuth } from '../context/AuthContext';
  * Dùng:
  *   <ProtectedRoute>                          → chỉ cần đăng nhập
  *   <ProtectedRoute requiredRole="admin">     → phải là admin
- *   <ProtectedRoute requiredRole="user">      → phải là user thường
+ *   <ProtectedRoute requiredRole="user">      → user thường, staff & admin đều vào được
+ *
+ * Thứ tự quyền: admin > staff > user
+ * Admin có thể vào MỌI trang.
+ * Staff có thể vào trang của user (dashboard, booking).
  */
+
+const ROLE_LEVEL = { admin: 3, staff: 2, user: 1 };
+
 const ProtectedRoute = ({ children, requiredRole }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -16,7 +23,14 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   // Đang load auth state từ localStorage
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
         <span>Đang tải...</span>
       </div>
     );
@@ -27,14 +41,29 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Đã đăng nhập nhưng không đúng role → về trang Unauthorized
+  // Kiểm tra quyền nếu có requiredRole
   if (requiredRole) {
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-    if (!roles.includes(user.role)) {
+    // Trọng thêm: Dự phòng xác định role từ roleId nếu role bị thiếu trong session cũ
+    const userRole = user.role || (user.roleId === 1 ? "admin" : user.roleId === 2 ? "staff" : "user");
+
+    // Admin luôn được phép vào bất kỳ trang nào
+    if (userRole === "admin") {
+      return children;
+    }
+
+    // Tính level tối thiểu cần có dựa trên danh sách roles cho phép
+    const minRequiredLevel = Math.min(...roles.map((r) => ROLE_LEVEL[r] ?? 99));
+
+    // User hiện tại phải có level >= level tối thiểu
+    const userLevel = ROLE_LEVEL[userRole] ?? 0;
+
+    if (userLevel < minRequiredLevel) {
       return <Navigate to="/unauthorized" replace />;
     }
   }
 
+  // Hợp lệ toàn bộ -> Cho phép vào trang
   return children;
 };
 
