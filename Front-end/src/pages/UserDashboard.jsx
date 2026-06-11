@@ -2,22 +2,23 @@ import React, { useState, useEffect } from "react";
 import "./UserDashboard.css";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // Trọng thêm
+import Sidebar from "../components/Sidebar";
 
-const API_BASE = "/api";
+const API_BASE = "http://127.0.0.1:5000/api";
 
 export default function UserDashboard() {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Trọng thêm
   const [bookings, setBookings] = useState([]);
-  const [profile, setProfile] = useState({
-    UserID: 12,
-    FullName: "Khách hàng",
-    PhoneNumber: "",
-    Email: "",
-    CurrentPoints: 0,
-    AccumulatedPoints: 0,
-    TierName: "Standard",
-    DiscountRate: 0
+  const [profile, setProfile] = useState({ 
+    UserID: 12, 
+    FullName: "Khách hàng", 
+    PhoneNumber: "", 
+    Email: "", 
+    CurrentPoints: 0, 
+    AccumulatedPoints: 0, 
+    TierName: "Standard", 
+    DiscountRate: 0 
   });
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState("All");
@@ -27,6 +28,7 @@ export default function UserDashboard() {
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackComment, setFeedbackComment] = useState("");
 
+  // Decode customer ID from localStorage token, fallback to ID 12 for direct testing
   const getCustomerId = () => {
     const token = localStorage.getItem("token");
     if (token && token !== "mock-token" && token !== "null" && token !== "undefined") {
@@ -37,7 +39,7 @@ export default function UserDashboard() {
         console.error("Error decoding token:", err);
       }
     }
-    return 12;
+    return 12; // Fallback customer ID with rich data
   };
 
   useEffect(() => {
@@ -56,7 +58,9 @@ export default function UserDashboard() {
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => {
+      setToast(null);
+    }, 4000);
   };
 
   const fetchData = async () => {
@@ -66,6 +70,7 @@ export default function UserDashboard() {
     const headers = { Authorization: `Bearer ${token}` };
 
     try {
+      // 1. Fetch user profile
       const profileRes = await axios.get(`${API_BASE}/users/profile?userId=${userId}`, { headers });
       const rawProfile = profileRes.data;
       if (rawProfile) {
@@ -81,15 +86,23 @@ export default function UserDashboard() {
         });
       }
 
+      // 2. Fetch customer bookings
       const bookingsRes = await axios.get(`${API_BASE}/bookings?customerId=${userId}`, { headers });
       const rawBookings = Array.isArray(bookingsRes.data) ? bookingsRes.data : [];
       const normalizedBookings = rawBookings.map(b => {
+        // Safe date-time parsing for old structures
         let dateStr = b.date || "";
         let timeStr = b.time || "";
         if (!dateStr && b.BookingDate) {
           const d = new Date(b.BookingDate);
-          dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-          timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          dateStr = `${year}-${month}-${day}`;
+          
+          const hours = String(d.getHours()).padStart(2, '0');
+          const minutes = String(d.getMinutes()).padStart(2, '0');
+          timeStr = `${hours}:${minutes}`;
         }
         return {
           id: b.id !== undefined ? b.id : b.BookingID,
@@ -114,35 +127,93 @@ export default function UserDashboard() {
     }
   };
 
+  // Customer cancels their booking (Status = 5)
   const handleCancelBooking = async (id) => {
-    if (!window.confirm("Bạn có chắc chắn muốn hủy đặt lịch rửa xe này không?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn hủy đặt lịch rửa xe này không?")) {
+      return;
+    }
+
     const token = localStorage.getItem("token") || "mock-token";
     const headers = { Authorization: `Bearer ${token}` };
+
     try {
-      await axios.post(`${API_BASE}/bookings/${id}/transition`, { status: 5 }, { headers });
+      await axios.post(`${API_BASE}/bookings/${id}/transition`, { nextStatus: 5 }, { headers }); // Trọng thêm: Đổi từ status thành nextStatus để khớp với backend
       showToast("Đã hủy lịch đặt xe thành công!", "success");
-      if (selectedBooking && selectedBooking.id === id) setSelectedBooking({ ...selectedBooking, status: 5 });
-      fetchData();
+      
+      if (selectedBooking && selectedBooking.id === id) {
+        setSelectedBooking({ ...selectedBooking, status: 5 });
+      }
+      
+      fetchData(); // Refresh list
     } catch (err) {
+      console.error("Failed to cancel booking:", err);
       const errMsg = err.response?.data?.message || err.message;
       showToast(`Không thể hủy lịch: ${errMsg}`, "error");
     }
   };
 
+  // Customer deletes completed/cancelled booking permanently
   const handleDeleteBooking = async (id) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa vĩnh viễn lịch đặt xe này khỏi lịch sử không? Hành động này không thể hoàn tác!")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa vĩnh viễn lịch đặt xe này khỏi lịch sử không? Hành động này không thể hoàn tác!")) {
+      return;
+    }
+
     const token = localStorage.getItem("token") || "mock-token";
     const headers = { Authorization: `Bearer ${token}` };
+
     try {
       await axios.delete(`${API_BASE}/bookings/${id}`, { headers });
       showToast("Xóa lịch đặt xe thành công!", "success");
-      if (selectedBooking && selectedBooking.id === id) setSelectedBooking(null);
-      fetchData();
+      
+      if (selectedBooking && selectedBooking.id === id) {
+        setSelectedBooking(null);
+      }
+      
+      fetchData(); // Refresh list
     } catch (err) {
+      console.error("Failed to delete booking:", err);
       const errMsg = err.response?.data?.message || err.message;
       showToast(`Không thể xóa: ${errMsg}`, "error");
     }
   };
+
+  const handleSubmitFeedback = async () => {
+  if (!feedbackBooking) return;
+
+  if (!feedbackRating || feedbackRating < 1 || feedbackRating > 5) {
+    showToast("Vui lòng chọn số sao từ 1 đến 5.", "error");
+    return;
+  }
+
+  if (!feedbackComment.trim()) {
+    showToast("Vui lòng nhập nội dung đánh giá.", "error");
+    return;
+  }
+
+  const token = localStorage.getItem("token") || "mock-token";
+  const headers = { Authorization: `Bearer ${token}` };
+
+  try {
+    await axios.post(
+      `${API_BASE}/feedbacks`,
+      {
+        bookingId: feedbackBooking.id,
+        rating: feedbackRating,
+        comment: feedbackComment.trim(),
+      },
+      { headers }
+    );
+
+    showToast("Gửi đánh giá thành công! Cảm ơn bạn đã phản hồi.", "success");
+    setFeedbackBooking(null);
+    setFeedbackRating(5);
+    setFeedbackComment("");
+  } catch (err) {
+    console.error("Failed to submit feedback:", err);
+    const errMsg = err.response?.data?.message || err.message;
+    showToast(`Không thể gửi đánh giá: ${errMsg}`, "error");
+  }
+};
 
   const getStatusPill = (status) => {
     switch (status) {
@@ -157,9 +228,13 @@ export default function UserDashboard() {
 
   const getVehicleIcon = (type) => {
     switch (type?.toLowerCase()) {
-      case "xe máy": case "motorcycle": case "bike": case "moto":
+      case "xe máy":
+      case "motorcycle":
+      case "bike":
+      case "moto":
         return <i className="fa-solid fa-motorcycle"></i>;
-      default: return <i className="fa-solid fa-car"></i>;
+      default:
+        return <i className="fa-solid fa-car"></i>;
     }
   };
 
@@ -172,7 +247,7 @@ export default function UserDashboard() {
     }
   };
 
-  const goToPayment = (booking) => {
+  const goToPayment = (booking) => { // Trọng thêm
     navigate("/payments", {
       state: {
         booking: {
@@ -187,6 +262,7 @@ export default function UserDashboard() {
     });
   };
 
+  // Filter bookings based on active status tab
   const filteredBookings = bookings.filter(b => {
     if (selectedStatus === "All") return true;
     if (selectedStatus === "Active") return b.status === 1 || b.status === 2 || b.status === 3;
@@ -195,39 +271,26 @@ export default function UserDashboard() {
     return true;
   });
 
+  // Calculate metrics
   const activeCount = bookings.filter(b => b.status === 1 || b.status === 2 || b.status === 3).length;
   const completedCount = bookings.filter(b => b.status === 4).length;
   const totalSpend = bookings.filter(b => b.status === 4).reduce((acc, b) => acc + (b.price || 0), 0);
 
   return (
-    <div className="user-dashboard-container">
-      {/* Header bar */}
-      <header className="user-header">
-        <div className="user-header-brand">
-          <img src="/logo.png" alt="Moto Shine Logo" className="header-logo-img" />
-          <span>Moto Shine</span>
-        </div>
-        <div className="user-header-profile">
-          <a href="/dashboard" className="nav-link active">Thành viên</a>
-          <a href="/booking" className="nav-link">Đặt Lịch Ngay</a>
-          <a href="/vehicles" className="nav-link">Xe của tôi</a>
-          <a href="/profile" className="nav-link">Hồ sơ cá nhân</a>
-          <div className="user-header-actions">
-            <a href="/login" className="btn-logout" onClick={() => localStorage.clear()}>
-              <i className="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất
-            </a>
-          </div>
-        </div>
-      </header>
+    <div className="user-dashboard-container portal-layout-container">
+      <Sidebar />
 
       {/* Main Wrapper */}
-      <main className="user-main-content">
-        <section className="welcome-section">
+      <main className="portal-main-content" style={{ padding: 0 }}>
+        <div className="user-main-content">
+          <section className="welcome-section">
           <h1>Xin Chào, {profile.FullName}!</h1>
           <p>Chào mừng quay trở lại. Theo dõi trạng thái đặt lịch và hạng thành viên của bạn.</p>
         </section>
 
+        {/* Profile Card grid */}
         <section className="user-profile-grid">
+          {/* Card 1: Membership Glowing Card */}
           <div className={`membership-card-glow ${getTierClass(profile.TierName)}`}>
             <div className="card-top">
               <span className="card-label">Thẻ Thành Viên</span>
@@ -238,7 +301,9 @@ export default function UserDashboard() {
             <div className="card-middle">
               <div className="points-display">
                 <span className="points-label">Điểm tích lũy hiện tại</span>
-                <span className="points-value">{profile.CurrentPoints} <span>PTS</span></span>
+                <span className="points-value">
+                  {profile.CurrentPoints} <span>PTS</span>
+                </span>
               </div>
             </div>
             <div className="card-bottom">
@@ -250,12 +315,22 @@ export default function UserDashboard() {
             </div>
           </div>
 
+          {/* Card 2: Profile details */}
           <div className="user-profile-details">
             <h3>Thông Tin Tài Khoản</h3>
             <div className="profile-fields-list">
-              <div className="profile-field-row"><span>Số điện thoại:</span><strong>{profile.PhoneNumber || "Chưa cập nhật"}</strong></div>
-              <div className="profile-field-row"><span>Email liên hệ:</span><strong>{profile.Email || "Chưa cập nhật"}</strong></div>
-              <div className="profile-field-row"><span>Tổng tích lũy:</span><strong>{profile.AccumulatedPoints} PTS</strong></div>
+              <div className="profile-field-row">
+                <span>Số điện thoại:</span>
+                <strong>{profile.PhoneNumber || "Chưa cập nhật"}</strong>
+              </div>
+              <div className="profile-field-row">
+                <span>Email liên hệ:</span>
+                <strong>{profile.Email || "Chưa cập nhật"}</strong>
+              </div>
+              <div className="profile-field-row">
+                <span>Tổng tích lũy:</span>
+                <strong>{profile.AccumulatedPoints} PTS</strong>
+              </div>
               <div className="profile-field-row">
                 <span>Hạng ưu đãi:</span>
                 <strong style={{ color: "var(--color-accent)" }}>
@@ -266,38 +341,67 @@ export default function UserDashboard() {
           </div>
         </section>
 
+        {/* Metrics Row */}
         <section className="spend-metrics-row">
           <div className="user-metric-card metric-spend">
-            <div className="user-metric-icon"><i className="fa-solid fa-wallet"></i></div>
-            <div className="user-metric-details"><span>Đã chi tiêu (Hoàn tất)</span><h4>{totalSpend.toLocaleString("vi-VN")} đ</h4></div>
+            <div className="user-metric-icon">
+              <i className="fa-solid fa-wallet"></i>
+            </div>
+            <div className="user-metric-details">
+              <span>Đã chi tiêu (Hoàn tất)</span>
+              <h4>{totalSpend.toLocaleString("vi-VN")} đ</h4>
+            </div>
           </div>
+
           <div className="user-metric-card metric-active-count">
-            <div className="user-metric-icon"><i className="fa-solid fa-spinner"></i></div>
-            <div className="user-metric-details"><span>Đơn đặt lịch đang chạy</span><h4>{activeCount} đơn</h4></div>
+            <div className="user-metric-icon">
+              <i className="fa-solid fa-spinner"></i>
+            </div>
+            <div className="user-metric-details">
+              <span>Đơn đặt lịch đang chạy</span>
+              <h4>{activeCount} đơn</h4>
+            </div>
           </div>
+
           <div className="user-metric-card metric-completed-count">
-            <div className="user-metric-icon"><i className="fa-regular fa-circle-check"></i></div>
-            <div className="user-metric-details"><span>Rửa xe hoàn thành</span><h4>{completedCount} lần</h4></div>
+            <div className="user-metric-icon">
+              <i className="fa-regular fa-circle-check"></i>
+            </div>
+            <div className="user-metric-details">
+              <span>Rửa xe hoàn thành</span>
+              <h4>{completedCount} lần</h4>
+            </div>
           </div>
         </section>
 
+        {/* Section Divider */}
         <div className="section-divider-title">
           <h2>Quản Lý Lịch Hẹn & Lịch Sử</h2>
           <div className="divider-line"></div>
         </div>
 
+        {/* Filters Tabs Bar */}
         <section className="user-filters-bar">
           <div className="user-status-tabs">
-            <button className={`admin-tab ${selectedStatus === "All" ? "active" : ""}`} onClick={() => setSelectedStatus("All")}>Tất cả ({bookings.length})</button>
-            <button className={`admin-tab ${selectedStatus === "Active" ? "active" : ""}`} onClick={() => setSelectedStatus("Active")}>Đang hoạt động ({activeCount})</button>
-            <button className={`admin-tab ${selectedStatus === "Completed" ? "active" : ""}`} onClick={() => setSelectedStatus("Completed")}>Đã hoàn thành ({completedCount})</button>
-            <button className={`admin-tab ${selectedStatus === "Cancelled" ? "active" : ""}`} onClick={() => setSelectedStatus("Cancelled")}>Đã hủy ({bookings.filter(b => b.status === 5).length})</button>
+            <button className={`admin-tab ${selectedStatus === "All" ? "active" : ""}`} onClick={() => setSelectedStatus("All")}>
+              Tất cả ({bookings.length})
+            </button>
+            <button className={`admin-tab ${selectedStatus === "Active" ? "active" : ""}`} onClick={() => setSelectedStatus("Active")}>
+              Đang hoạt động ({activeCount})
+            </button>
+            <button className={`admin-tab ${selectedStatus === "Completed" ? "active" : ""}`} onClick={() => setSelectedStatus("Completed")}>
+              Đã hoàn thành ({completedCount})
+            </button>
+            <button className={`admin-tab ${selectedStatus === "Cancelled" ? "active" : ""}`} onClick={() => setSelectedStatus("Cancelled")}>
+              Đã hủy ({bookings.filter(b => b.status === 5).length})
+            </button>
           </div>
           <a href="/booking" className="btn-book-nav">
             <i className="fa-solid fa-calendar-plus"></i> Đặt lịch rửa xe mới
           </a>
         </section>
 
+        {/* Bookings Table list */}
         <section className="user-table-card">
           <div className="user-table-header">
             <h2>Lịch Sử & Tiến Trình Đặt Xe</h2>
@@ -307,16 +411,27 @@ export default function UserDashboard() {
           </div>
 
           {loading ? (
-            <div className="admin-loading-spinner"><div className="spinner"></div><span>Đang tải lịch sử đơn hàng...</span></div>
+            <div className="admin-loading-spinner">
+              <div className="spinner"></div>
+              <span>Đang tải lịch sử đơn hàng...</span>
+            </div>
           ) : filteredBookings.length === 0 ? (
-            <div className="admin-empty-state"><i className="fa-regular fa-folder-open"></i><p>Bạn chưa có đơn đặt lịch rửa xe nào trong bộ lọc này.</p></div>
+            <div className="admin-empty-state">
+              <i className="fa-regular fa-folder-open"></i>
+              <p>Bạn chưa có đơn đặt lịch rửa xe nào trong bộ lọc này.</p>
+            </div>
           ) : (
             <div className="admin-table-wrapper">
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Mã Đơn</th><th>Biển Số Xe</th><th>Gói Dịch Vụ</th>
-                    <th>Thời Gian</th><th>Chi Phí</th><th>Trạng Thái</th><th>Hành Động</th>
+                    <th>Mã Đơn</th>
+                    <th>Biển Số Xe</th>
+                    <th>Gói Dịch Vụ</th>
+                    <th>Thời Gian</th>
+                    <th>Chi Phí</th>
+                    <th>Trạng Thái</th>
+                    <th>Hành Động</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -387,26 +502,33 @@ export default function UserDashboard() {
             </div>
           )}
         </section>
+        </div>
       </main>
 
-      {/* Modal chi tiết */}
+      {/* Booking Details Modal */}
       {selectedBooking && (
         <div className="admin-modal-overlay" onClick={() => setSelectedBooking(null)}>
           <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
             <div className="admin-modal-header">
               <h3>Chi Tiết Lịch Đặt Xe #{selectedBooking.id}</h3>
-              <button className="close-modal-btn" onClick={() => setSelectedBooking(null)}><i className="fa-solid fa-xmark"></i></button>
+              <button className="close-modal-btn" onClick={() => setSelectedBooking(null)}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
             </div>
             <div className="admin-modal-body">
+              {/* Progress Flow */}
               <div className="modal-timeline">
                 <div className={`timeline-step ${selectedBooking.status >= 1 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 1 ? "active" : ""}`}>
-                  <div className="timeline-node">1</div><div className="timeline-label">Chờ duyệt</div>
+                  <div className="timeline-node">1</div>
+                  <div className="timeline-label">Chờ duyệt</div>
                 </div>
                 <div className={`timeline-step ${selectedBooking.status >= 2 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 2 ? "active" : ""}`}>
-                  <div className="timeline-node">2</div><div className="timeline-label">Xác nhận</div>
+                  <div className="timeline-node">2</div>
+                  <div className="timeline-label">Xác nhận</div>
                 </div>
                 <div className={`timeline-step ${selectedBooking.status >= 3 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 3 ? "active" : ""}`}>
-                  <div className="timeline-node">3</div><div className="timeline-label">Đang rửa</div>
+                  <div className="timeline-node">3</div>
+                  <div className="timeline-label">Đang rửa</div>
                 </div>
                 <div className={`timeline-step ${selectedBooking.status === 4 ? "completed active" : ""} ${selectedBooking.status === 5 ? "active" : ""}`}>
                   <div className="timeline-node" style={{ backgroundColor: selectedBooking.status === 5 ? "var(--color-danger)" : "" }}>
@@ -421,11 +543,26 @@ export default function UserDashboard() {
               <div className="modal-section">
                 <h4 className="modal-section-title">Thông tin lịch rửa xe</h4>
                 <div className="modal-grid">
-                  <div className="modal-field"><label>Biển số xe</label><span className="vehicle-badge">{selectedBooking.licensePlate}</span></div>
-                  <div className="modal-field"><label>Loại phương tiện</label><span>{selectedBooking.vehicleType}</span></div>
-                  <div className="modal-field" style={{ gridColumn: "span 2" }}><label>Dịch vụ lựa chọn</label><span>{selectedBooking.servicePackage}</span></div>
-                  <div className="modal-field"><label>Thời gian đặt</label><span>{selectedBooking.time} ({selectedBooking.date})</span></div>
-                  <div className="modal-field"><label>Tổng chi phí</label><span style={{ color: "var(--color-success)" }}>{selectedBooking.price?.toLocaleString("vi-VN")} đ</span></div>
+                  <div className="modal-field">
+                    <label>Biển số xe</label>
+                    <span className="vehicle-badge">{selectedBooking.licensePlate}</span>
+                  </div>
+                  <div className="modal-field">
+                    <label>Loại phương tiện</label>
+                    <span>{selectedBooking.vehicleType}</span>
+                  </div>
+                  <div className="modal-field" style={{ gridColumn: "span 2" }}>
+                    <label>Dịch vụ lựa chọn</label>
+                    <span>{selectedBooking.servicePackage}</span>
+                  </div>
+                  <div className="modal-field">
+                    <label>Thời gian đặt</label>
+                    <span>{selectedBooking.time} ({selectedBooking.date})</span>
+                  </div>
+                  <div className="modal-field">
+                    <label>Tổng chi phí</label>
+                    <span style={{ color: "var(--color-success)" }}>{selectedBooking.price?.toLocaleString("vi-VN")} đ</span>
+                  </div>
                 </div>
               </div>
 
@@ -439,16 +576,12 @@ export default function UserDashboard() {
                   </button>
                 )}
                 {(selectedBooking.status === 1 || selectedBooking.status === 2) && (
-                  <button className="action-icon-btn btn-user-cancel"
-                    style={{ width: "auto", padding: "8px 16px", borderRadius: "8px", fontSize: "14px" }}
-                    onClick={() => handleCancelBooking(selectedBooking.id)}>
+                  <button className="action-icon-btn btn-user-cancel" style={{ width: "auto", padding: "8px 16px", borderRadius: "8px", fontSize: "14px" }} onClick={() => handleCancelBooking(selectedBooking.id)}>
                     <i className="fa-solid fa-ban" style={{ marginRight: "6px" }}></i> Yêu cầu hủy lịch này
                   </button>
                 )}
                 {(selectedBooking.status === 4 || selectedBooking.status === 5) && (
-                  <button className="action-icon-btn btn-user-delete"
-                    style={{ width: "auto", padding: "8px 16px", borderRadius: "8px", fontSize: "14px" }}
-                    onClick={() => handleDeleteBooking(selectedBooking.id)}>
+                  <button className="action-icon-btn btn-user-delete" style={{ width: "auto", padding: "8px 16px", borderRadius: "8px", fontSize: "14px" }} onClick={() => handleDeleteBooking(selectedBooking.id)}>
                     <i className="fa-solid fa-trash-can" style={{ marginRight: "6px" }}></i> Xóa khỏi lịch sử
                   </button>
                 )}
@@ -544,6 +677,7 @@ export default function UserDashboard() {
   </div>
 )}
 
+      {/* Banner Alert Toast */}
       {toast && (
         <div className={`admin-toast ${toast.type === "error" ? "toast-error" : "toast-success"}`}>
           <i className={toast.type === "error" ? "fa-solid fa-triangle-exclamation" : "fa-regular fa-circle-check"}></i>
@@ -553,4 +687,3 @@ export default function UserDashboard() {
     </div>
   );
 }
- 

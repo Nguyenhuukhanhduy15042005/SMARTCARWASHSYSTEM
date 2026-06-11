@@ -22,6 +22,8 @@ import PaymentResult from "./pages/PaymentResult";
 import AccountManagement from "./pages/AccountManagement";
 import PromotionManagement from "./pages/PromotionManagement";
 import FeedbackManagement from "./pages/FeedbackManagement";
+import RewardRedemption from "./pages/RewardRedemption"; // Trọng thêm
+import LoyaltyHistory from "./pages/LoyaltyHistory"; // Trọng thêm
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -60,6 +62,24 @@ function App() {
           element={
             <ProtectedRoute requiredRole="user">
               <Booking />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reward-redemption"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <RewardRedemption />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/loyalty"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <LoyaltyHistory />
             </ProtectedRoute>
           }
         />

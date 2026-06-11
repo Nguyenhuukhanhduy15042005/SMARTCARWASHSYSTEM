@@ -18,11 +18,17 @@ export default function Booking() {
   const { user, isAdmin, isStaff, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const [vehicleType, setVehicleType] = useState("CAR");
+  // State quản lý dữ liệu form
+  const [vehicleType, setVehicleType] = useState("CAR"); // CAR hoặc BIKE
   const [licensePlate, setLicensePlate] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
+
+  // Trọng thêm: State quản lý thông tin timeslots
+  const [slotsAvailability, setSlotsAvailability] = useState({});
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState("");
 
   // State quản lý dịch vụ từ DB và thông tin khách hàng
   const [services, setServices] = useState([]);
@@ -34,12 +40,11 @@ export default function Booking() {
     TierName: "Standard",
     DiscountRate: 0,
   });
+
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
-  const [slotsAvailability, setSlotsAvailability] = useState({});
-  const [slotsLoading, setSlotsLoading] = useState(false);
-  const [fetchError, setFetchError] = useState("");
 
+  // Helper giải mã token an toàn để lấy userId
   const getCustomerId = () => {
     const token =
       localStorage.getItem("TOKEN") || localStorage.getItem("token");
@@ -66,14 +71,18 @@ export default function Booking() {
         console.error("Lỗi decode token:", err);
       }
     }
-    return 12;
+    return 12; // ID mặc định khi không tìm thấy token để test
   };
 
+  // Show auto dismiss alerts
   const showToast = (message, type = "success") => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => {
+      setToast(null);
+    }, 4000);
   };
 
+  // Load Google Fonts & FontAwesome icons
   useEffect(() => {
     const linkFont = document.createElement("link");
     linkFont.href =
@@ -101,6 +110,7 @@ export default function Booking() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Fetch thông tin ưu đãi và profile thành viên
   const fetchUserProfile = async () => {
     const userId = getCustomerId();
     const token =
@@ -108,8 +118,12 @@ export default function Booking() {
       localStorage.getItem("token") ||
       "mock-token";
     const headers = { Authorization: `Bearer ${token}` };
+
     try {
-      const res = await axios.get(`http://127.0.0.1:5000/api/users/profile?userId=${userId}`, { headers });
+      const res = await axios.get(
+        `http://127.0.0.1:5000/api/users/profile?userId=${userId}`,
+        { headers },
+      );
       if (res.data) {
         setProfile({
           UserID: res.data.UserID || userId,
@@ -125,14 +139,21 @@ export default function Booking() {
     }
   };
 
+  // Fetch dịch vụ tương ứng với loại xe (CAR hoặc BIKE)
   useEffect(() => {
     const fetchServices = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(`http://127.0.0.1:5000/api/timeslots/services?vehicleType=${vehicleType}`);
+        const res = await axios.get(
+          `http://127.0.0.1:5000/api/timeslots/services?vehicleType=${vehicleType}`,
+        );
         const list = Array.isArray(res.data) ? res.data : [];
         setServices(list);
-        setSelectedService(list.length > 0 ? list[0] : null);
+        if (list.length > 0) {
+          setSelectedService(list[0]); // Mặc định chọn dịch vụ đầu tiên
+        } else {
+          setSelectedService(null);
+        }
       } catch (err) {
         console.error("Lỗi tải gói dịch vụ:", err);
         showToast("Không thể tải danh sách dịch vụ từ Server CSDL!", "error");
@@ -140,6 +161,7 @@ export default function Booking() {
         setLoading(false);
       }
     };
+
     fetchServices();
   }, [vehicleType]);
 
@@ -238,6 +260,7 @@ export default function Booking() {
     fetchSlotsAvailability();
   }, [date, vehicleType]);
 
+  // Tính toán chi phí
   const basePrice = selectedService ? selectedService.basePrice : 0;
   const discountRate =
     profile.DiscountRate > 1
@@ -246,7 +269,7 @@ export default function Booking() {
   const discountAmount = basePrice * discountRate;
   const finalPrice = Math.max(0, basePrice - discountAmount);
 
-  // ✅ THAY ĐỔI: Sau khi đặt lịch thành công → chuyển sang Payment
+  // Xử lý gửi đặt lịch
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!licensePlate.trim())
@@ -278,30 +301,20 @@ export default function Booking() {
       TotalPrice: basePrice,
       FinalPrice: finalPrice,
       Status: 1, // Chờ duyệt
-      ServiceIDs: [selectedService.serviceId]
+      ServiceIDs: [selectedService.serviceId],
     };
 
     try {
-      const res = await axios.post("http://127.0.0.1:5000/api/bookings", body, { headers });
-      console.log("Booking response:", res.data); // debug
-      const bookingId = res.data?.BookingID || res.data?.bookingId || res.data?.id || res.data?.insertId || 0;
-      showToast("Đặt lịch rửa xe thành công! Đang chuyển đến trang thanh toán...", "success");
-      
-      setTimeout(() => {
-        navigate("/payments", {
-          state: {
-            booking: {
-              BookingID:    bookingId,
-              ServiceName:  selectedService.serviceName,
-              Date:         date,
-              Time:         time,
-              TotalPrice:   finalPrice,
-              LicensePlate: licensePlate.trim().toUpperCase(),
-            }
-          }
-        });
-      }, 1500);
+      await axios.post("http://127.0.0.1:5000/api/bookings", body, { headers });
+      showToast(
+        "Đặt lịch rửa xe thành công! Đang chuyển đến Trang cá nhân...",
+        "success",
+      );
 
+      // Đợi 2s để người dùng xem thông báo rồi chuyển hướng
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
     } catch (err) {
       console.error("Lỗi khi gửi yêu cầu đặt lịch:", err);
       const errMsg = err.response?.data?.message || err.message;
@@ -323,234 +336,361 @@ export default function Booking() {
   };
 
   return (
-    <div className="booking-page-container">
-      <div className="max-w-6xl mx-auto">
-        {/* Nút quay lại */}
-        <div className="mb-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-orange-500 font-semibold text-sm transition-colors duration-200">
-            <i className="fa-solid fa-arrow-left"></i> Quay lại Trang chủ
-          </Link>
-        </div>
-
-        {/* Tiêu đề */}
-        <div className="text-center mb-10">
-          <h2 className="booking-title">ĐẶT LỊCH DỊCH VỤ</h2>
-          <p className="booking-subtitle">Trải nghiệm dịch vụ chăm sóc xe thông minh hàng đầu tại Moto Shine</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Cột trái: Nội dung form (Chiếm 2 cột) */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* Mục 1: Loại xe & Biển số */}
-            <div className="form-section-card">
-              <h3 className="form-section-title">
-                <i className="fa-solid fa-car-side text-orange-500"></i> Thông tin phương tiện
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="form-label">Loại xe *</label>
-                  <div className="vehicle-type-grid">
-                    <div 
-                      className={`vehicle-type-option ${vehicleType === "BIKE" ? "active" : ""}`}
-                      onClick={() => setVehicleType("BIKE")}
-                    >
-                      <i className="fa-solid fa-motorcycle"></i>
-                      <span>Xe máy</span>
-                    </div>
-                    <div 
-                      className={`vehicle-type-option ${vehicleType === "CAR" ? "active" : ""}`}
-                      onClick={() => setVehicleType("CAR")}
-                    >
-                      <i className="fa-solid fa-car"></i>
-                      <span>Ô tô</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="form-label" htmlFor="licensePlate">Biển số xe *</label>
-                  <input
-                    id="licensePlate"
-                    type="text"
-                    value={licensePlate}
-                    onChange={(e) => setLicensePlate(e.target.value)}
-                    placeholder="VD: 59A-123.45"
-                    required
-                    className="form-input"
-                    style={{ height: "54px" }}
-                  />
-                  <small style={{ color: "#64748b", marginTop: "8px", display: "block" }}>
-                    Nhập đúng biển số xe để nhân viên kiểm tra chính xác.
-                  </small>
-                </div>
-              </div>
+    <div className="booking-page-container portal-layout-container">
+      <Sidebar />
+      <main
+        className="portal-main-content"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          padding: 0,
+          position: "relative",
+        }}
+      >
+        <div
+          style={{
+            padding: "0 32px 60px",
+            width: "100%",
+            maxWidth: "100%",
+            margin: "0",
+            boxSizing: "border-box",
+          }}
+        >
+          {/* Tiêu đề */}
+          <div style={{ marginBottom: 28, paddingTop: 40 }}>
+            <div className="booking-badge">
+              <i className="fa-regular fa-calendar-check"></i> Đặt lịch dịch vụ
             </div>
-
-            {/* Mục 2: Chọn Gói dịch vụ */}
-            <div className="form-section-card">
-              <h3 className="form-section-title">
-                <i className="fa-solid fa-hand-holding-hand text-orange-500"></i> Chọn Gói dịch vụ
-              </h3>
-
-              {loading ? (
-                <div style={{ textAlign: "center", padding: "30px", color: "#94a3b8" }}>
-                  <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: "24px", marginBottom: "10px" }}></i>
-                  <p>Đang tải danh sách dịch vụ...</p>
-                </div>
-              ) : services.length === 0 ? (
-                <p style={{ color: "#94a3b8", textAlign: "center", padding: "20px" }}>
-                  Không tìm thấy gói dịch vụ nào cho loại xe này trong DB.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {services.map((s) => (
-                    <div
-                      key={s.serviceId}
-                      className={`service-package-option ${selectedService?.serviceId === s.serviceId ? "active" : ""}`}
-                      onClick={() => setSelectedService(s)}
-                    >
-                      <div className="package-name">
-                        <i className={`fa-solid ${vehicleType === "BIKE" ? "fa-motorcycle" : "fa-car-burst"} text-orange-500`}></i>
-                        <div>
-                          <span>{s.serviceName}</span>
-                          <span className="package-desc">
-                            {s.serviceName.includes("VIP") 
-                              ? "Vệ sinh toàn diện, phủ nano sơn và khử mùi nội thất cao cấp" 
-                              : s.serviceName.includes("cơ bản") || s.serviceName.includes("tiêu chuẩn")
-                              ? "Rửa bọt tuyết siêu sạch, xịt gầm và lau khô xe chuyên nghiệp"
-                              : "Rửa xe bọt tuyết nâng cao kết hợp phủ wax bóng láng bề mặt"}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="package-price">{s.basePrice.toLocaleString("vi-VN")}đ</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Mục 3: Ngày & Giờ */}
-            <div className="form-section-card">
-              <h3 className="form-section-title">
-                <i className="fa-regular fa-calendar-check text-orange-500"></i> Thời gian hẹn gặp
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="form-label" htmlFor="date">Ngày rửa xe *</label>
-                  <input
-                    id="date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    required
-                    className="form-input"
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label" htmlFor="time">Giờ rửa xe *</label>
-                  <input
-                    id="time"
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    required
-                    className="form-input"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <label className="form-label" htmlFor="note">Ghi chú (Tùy chọn)</label>
-                <textarea
-                  id="note"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  rows="3"
-                  placeholder="Những dặn dò đặc biệt cho nhân viên rửa xe của chúng tôi..."
-                  className="form-textarea"
-                ></textarea>
-              </div>
-            </div>
-
+            <h1 className="booking-title">Đặt Lịch Dịch Vụ</h1>
+            <p className="booking-subtitle">
+              Trải nghiệm dịch vụ chăm sóc xe thông minh hàng đầu tại Moto Shine
+            </p>
           </div>
 
-          {/* Cột phải: Tóm tắt đơn hàng (Sticky) */}
-          <div className="lg:col-span-1">
-            <div className="summary-card sticky top-10">
-              <h3 className="text-2xl font-bold mb-6 border-b border-gray-700 pb-4">
-                Tóm tắt lịch đặt
-              </h3>
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+          >
+            {/* Cột trái: Nội dung form (Chiếm 2 cột) */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Mục 1: Loại xe & Biển số */}
+              <div className="form-section-card">
+                <h3 className="form-section-title">
+                  <i className="fa-solid fa-car-side text-orange-500"></i> Thông
+                  tin phương tiện
+                </h3>
 
-              <div className="space-y-4 mb-6">
-                <div className="summary-row">
-                  <span>Loại phương tiện:</span>
-                  <span>{vehicleType === "BIKE" ? "Xe máy" : "Ô tô"}</span>
-                </div>
-                <div className="summary-row">
-                  <span>Biển số xe:</span>
-                  <span>{licensePlate.toUpperCase() || "..."}</span>
-                </div>
-                <div className="summary-row">
-                  <span>Gói dịch vụ:</span>
-                  <span>{selectedService ? selectedService.serviceName : "..."}</span>
-                </div>
-                <div className="summary-row">
-                  <span>Thời gian:</span>
-                  <span>{date && time ? `${time} (${date})` : "..."}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="form-label">Loại xe *</label>
+                    <div className="vehicle-type-grid">
+                      <div
+                        className={`vehicle-type-option ${vehicleType === "BIKE" ? "active" : ""}`}
+                        onClick={() => setVehicleType("BIKE")}
+                      >
+                        <i className="fa-solid fa-motorcycle"></i>
+                        <span>Xe máy</span>
+                      </div>
+                      <div
+                        className={`vehicle-type-option ${vehicleType === "CAR" ? "active" : ""}`}
+                        onClick={() => setVehicleType("CAR")}
+                      >
+                        <i className="fa-solid fa-car"></i>
+                        <span>Ô tô</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="form-label" htmlFor="licensePlate">
+                      Biển số xe *
+                    </label>
+                    <input
+                      id="licensePlate"
+                      type="text"
+                      value={licensePlate}
+                      onChange={(e) => setLicensePlate(e.target.value)}
+                      placeholder="VD: 59A-123.45"
+                      required
+                      className="form-input"
+                      style={{ height: "54px" }}
+                    />
+                    <small
+                      style={{
+                        color: "#64748b",
+                        marginTop: "8px",
+                        display: "block",
+                      }}
+                    >
+                      Nhập đúng biển số xe để nhân viên kiểm tra chính xác.
+                    </small>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-3 pt-4 border-t border-gray-800">
-                <div className="summary-row">
-                  <span>Giá niêm yết:</span>
-                  <span>{basePrice.toLocaleString("vi-VN")} đ</span>
-                </div>
-                <div className="summary-row">
-                  <span>Hạng thành viên:</span>
-                  <span style={{ color: "#818cf8" }}>{profile.TierName}</span>
-                </div>
-                {discountRate > 0 && (
-                  <div className="summary-row" style={{ color: "#10b981" }}>
-                    <span>Ưu đãi giảm giá ({Math.round(discountRate * 100)}%):</span>
-                    <span>-{discountAmount.toLocaleString("vi-VN")} đ</span>
+              {/* Mục 2: Chọn Gói dịch vụ */}
+              <div className="form-section-card">
+                <h3 className="form-section-title">
+                  <i className="fa-solid fa-hand-holding-hand text-orange-500"></i>{" "}
+                  Chọn Gói dịch vụ
+                </h3>
+
+                {loading ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "30px",
+                      color: "#94a3b8",
+                    }}
+                  >
+                    <i
+                      className="fa-solid fa-spinner fa-spin"
+                      style={{ fontSize: "24px", marginBottom: "10px" }}
+                    ></i>
+                    <p>Đang tải danh sách dịch vụ...</p>
+                  </div>
+                ) : services.length === 0 ? (
+                  <p
+                    style={{
+                      color: "#94a3b8",
+                      textAlign: "center",
+                      padding: "20px",
+                    }}
+                  >
+                    Không tìm thấy gói dịch vụ nào cho loại xe này trong DB.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {services.map((s) => (
+                      <div
+                        key={s.serviceId}
+                        className={`service-package-option ${selectedService?.serviceId === s.serviceId ? "active" : ""}`}
+                        onClick={() => setSelectedService(s)}
+                      >
+                        <div className="package-name">
+                          <i
+                            className={`fa-solid ${vehicleType === "BIKE" ? "fa-motorcycle" : "fa-car-burst"} text-orange-500`}
+                          ></i>
+                          <div>
+                            <span>{s.serviceName}</span>
+                            <span className="package-desc">
+                              {s.serviceName.includes("VIP")
+                                ? "Vệ sinh toàn diện, phủ nano sơn và khử mùi nội thất cao cấp"
+                                : s.serviceName.includes("cơ bản") ||
+                                    s.serviceName.includes("tiêu chuẩn")
+                                  ? "Rửa bọt tuyết siêu sạch, xịt gầm và lau khô xe chuyên nghiệp"
+                                  : "Rửa xe bọt tuyết nâng cao kết hợp phủ wax bóng láng bề mặt"}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="package-price">
+                          {s.basePrice.toLocaleString("vi-VN")}đ
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
 
-              <div className="summary-total-section">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg">Tổng chi phí</span>
-                  <span className="text-3xl font-extrabold text-orange-500">
-                    {finalPrice.toLocaleString("vi-VN")} đ
-                  </span>
+              {/* Mục 3: Ngày & Giờ - Trọng thêm: Thiết kế dạng timeslot grid trực quan */}
+              <div className="form-section-card">
+                <h3 className="form-section-title">
+                  <i className="fa-regular fa-calendar-check text-orange-500"></i>{" "}
+                  Thời gian hẹn gặp
+                </h3>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                  <div>
+                    <label className="form-label" htmlFor="date">
+                      Ngày rửa xe *
+                    </label>
+                    <input
+                      id="date"
+                      type="date"
+                      value={date}
+                      onChange={(e) => {
+                        setDate(e.target.value);
+                        setTime(""); // Trọng thêm: reset giờ khi đổi ngày
+                      }}
+                      required
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">
+                      Giờ rửa xe * {time && <span style={{ color: "#f97316", textTransform: "none" }}> (Đang chọn: {time})</span>}
+                    </label>
+                    {!date ? (
+                      <div className="select-date-prompt">
+                        <i className="fa-regular fa-calendar-days" style={{ marginRight: '8px' }}></i>
+                        Vui lòng chọn ngày rửa xe để xem các khung giờ trống.
+                      </div>
+                    ) : slotsLoading ? (
+                      <div className="slots-loading">
+                        <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>
+                        Đang đồng bộ tình trạng máy rửa xe...
+                      </div>
+                    ) : fetchError ? (
+                      <div className="slots-error">
+                        <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '8px' }}></i>
+                        {fetchError}
+                      </div>
+                    ) : (
+                      <div className="slots-container">
+                        <div className="slots-grid">
+                          {TIME_SLOTS.map((slotTime) => {
+                            const isBooked = slotsAvailability[slotTime] === "booked";
+                            const isPast = checkIfPast(slotTime);
+                            const isAvailable = !isBooked && !isPast;
+                            const isSelected = time === slotTime;
+                            
+                            return (
+                              <button
+                                key={slotTime}
+                                type="button"
+                                className={`slot-button ${isSelected ? "selected" : ""} ${isBooked ? "booked" : ""} ${isPast ? "past" : ""} ${isAvailable ? "available" : ""}`}
+                                disabled={!isAvailable}
+                                onClick={() => handleSlotClick(slotTime)}
+                              >
+                                <span className="slot-time">{slotTime}</span>
+                                <span className="slot-status">
+                                  {isBooked ? "Hết máy" : isPast ? "Đã qua" : isSelected ? "Đang chọn" : "Còn trống"}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Legend */}
+                        <div className="slots-legend">
+                          <div className="legend-item">
+                            <span className="legend-dot legend-available"></span>
+                            <span>Trống</span>
+                          </div>
+                          <div className="legend-item">
+                            <span className="legend-dot legend-booked"></span>
+                            <span>Hết máy</span>
+                          </div>
+                          <div className="legend-item">
+                            <span className="legend-dot legend-past"></span>
+                            <span>Đã qua</span>
+                          </div>
+                          <div className="legend-item">
+                            <span className="legend-dot legend-selected"></span>
+                            <span>Đang chọn</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <label className="form-label" htmlFor="note">
+                    Ghi chú (Tùy chọn)
+                  </label>
+                  <textarea
+                    id="note"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows="3"
+                    placeholder="Những dặn dò đặc biệt cho nhân viên rửa xe của chúng tôi..."
+                    className="form-textarea"
+                  ></textarea>
                 </div>
               </div>
-
-              <button type="submit" className="btn-book-submit">
-                Xác nhận đặt lịch
-              </button>
-
-              <p className="text-center text-xs text-gray-400 mt-4">
-                Bằng việc nhấn "Xác nhận đặt lịch", bạn đồng ý chịu trách nhiệm với thời gian đã hẹn gặp.
-              </p>
             </div>
-          </div>
 
-        </form>
-      </div>
+            {/* Cột phải: Tóm tắt đơn hàng (Sticky) */}
+            <div className="lg:col-span-1">
+              <div className="summary-card sticky top-10">
+                {/* Trọng thêm: Viền động theo theme */}
+                <h3 className="text-2xl font-bold mb-6 border-b pb-4" style={{ borderColor: "var(--border)" }}>
+                  Tóm tắt lịch đặt
+                </h3>
 
-      {/* Alert Banner Toast */}
-      {toast && (
-        <div className={`booking-toast ${toast.type === "error" ? "booking-toast-error" : "booking-toast-success"}`}>
-          <i className={toast.type === "error" ? "fa-solid fa-triangle-exclamation" : "fa-regular fa-circle-check"}></i>
-          <span>{toast.message}</span>
+                <div className="space-y-4 mb-6">
+                  <div className="summary-row">
+                    <span>Loại phương tiện:</span>
+                    <span>{vehicleType === "BIKE" ? "Xe máy" : "Ô tô"}</span>
+                  </div>
+                  <div className="summary-row">
+                    <span>Biển số xe:</span>
+                    <span>{licensePlate.toUpperCase() || "..."}</span>
+                  </div>
+                  <div className="summary-row">
+                    <span>Gói dịch vụ:</span>
+                    <span>
+                      {selectedService ? selectedService.serviceName : "..."}
+                    </span>
+                  </div>
+                  <div className="summary-row">
+                    <span>Thời gian:</span>
+                    <span>{date && time ? `${time} (${date})` : "..."}</span>
+                  </div>
+                </div>
+
+                {/* Trọng thêm: Viền động theo theme */}
+                <div className="space-y-3 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
+                  <div className="summary-row">
+                    <span>Giá niêm yết:</span>
+                    <span>{basePrice.toLocaleString("vi-VN")} đ</span>
+                  </div>
+                  <div className="summary-row">
+                    <span>Hạng thành viên:</span>
+                    <span style={{ color: "#818cf8" }}>{profile.TierName}</span>
+                  </div>
+                  {discountRate > 0 && (
+                    <div className="summary-row" style={{ color: "#10b981" }}>
+                      <span>
+                        Ưu đãi giảm giá ({Math.round(discountRate * 100)}%):
+                      </span>
+                      <span>-{discountAmount.toLocaleString("vi-VN")} đ</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="summary-total-section">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg">Tổng chi phí</span>
+                    <span className="text-3xl font-extrabold text-orange-500">
+                      {finalPrice.toLocaleString("vi-VN")} đ
+                    </span>
+                  </div>
+                </div>
+
+                <button type="submit" className="btn-book-submit">
+                  Xác nhận đặt lịch
+                </button>
+
+                {/* Trọng thêm: Màu chữ phụ động theo theme */}
+                <p className="text-center text-xs mt-4" style={{ color: "var(--text-secondary)" }}>
+                  Bằng việc nhấn "Xác nhận đặt lịch", bạn đồng ý chịu trách
+                  nhiệm với thời gian đã hẹn gặp.
+                </p>
+              </div>
+            </div>
+          </form>
         </div>
-      )}
+
+        {/* Alert Banner Toast */}
+        {toast && (
+          <div
+            className={`booking-toast ${toast.type === "error" ? "booking-toast-error" : "booking-toast-success"}`}
+          >
+            <i
+              className={
+                toast.type === "error"
+                  ? "fa-solid fa-triangle-exclamation"
+                  : "fa-regular fa-circle-check"
+              }
+            ></i>
+            <span>{toast.message}</span>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
