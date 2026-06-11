@@ -1,63 +1,16 @@
 const router = require('express').Router();
-const { verifyToken, adminOrStaff } = require('../middleware/auth');
-const ctrl = require('./payment.controller');
+const verifyToken = require('../middleware/verifyToken');
+const ctrl = require('./paymentController');
 
-// ═════════════════════════════════════════════════════════════════════════════
-// VNPAY
-// ═════════════════════════════════════════════════════════════════════════════
+// VNPay return — KHÔNG cần auth (VNPay redirect về)
+router.get('/vnpay-return', ctrl.vnpayReturn);
 
-// Tạo link thanh toán VNPay
-router.post(
-  '/initiate',
-  verifyToken,
-  ctrl.initiateOnlinePayment
-);
+// Các routes còn lại cần auth
+router.use(verifyToken);
 
-// Callback VNPay
-router.get(
-  '/vnpay/callback',
-  ctrl.vnpayCallback
-);
-
-// Lịch sử thanh toán
-router.get(
-  '/history',
-  verifyToken,
-  ctrl.getMyHistory
-);
-
-// ═════════════════════════════════════════════════════════════════════════════
-// CASH + DEPOSIT
-// ═════════════════════════════════════════════════════════════════════════════
-
-// Tạo booking thanh toán tiền mặt
-router.post(
-  '/cash/initiate',
-  verifyToken,
-  ctrl.initiateCash
-);
-
-// Xác nhận cọc
-router.post(
-  '/cash/confirm-deposit',
-  verifyToken,
-  adminOrStaff,
-  ctrl.confirmCashDeposit
-);
-
-// Thu phần tiền còn lại
-router.post(
-  '/cash/collect/:bookingId',
-  verifyToken,
-  adminOrStaff,
-  ctrl.collectCash
-);
-
-// Hủy booking (mất cọc)
-router.post(
-  '/cash/cancel/:bookingId',
-  verifyToken,
-  ctrl.cancelWithForfeit
-);
+router.get('/tier',        ctrl.getUserTier);
+router.get('/history',     ctrl.getPaymentHistory);
+router.post('/',           ctrl.createPayment);
+router.post('/:id/refund', ctrl.refundPayment);
 
 module.exports = router;
