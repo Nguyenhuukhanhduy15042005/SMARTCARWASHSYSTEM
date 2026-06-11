@@ -18,6 +18,11 @@ import Payment from "./pages/Payment";
 import PaymentHistory from "./pages/PaymentHistory";
 import PaymentResult from "./pages/PaymentResult";
 
+// Trọng thêm: Import các trang quản lý của Admin/Staff
+import AccountManagement from "./pages/AccountManagement";
+import PromotionManagement from "./pages/PromotionManagement";
+import FeedbackManagement from "./pages/FeedbackManagement";
+
 function App() {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem("LOGIN_USER");
@@ -82,6 +87,34 @@ function App() {
           element={
             <ProtectedRoute requiredRole={["admin", "staff"]}>
               <MemberManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Trọng thêm: Khai báo các Route quản lý của Admin / Staff */}
+        <Route
+          path="/admin/accounts"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AccountManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/promotions"
+          element={
+            <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <PromotionManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/feedbacks"
+          element={
+            <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <FeedbackManagement />
             </ProtectedRoute>
           }
         />

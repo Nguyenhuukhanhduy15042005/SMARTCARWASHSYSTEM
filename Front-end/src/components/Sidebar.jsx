@@ -108,7 +108,8 @@ export default function Sidebar() {
       </ul>
 
       {/* ── Theme settings ── */}
-      <div style={{ padding: "0 12px", marginBottom: "8px" }}>
+      {/* Trọng thêm: Thêm marginTop để tạo khoảng cách thoáng giữa Hồ sơ cá nhân và Giao diện sáng tối */}
+      <div style={{ padding: "0 12px", marginTop: "20px", marginBottom: "8px" }}>
         <ThemePanel />
       </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import Sidebar from "../components/Sidebar"; // Trọng thêm
 
 const API = "http://localhost:5000/api/users";
 
@@ -84,106 +85,93 @@ export default function Profile() {
   );
 
   return (
-    <div className="auth-container" style={{ alignItems: "flex-start", paddingTop: "2rem" }}>
-      <div className="auth-card" style={{ maxWidth: 520, width: "100%" }}>
+    <div className="portal-layout-container" style={{ minHeight: "100vh" }}>
+      <Sidebar />
+      <main className="portal-main-content" style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", padding: "40px 20px" }}>
+        <div className="auth-card" style={{ maxWidth: 520, width: "100%", textAlign: "left" }}>
+          <h2>Hồ Sơ Của Tôi</h2>
 
-        {/* Back button — dùng cùng style với Login.jsx */}
-        <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 15 }}>
-          <Link
-            to="/"
-            style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none", color: "#475569", fontSize: 14, fontWeight: 600 }}
-            onMouseOver={(e) => (e.currentTarget.style.color = "#F58607")}
-            onMouseOut={(e) => (e.currentTarget.style.color = "#475569")}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            Quay lại
-          </Link>
-        </div>
-
-        <h2>Hồ Sơ Của Tôi</h2>
-
-        {msg.text && (
-          <div className={msg.type === "success" ? "success-msg" : "error-msg"} style={{ marginBottom: 16 }}>
-            {msg.text}
-          </div>
-        )}
-
-        {/* Avatar */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: 16, background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0" }}>
-          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#E1F5EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 600, color: "#0F6E56", border: "2px solid #5DCAA5", flexShrink: 0 }}>
-            {getInitials(profile?.FullName)}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 17, color: "#1e293b" }}>{profile?.FullName}</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>{profile?.Email}</div>
-            <span style={{ display: "inline-block", marginTop: 6, padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 500, background: "#E1F5EE", color: "#0F6E56" }}>
-              Khách hàng
-            </span>
-          </div>
-          {!editing && (
-            <button
-              onClick={() => { setEditing(true); setMsg({ text: "", type: "" }); }}
-              style={{ padding: "8px 14px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13, color: "#475569", fontWeight: 600 }}
-              onMouseOver={(e) => (e.currentTarget.style.background = "#f1f5f9")}
-              onMouseOut={(e) => (e.currentTarget.style.background = "#fff")}
-            >
-              ✏ Chỉnh sửa
-            </button>
-          )}
-        </div>
-
-        {/* Form */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <div className="input-group">
-            <label>Họ và tên</label>
-            {editing
-              ? <input type="text" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{profile?.FullName}</div>}
-          </div>
-          <div className="input-group">
-            <label>Số điện thoại</label>
-            {editing
-              ? <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{profile?.PhoneNumber}</div>}
-          </div>
-          <div className="input-group" style={{ gridColumn: "1 / -1" }}>
-            <label>Email</label>
-            {editing
-              ? <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0" }}>{profile?.Email}</div>}
-          </div>
-          <div className="input-group" style={{ gridColumn: "1 / -1" }}>
-            <label>Ngày tham gia</label>
-            <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#64748b" }}>
-              {profile?.CreatedAt ? new Date(profile.CreatedAt).toLocaleDateString("vi-VN") : "—"}
+          {msg.text && (
+            <div className={msg.type === "success" ? "success-msg" : "error-msg"} style={{ marginBottom: 16 }}>
+              {msg.text}
             </div>
+          )}
+
+          {/* Avatar */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: 16, background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0" }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#E1F5EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 600, color: "#0F6E56", border: "2px solid #5DCAA5", flexShrink: 0 }}>
+              {getInitials(profile?.FullName)}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 17, color: "#1e293b" }}>{profile?.FullName}</div>
+              <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>{profile?.Email}</div>
+              <span style={{ display: "inline-block", marginTop: 6, padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 500, background: "#E1F5EE", color: "#0F6E56" }}>
+                {profile?.RoleID === 1 ? "Quản trị viên" : profile?.RoleID === 2 ? "Nhân viên" : "Khách hàng"}
+              </span>
+            </div>
+            {!editing && (
+              <button
+                onClick={() => { setEditing(true); setMsg({ text: "", type: "" }); }}
+                style={{ padding: "8px 14px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13, color: "#475569", fontWeight: 600 }}
+                onMouseOver={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+                onMouseOut={(e) => (e.currentTarget.style.background = "#fff")}
+              >
+                ✏ Chỉnh sửa
+              </button>
+            )}
           </div>
-          {editing && (
+
+          {/* Form */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div className="input-group">
+              <label>Họ và tên</label>
+              {editing
+                ? <input type="text" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+                : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#1e293b" }}>{profile?.FullName}</div>}
+            </div>
+            <div className="input-group">
+              <label>Số điện thoại</label>
+              {editing
+                ? <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#1e293b" }}>{profile?.PhoneNumber}</div>}
+            </div>
             <div className="input-group" style={{ gridColumn: "1 / -1" }}>
-              <label>Mật khẩu mới (để trống nếu không đổi)</label>
-              <input type="password" placeholder="Nhập mật khẩu mới..." value={form.newPassword}
-                onChange={(e) => setForm({ ...form, newPassword: e.target.value })} />
+              <label>Email</label>
+              {editing
+                ? <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#1e293b" }}>{profile?.Email}</div>}
+            </div>
+            <div className="input-group" style={{ gridColumn: "1 / -1" }}>
+              <label>Ngày tham gia</label>
+              <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#64748b" }}>
+                {profile?.CreatedAt ? new Date(profile.CreatedAt).toLocaleDateString("vi-VN") : "—"}
+              </div>
+            </div>
+            {editing && (
+              <div className="input-group" style={{ gridColumn: "1 / -1" }}>
+                <label>Mật khẩu mới (để trống nếu không đổi)</label>
+                <input type="password" placeholder="Nhập mật khẩu mới..." value={form.newPassword}
+                  onChange={(e) => setForm({ ...form, newPassword: e.target.value })} />
+              </div>
+            )}
+          </div>
+
+          {editing && (
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => { setEditing(false); setMsg({ text: "", type: "" }); }}
+                style={{ padding: "10px 20px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 14, color: "#475569", fontWeight: 600 }}
+              >
+                Hủy
+              </button>
+              <button onClick={handleSave} disabled={saving} className="btn btn-primary" style={{ padding: "10px 24px" }}>
+                {saving ? "Đang lưu..." : "💾 Lưu thay đổi"}
+              </button>
             </div>
           )}
-        </div>
-
-        {editing && (
-          <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}>
-            <button
-              onClick={() => { setEditing(false); setMsg({ text: "", type: "" }); }}
-              style={{ padding: "10px 20px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 14, color: "#475569", fontWeight: 600 }}
-            >
-              Hủy
-            </button>
-            <button onClick={handleSave} disabled={saving} className="btn btn-primary" style={{ padding: "10px 24px" }}>
-              {saving ? "Đang lưu..." : "💾 Lưu thay đổi"}
-            </button>
-          </div>
-        )}
 
         </div>
+      </main>
     </div>
   );
 }

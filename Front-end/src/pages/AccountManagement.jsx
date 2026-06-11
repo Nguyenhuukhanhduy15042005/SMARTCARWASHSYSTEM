@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import { useTheme } from "../context/ThemeContext"; // Trọng thêm
 
 const API_BASE = "http://localhost:5000/api";
 
 export default function AccountManagement() {
   const navigate = useNavigate();
+  const { mode } = useTheme(); // Trọng thêm
+  const styles = getStyles(mode); // Trọng thêm
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -371,11 +374,11 @@ export default function AccountManagement() {
   );
 }
 
-const styles = {
+const getStyles = (mode) => ({ // Trọng thêm
   container: {
-    backgroundColor: "#030712",
-    backgroundImage: "radial-gradient(at 0% 0%, rgba(17, 24, 39, 0.8) 0, transparent 50%), radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.05) 0, transparent 50%)",
-    color: "#f3f4f6",
+    backgroundColor: "var(--bg-primary)", // Trọng thêm
+    backgroundImage: mode === "dark" ? "radial-gradient(at 0% 0%, rgba(17, 24, 39, 0.8) 0, transparent 50%), radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.05) 0, transparent 50%)" : "none", // Trọng thêm
+    color: "var(--text-primary)", // Trọng thêm
     minHeight: "100vh",
     fontFamily: "'Plus Jakarta Sans', sans-serif",
     position: "relative",
@@ -386,7 +389,7 @@ const styles = {
     width: "400px",
     height: "400px",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 70%)",
+    background: mode === "dark" ? "radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 70%)" : "radial-gradient(circle, rgba(99, 102, 241, 0.04) 0%, rgba(99, 102, 241, 0) 70%)", // Trọng thêm
     top: "10%",
     left: "-10%",
     zIndex: 0,
@@ -397,7 +400,7 @@ const styles = {
     width: "450px",
     height: "450px",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, rgba(6, 182, 212, 0) 70%)",
+    background: mode === "dark" ? "radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, rgba(6, 182, 212, 0) 70%)" : "radial-gradient(circle, rgba(6, 182, 212, 0.03) 0%, rgba(6, 182, 212, 0) 70%)", // Trọng thêm
     bottom: "10%",
     right: "-10%",
     zIndex: 0,
@@ -406,13 +409,13 @@ const styles = {
   dashboardCard: {
     maxWidth: "1280px",
     margin: "0",
-    backgroundColor: "rgba(17, 24, 39, 0.45)",
+    backgroundColor: mode === "dark" ? "rgba(17, 24, 39, 0.45)" : "rgba(255, 255, 255, 0.75)", // Trọng thêm
     backdropFilter: "blur(20px)",
     WebkitBackdropFilter: "blur(20px)",
     borderRadius: "24px",
-    border: "1px solid rgba(255, 255, 255, 0.06)",
+    border: "1px solid var(--border)", // Trọng thêm
     padding: "40px",
-    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+    boxShadow: mode === "dark" ? "0 25px 50px -12px rgba(0, 0, 0, 0.5)" : "0 15px 35px rgba(0, 0, 0, 0.05)", // Trọng thêm
     position: "relative",
     zIndex: 1
   },
@@ -441,17 +444,17 @@ const styles = {
   title: {
     fontSize: "32px",
     fontWeight: "800",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     margin: 0,
     letterSpacing: "-0.5px"
   },
   subtitle: {
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "15px",
     margin: "8px 0 0 0"
   },
   refreshBtn: {
-    backgroundColor: "#6366f1",
+    backgroundColor: "var(--accent-light)", // Trọng thêm
     border: "none",
     color: "#ffffff",
     padding: "12px 20px",
@@ -472,41 +475,41 @@ const styles = {
     marginBottom: "35px"
   },
   statItem: {
-    backgroundColor: "rgba(31, 41, 55, 0.3)",
-    border: "1px solid rgba(255, 255, 255, 0.04)",
+    backgroundColor: mode === "dark" ? "rgba(31, 41, 55, 0.3)" : "var(--bg-secondary)", // Trọng thêm
+    border: "1px solid var(--border)", // Trọng thêm
     borderRadius: "16px",
     padding: "24px",
     display: "flex",
     alignItems: "center",
     gap: "20px",
-    boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.05)"
+    boxShadow: mode === "dark" ? "inset 0 1px 0 0 rgba(255, 255, 255, 0.05)" : "0 4px 6px -1px rgba(0,0,0,0.02)" // Trọng thêm
   },
   statIconWrapper: {
     width: "50px",
     height: "50px",
     borderRadius: "12px",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)", // Trọng thêm
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     fontSize: "20px",
-    border: "1px solid rgba(255, 255, 255, 0.05)"
+    border: "1px solid var(--border)" // Trọng thêm
   },
   statValue: {
     fontSize: "28px",
     fontWeight: "800",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     lineHeight: 1
   },
   statLabel: {
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "13px",
     marginTop: "6px",
     fontWeight: "500"
   },
   filterSection: {
     marginBottom: "25px",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+    borderBottom: "1px solid var(--border)", // Trọng thêm
     paddingBottom: "15px"
   },
   filterControls: {
@@ -526,15 +529,15 @@ const styles = {
     top: "50%",
     left: "15px",
     transform: "translateY(-50%)",
-    color: "#9ca3af"
+    color: "var(--text-secondary)" // Trọng thêm
   },
   searchInput: {
     width: "100%",
-    backgroundColor: "rgba(31, 41, 55, 0.4)",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
+    backgroundColor: mode === "dark" ? "rgba(31, 41, 55, 0.4)" : "var(--bg-secondary)", // Trọng thêm
+    border: "1px solid var(--border)", // Trọng thêm
     borderRadius: "12px",
     padding: "12px 12px 12px 45px",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     fontSize: "14px",
     outline: "none",
     boxSizing: "border-box"
@@ -544,20 +547,20 @@ const styles = {
   },
   roleFilterSelect: {
     width: "100%",
-    backgroundColor: "rgba(31, 41, 55, 0.4)",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
+    backgroundColor: mode === "dark" ? "rgba(31, 41, 55, 0.4)" : "var(--bg-secondary)", // Trọng thêm
+    border: "1px solid var(--border)", // Trọng thêm
     borderRadius: "12px",
     padding: "12px",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     fontSize: "14px",
     outline: "none",
     cursor: "pointer"
   },
   tableWrapper: {
-    backgroundColor: "rgba(17, 24, 39, 0.2)",
+    backgroundColor: mode === "dark" ? "rgba(17, 24, 39, 0.2)" : "var(--bg-secondary)", // Trọng thêm
     borderRadius: "16px",
     overflow: "hidden",
-    border: "1px solid rgba(255, 255, 255, 0.05)"
+    border: "1px solid var(--border)" // Trọng thêm
   },
   table: {
     width: "100%",
@@ -565,19 +568,19 @@ const styles = {
     textAlign: "left"
   },
   thRow: {
-    backgroundColor: "rgba(31, 41, 55, 0.4)",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.06)"
+    backgroundColor: mode === "dark" ? "rgba(31, 41, 55, 0.4)" : "var(--bg-primary)", // Trọng thêm
+    borderBottom: "1px solid var(--border)" // Trọng thêm
   },
   th: {
     padding: "18px 24px",
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "13px",
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: "1px"
   },
   tr: {
-    borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
+    borderBottom: "1px solid var(--border)", // Trọng thêm
     transition: "background-color 0.2s ease"
   },
   td: {
@@ -587,21 +590,21 @@ const styles = {
   },
   idBadge: {
     fontFamily: "monospace",
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-    color: "#ffffff",
+    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)", // Trọng thêm
+    color: "var(--text-primary)", // Trọng thêm
     padding: "4px 8px",
     borderRadius: "6px",
     fontWeight: "600",
-    border: "1px solid rgba(255, 255, 255, 0.1)"
+    border: "1px solid var(--border)" // Trọng thêm
   },
   customerName: {
     fontWeight: "600",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     fontSize: "15px"
   },
   contactField: {
     fontSize: "13px",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     display: "flex",
     alignItems: "center",
     gap: "6px"
@@ -613,9 +616,9 @@ const styles = {
     alignItems: "center"
   },
   editBtn: {
-    backgroundColor: "rgba(99, 102, 241, 0.15)",
-    border: "1px solid rgba(99, 102, 241, 0.2)",
-    color: "#818cf8",
+    backgroundColor: mode === "dark" ? "rgba(99, 102, 241, 0.15)" : "rgba(79, 70, 229, 0.08)", // Trọng thêm
+    border: mode === "dark" ? "1px solid rgba(99, 102, 241, 0.2)" : "1px solid rgba(79, 70, 229, 0.15)", // Trọng thêm
+    color: mode === "dark" ? "#818cf8" : "#4f46e5", // Trọng thêm
     padding: "8px 14px",
     borderRadius: "8px",
     cursor: "pointer",
@@ -627,9 +630,9 @@ const styles = {
     gap: "6px"
   },
   deleteBtn: {
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
-    border: "1px solid rgba(239, 68, 68, 0.2)",
-    color: "#f87171",
+    backgroundColor: mode === "dark" ? "rgba(239, 68, 68, 0.15)" : "rgba(220, 38, 38, 0.08)", // Trọng thêm
+    border: mode === "dark" ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid rgba(220, 38, 38, 0.15)", // Trọng thêm
+    color: mode === "dark" ? "#f87171" : "#dc2626", // Trọng thêm
     padding: "8px 14px",
     borderRadius: "8px",
     cursor: "pointer",
@@ -643,19 +646,19 @@ const styles = {
   noData: {
     textAlign: "center",
     padding: "60px 20px",
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "15px"
   },
   loader: {
     textAlign: "center",
     padding: "60px",
-    color: "#9ca3af"
+    color: "var(--text-secondary)" // Trọng thêm
   },
   spinner: {
     width: "40px",
     height: "40px",
-    border: "3px solid rgba(99, 102, 241, 0.2)",
-    borderTop: "3px solid #6366f1",
+    border: mode === "dark" ? "3px solid rgba(99, 102, 241, 0.2)" : "3px solid rgba(0, 0, 0, 0.1)", // Trọng thêm
+    borderTop: "3px solid var(--accent-light)", // Trọng thêm
     borderRadius: "50%",
     margin: "0 auto 15px auto",
     animation: "spin 1s linear infinite"
@@ -674,8 +677,8 @@ const styles = {
     width: "36px",
     height: "36px",
     borderRadius: "50%",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
+    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)", // Trọng thêm
+    border: "1px solid var(--border)", // Trọng thêm
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -687,7 +690,7 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(3, 7, 18, 0.8)",
+    backgroundColor: mode === "dark" ? "rgba(3, 7, 18, 0.8)" : "rgba(0, 0, 0, 0.4)", // Trọng thêm
     backdropFilter: "blur(8px)",
     WebkitBackdropFilter: "blur(8px)",
     display: "flex",
@@ -696,18 +699,18 @@ const styles = {
     zIndex: 1000
   },
   modalContent: {
-    backgroundColor: "#111827",
-    backgroundImage: "radial-gradient(at 0% 0%, rgba(31, 41, 55, 0.5) 0, transparent 60%)",
+    backgroundColor: "var(--bg-card)", // Trọng thêm
+    backgroundImage: mode === "dark" ? "radial-gradient(at 0% 0%, rgba(31, 41, 55, 0.5) 0, transparent 60%)" : "none", // Trọng thêm
     borderRadius: "20px",
     width: "500px",
     maxWidth: "95%",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
+    border: "1px solid var(--border)", // Trọng thêm
     overflow: "hidden",
-    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.8)"
+    boxShadow: mode === "dark" ? "0 25px 50px -12px rgba(0, 0, 0, 0.8)" : "0 15px 35px rgba(0, 0, 0, 0.1)" // Trọng thêm
   },
   modalHeader: {
     padding: "24px",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+    borderBottom: "1px solid var(--border)", // Trọng thêm
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center"
@@ -715,7 +718,7 @@ const styles = {
   closeBtn: {
     background: "none",
     border: "none",
-    color: "#9ca3af",
+    color: "var(--text-secondary)", // Trọng thêm
     fontSize: "20px",
     cursor: "pointer"
   },
@@ -735,31 +738,31 @@ const styles = {
   modalLabel: {
     fontSize: "12px",
     fontWeight: "700",
-    color: "#6b7280",
+    color: "var(--text-secondary)", // Trọng thêm
     textTransform: "uppercase",
     letterSpacing: "0.5px"
   },
   modalSelect: {
     width: "100%",
-    backgroundColor: "rgba(31, 41, 55, 0.4)",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
+    backgroundColor: mode === "dark" ? "rgba(31, 41, 55, 0.4)" : "var(--bg-primary)", // Trọng thêm
+    border: "1px solid var(--border)", // Trọng thêm
     borderRadius: "12px",
     padding: "12px",
-    color: "#ffffff",
+    color: "var(--text-primary)", // Trọng thêm
     fontSize: "14px",
     outline: "none"
   },
   modalFooter: {
     padding: "18px 24px",
-    borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+    borderTop: "1px solid var(--border)", // Trọng thêm
     display: "flex",
     justifyContent: "flex-end",
     gap: "12px"
   },
   modalCancelBtn: {
-    backgroundColor: "#1f2937",
-    border: "1px solid rgba(255, 255, 255, 0.05)",
-    color: "#ffffff",
+    backgroundColor: mode === "dark" ? "#1f2937" : "#e5e7eb", // Trọng thêm
+    border: "1px solid var(--border)", // Trọng thêm
+    color: "var(--text-primary)", // Trọng thêm
     padding: "10px 20px",
     borderRadius: "10px",
     cursor: "pointer",
@@ -767,7 +770,7 @@ const styles = {
     fontWeight: "600"
   },
   modalSaveBtn: {
-    backgroundColor: "#6366f1",
+    backgroundColor: "var(--accent-light)", // Trọng thêm
     border: "none",
     color: "#ffffff",
     padding: "10px 24px",
@@ -789,4 +792,4 @@ const styles = {
     zIndex: 9999,
     boxShadow: "0 8px 24px rgba(0,0,0,0.3)"
   }
-};
+}); // Trọng thêm
