@@ -632,8 +632,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  /* Trọng thêm: Đổi border sang var(--border) động để hiển thị viền nút ở giao diện sáng */
+  border: 1px solid var(--border);
+  /* Trọng thêm: Đổi background sang màu trung tính để hiển thị khối nút ở giao diện sáng */
+  background: rgba(148, 163, 184, 0.1);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
