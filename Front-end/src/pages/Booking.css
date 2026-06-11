@@ -1,18 +1,18 @@
-/* Front-end/src/pages/Booking.css */
+/* Front-end/src/pages/Booking.css - Trọng thêm: Hỗ trợ sáng tối */
 
 .booking-page-container {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: radial-gradient(circle at 50% 0%, #1e1e38 0%, #0b0f19 100%);
+  background: var(--bg-primary);
   min-height: 100vh;
-  color: #f8fafc;
+  color: var(--text-primary);
   padding: 0;
 }
 
 .booking-card {
-  background: rgba(17, 24, 39, 0.6);
+  background: var(--bg-card);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
   border-radius: 24px;
   padding: 35px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
@@ -34,21 +34,21 @@
 .booking-title {
   font-size: 32px;
   font-weight: 800;
-  color: #f1f5f9;
+  color: var(--text-primary);
   margin: 0;
   letter-spacing: -1px;
 }
 
 .booking-subtitle {
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 14px;
   margin-top: 4px;
   margin-bottom: 0;
 }
 
 .form-section-card {
-  background: rgba(30, 41, 59, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 24px;
   margin-bottom: 24px;
@@ -57,7 +57,7 @@
 .form-section-title {
   font-size: 18px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-primary);
   margin-bottom: 20px;
   display: flex;
   align-items: center;
@@ -68,7 +68,7 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--text-secondary);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -76,11 +76,11 @@
 
 .form-input, .form-select, .form-textarea {
   width: 100%;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 16px;
-  color: #ffffff;
+  color: var(--text-primary);
   font-size: 15px;
   outline: none;
   transition: all 0.2s ease;
@@ -89,7 +89,7 @@
 .form-input:focus, .form-select:focus, .form-textarea:focus {
   border-color: #f97316;
   box-shadow: 0 0 10px rgba(249, 115, 22, 0.2);
-  background: rgba(15, 23, 42, 0.8);
+  background: var(--bg-secondary);
 }
 
 .vehicle-type-grid {
@@ -100,8 +100,8 @@
 }
 
 .vehicle-type-option {
-  background: rgba(15, 23, 42, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 16px;
   display: flex;
@@ -113,8 +113,8 @@
 }
 
 .vehicle-type-option:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(15, 23, 42, 0.6);
+  border-color: var(--accent);
+  background: var(--bg-secondary);
 }
 
 .vehicle-type-option.active {
@@ -125,7 +125,7 @@
 
 .vehicle-type-option i {
   font-size: 24px;
-  color: #94a3b8;
+  color: var(--text-secondary);
 }
 
 .vehicle-type-option.active i {
@@ -135,6 +135,7 @@
 .vehicle-type-option span {
   font-size: 14px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .service-package-option {
@@ -142,8 +143,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 18px 24px;
-  background: rgba(15, 23, 42, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
   border-radius: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -151,8 +152,8 @@
 }
 
 .service-package-option:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  background: rgba(15, 23, 42, 0.6);
+  border-color: var(--accent);
+  background: var(--bg-secondary);
 }
 
 .service-package-option.active {
@@ -164,7 +165,7 @@
 .package-name {
   font-size: 16px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -172,7 +173,7 @@
 
 .package-desc {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-secondary);
   margin-top: 4px;
   display: block;
 }
@@ -180,7 +181,7 @@
 .package-price {
   font-size: 18px;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 .service-package-option.active .package-price {
@@ -188,12 +189,12 @@
 }
 
 .summary-card {
-  background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 24px;
   padding: 30px;
-  color: #ffffff;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  color: var(--text-primary);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
 .summary-row {
@@ -204,7 +205,7 @@
 }
 
 .summary-row span:first-child {
-  color: #94a3b8;
+  color: var(--text-secondary);
 }
 
 .summary-row span:last-child {
@@ -212,7 +213,7 @@
 }
 
 .summary-total-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border);
   padding-top: 20px;
   margin-top: 20px;
   margin-bottom: 24px;
@@ -250,12 +251,12 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(15, 23, 42, 0.9);
+  background: var(--bg-secondary);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
   padding: 16px 24px;
   border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
   z-index: 1000;
   animation: slideUp 0.3s ease-out;
 }

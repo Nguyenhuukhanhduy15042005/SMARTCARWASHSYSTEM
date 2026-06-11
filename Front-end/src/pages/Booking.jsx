@@ -442,7 +442,8 @@ export default function Booking() {
             {/* Cột phải: Tóm tắt đơn hàng (Sticky) */}
             <div className="lg:col-span-1">
               <div className="summary-card sticky top-10">
-                <h3 className="text-2xl font-bold mb-6 border-b border-gray-700 pb-4">
+                {/* Trọng thêm: Viền động theo theme */}
+                <h3 className="text-2xl font-bold mb-6 border-b pb-4" style={{ borderColor: "var(--border)" }}>
                   Tóm tắt lịch đặt
                 </h3>
 
@@ -467,7 +468,8 @@ export default function Booking() {
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-4 border-t border-gray-800">
+                {/* Trọng thêm: Viền động theo theme */}
+                <div className="space-y-3 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
                   <div className="summary-row">
                     <span>Giá niêm yết:</span>
                     <span>{basePrice.toLocaleString("vi-VN")} đ</span>
@@ -499,7 +501,8 @@ export default function Booking() {
                   Xác nhận đặt lịch
                 </button>
 
-                <p className="text-center text-xs text-gray-400 mt-4">
+                {/* Trọng thêm: Màu chữ phụ động theo theme */}
+                <p className="text-center text-xs mt-4" style={{ color: "var(--text-secondary)" }}>
                   Bằng việc nhấn "Xác nhận đặt lịch", bạn đồng ý chịu trách
                   nhiệm với thời gian đã hẹn gặp.
                 </p>
