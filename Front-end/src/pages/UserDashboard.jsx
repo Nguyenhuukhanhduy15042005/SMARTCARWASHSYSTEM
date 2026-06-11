@@ -424,7 +424,10 @@ export default function UserDashboard() {
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           <span style={{ color: "var(--color-accent)" }}>{getVehicleIcon(b.vehicleType)}</span>
-                          <span className="vehicle-badge">{b.licensePlate}</span>
+                          {/* Trọng thêm: Thêm style inline để ép trình duyệt nhận màu động, tránh bị cache CSS cũ làm mất chữ biển số xe */}
+                          <span className="vehicle-badge" style={{ color: "var(--text-primary)", borderColor: "var(--border)", backgroundColor: "rgba(148, 163, 184, 0.15)" }}>
+                            {b.licensePlate}
+                          </span>
                         </div>
                       </td>
                       <td>{b.servicePackage}</td>
