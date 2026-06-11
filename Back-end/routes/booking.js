@@ -369,6 +369,76 @@ router.get('/customer/:customerId', async (req, res) => {
     }
 });
 
+// 6. Khách hàng xóa vĩnh viễn booking (khi đã hoàn thành hoặc đã hủy) - Trọng thêm
+router.delete('/:id', async (req, res) => {
+    try {
+        const bookingId = req.params.id;
+        const pool = await poolPromise;
+
+        // 1. Kiểm tra quyền sở hữu đơn hàng (nếu có token) - Trọng thêm
+        const token = req.headers.authorization?.split(' ')[1];
+        let customerId = null;
+
+        if (token && token !== 'mock-token' && token !== 'null' && token !== 'undefined') {
+            try {
+                const decoded = jwt.verify(
+                    token,
+                    process.env.JWT_SECRET || 'secretkey_placeholder'
+                );
+                if (decoded && decoded.role === 'user') {
+                    customerId = decoded.userId;
+                }
+            } catch (err) {
+                // Bỏ qua lỗi token trong dev
+            }
+        }
+
+        // 2. Lấy thông tin đơn hàng để kiểm tra tính hợp lệ - Trọng thêm
+        const bookingCheck = await pool.request()
+            .input('id', sql.Int, bookingId)
+            .query('SELECT CustomerID, Status FROM BOOKING WHERE BookingID = @id');
+
+        if (bookingCheck.recordset.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy lịch đặt xe' });
+        }
+
+        const booking = bookingCheck.recordset[0];
+
+        // 3. Nếu có customerId, kiểm tra xem đơn hàng có phải của user này không - Trọng thêm
+        if (customerId && booking.CustomerID !== customerId) {
+            return res.status(403).json({ message: 'Bạn không có quyền xóa lịch đặt xe của người khác!' });
+        }
+
+        // 4. Chỉ cho phép xóa nếu đơn hàng ở trạng thái Hoàn thành (4) hoặc Đã hủy (5) - Trọng thêm
+        if (booking.Status !== 4 && booking.Status !== 5) {
+            return res.status(400).json({ message: 'Chỉ có thể xóa lịch đặt xe đã hoàn thành hoặc đã hủy!' });
+        }
+
+        // 5. Thực hiện xóa trong transaction - Trọng thêm
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        try {
+            const request = new sql.Request(transaction);
+            request.input('id', sql.Int, bookingId);
+            
+            await request.query("DELETE FROM FEEDBACK WHERE BookingID = @id");
+            await request.query("DELETE FROM LOYALTY_TRANSACTION WHERE BookingID = @id");
+            await request.query("DELETE FROM PAYMENT WHERE BookingID = @id");
+            await request.query("DELETE FROM BOOKING_DETAIL WHERE BookingID = @id");
+            await request.query("DELETE FROM BOOKING WHERE BookingID = @id");
+            
+            await transaction.commit();
+            res.json({ message: 'Xóa lịch đặt khỏi lịch sử thành công' });
+        } catch (innerErr) {
+            await transaction.rollback();
+            throw innerErr;
+        }
+    } catch (err) {
+        console.error('[delete booking error]', err.message);
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // ==========================================
 // ADMIN ROUTES (Với quyền kiểm tra adminAuth - camelCase Casing)
 // ==========================================
