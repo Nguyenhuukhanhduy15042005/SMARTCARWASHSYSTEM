@@ -363,7 +363,8 @@
 
 .profile-field-row strong {
   font-size: 14px;
-  color: white;
+  /* Trọng thêm: Đổi từ white sang var(--text-primary) để hiển thị chữ đúng màu khi đổi giao diện sáng/tối */
+  color: var(--text-primary);
 }
 
 /* Spend Metrics cards */
@@ -423,7 +424,8 @@
   font-size: 22px;
   font-weight: 800;
   margin: 4px 0 0 0;
-  color: white;
+  /* Trọng thêm: Đổi từ white sang var(--text-primary) để hiển thị chữ đúng màu khi đổi giao diện sáng/tối */
+  color: var(--text-primary);
 }
 
 /* User Filter Bar */
@@ -522,7 +524,8 @@
 .section-divider-title h2 {
   font-size: 18px;
   font-weight: 800;
-  color: white;
+  /* Trọng thêm: Đổi từ white sang var(--text-primary) để hiển thị chữ đúng màu khi chuyển giao diện sáng/tối */
+  color: var(--text-primary);
   margin: 0;
   white-space: nowrap;
   letter-spacing: -0.3px;
