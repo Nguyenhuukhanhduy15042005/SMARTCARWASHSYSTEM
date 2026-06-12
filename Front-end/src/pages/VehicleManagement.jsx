@@ -1,7 +1,7 @@
 
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import Sidebar from "../components/Sidebar"; // Trọng thêm: Import Sidebar cho Admin/Staff
+import Sidebar from "../components/Sidebar";
 import { useTheme } from "../context/ThemeContext";
 
 const API_BASE = "http://localhost:5000";
@@ -38,7 +38,7 @@ const getLoggedInUser = () => {
 };
 
 export default function VehicleManagement() {
-  const { mode } = useTheme(); // Trọng thêm: Đọc giao diện sáng/tối hiện tại
+  const { mode } = useTheme();//giao diện sáng/tối hiện tại
   const [vehicles, setVehicles]           = useState([]);
   const [users, setUsers]                 = useState([]);
   const [formData, setFormData]           = useState(EMPTY_FORM);
