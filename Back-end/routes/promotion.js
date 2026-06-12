@@ -216,49 +216,46 @@ router.patch("/:id/expire", async (req, res) => {
 
 
 // DELETE /api/promotions/:id
-// Chỉ xóa cứng khi khuyến mãi chưa được gán vào MEMBER_PROMOTION.
-// Nếu đã nằm trong ví member thì dùng PATCH /:id/expire để tránh lỗi khóa ngoại.
 router.delete("/:id", async (req, res) => {
   const promotionId = Number(req.params.id);
-  if (!promotionId) return res.status(400).json({ message: "PromotionID không hợp lệ" });
+  if (!promotionId) {
+    return res.status(400).json({ message: "PromotionID không hợp lệ" });
+  }
+
+  const transaction = new sql.Transaction(await poolPromise);
 
   try {
-    const pool = await poolPromise;
+    await transaction.begin();
 
-    const checkResult = await pool.request()
-      .input("promotionId", sql.Int, promotionId)
-      .query(`
-        SELECT
-          p.PromotionID,
-          p.PromoName,
-          COUNT(mp.MemberPromoID) AS WalletCount
-        FROM PROMOTION p
-        LEFT JOIN MEMBER_PROMOTION mp ON p.PromotionID = mp.PromotionID
-        WHERE p.PromotionID = @promotionId
-        GROUP BY p.PromotionID, p.PromoName
-      `);
+    const request = new sql.Request(transaction);
+    request.input("promotionId", sql.Int, promotionId);
+
+    const checkResult = await request.query(`
+      SELECT PromotionID
+      FROM PROMOTION
+      WHERE PromotionID = @promotionId
+    `);
 
     if (!checkResult.recordset.length) {
+      await transaction.rollback();
       return res.status(404).json({ message: "Không tìm thấy khuyến mãi" });
     }
 
-    const walletCount = Number(checkResult.recordset[0].WalletCount || 0);
+    await request.query(`
+      DELETE FROM MEMBER_PROMOTION
+      WHERE PromotionID = @promotionId
+    `);
 
-    if (walletCount > 0) {
-      return res.status(409).json({
-        message: "Không thể xóa khuyến mãi đã nằm trong ví member. Hãy chuyển hết hạn thay vì xóa.",
-      });
-    }
+    await request.query(`
+      DELETE FROM PROMOTION
+      WHERE PromotionID = @promotionId
+    `);
 
-    await pool.request()
-      .input("promotionId", sql.Int, promotionId)
-      .query(`
-        DELETE FROM PROMOTION
-        WHERE PromotionID = @promotionId
-      `);
+    await transaction.commit();
 
     res.json({ message: "Xóa khuyến mãi thành công" });
   } catch (err) {
+    await transaction.rollback();
     console.error("DELETE /api/promotions/:id error:", err);
     res.status(500).json({ message: "Lỗi khi xóa khuyến mãi" });
   }

@@ -358,12 +358,7 @@ export default function PromotionManagement() {
                             type="button"
                             onClick={() => setDeleteTarget(item)}
                             className="danger"
-                            disabled={Number(item.WalletCount || 0) > 0}
-                            title={
-                              Number(item.WalletCount || 0) > 0
-                                ? "Không thể xóa vì đã nằm trong ví member"
-                                : "Xóa khuyến mãi"
-                            }
+                            title="Xóa khuyến mãi"
                           >
                             <i className="fa-solid fa-trash"></i>
                           </button>
@@ -480,7 +475,6 @@ export default function PromotionManagement() {
             <h2>Xóa khuyến mãi?</h2>
             <p>
               {deleteTarget.PromoName} sẽ bị xóa vĩnh viễn khỏi hệ thống.
-              Chỉ xóa được khuyến mãi chưa nằm trong ví member.
             </p>
             <div className="pm-confirm-actions">
               <button type="button" onClick={() => setDeleteTarget(null)}>
