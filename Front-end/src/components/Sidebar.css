@@ -15,6 +15,18 @@
   --sidebar-expanded-width: 260px;
 }
 
+[data-theme="light"] {
+  --bg-primary-portal: #f4f3ef;
+  --bg-secondary-portal: #ffffff;
+  --bg-card-portal: rgba(255, 255, 255, 0.75);
+  --border-color-portal: rgba(0, 0, 0, 0.08);
+  --text-primary-portal: #1a1a18;
+  --text-secondary-portal: #6b6b64;
+  --color-accent-portal: #0284c7;
+  --color-accent-hover-portal: #0369a1;
+  --color-accent-glow-portal: rgba(2, 132, 199, 0.15);
+}
+
 /* Unified Layout Wrappers */
 .portal-layout-container {
   display: flex;
@@ -86,7 +98,7 @@
   gap: 12px;
   font-size: 20px;
   font-weight: 800;
-  color: #fff;
+  color: var(--text-primary-portal);
   letter-spacing: 0.5px;
   margin-bottom: 35px;
   text-decoration: none;
@@ -137,7 +149,7 @@
   border-radius: 12px;
   margin-bottom: 25px;
   text-decoration: none;
-  color: white;
+  color: var(--text-primary-portal);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   flex-shrink: 0;

@@ -164,6 +164,11 @@
   display: grid;
   grid-template-columns: 1.2fr 1fr;
   gap: 30px;
+  width: 100%;
+}
+
+.user-profile-grid > * {
+  min-width: 0;
 }
 
 @media (max-width: 768px) {
@@ -385,6 +390,9 @@
   font-size: 14px;
   /* Trọng thêm: Đổi từ white sang var(--text-primary) để hiển thị chữ đúng màu khi đổi giao diện sáng/tối */
   color: var(--text-primary);
+  word-break: break-all;
+  max-width: 70%;
+  text-align: right;
 }
 
 /* Spend Metrics cards */
