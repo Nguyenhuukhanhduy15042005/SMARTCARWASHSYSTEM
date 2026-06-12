@@ -161,24 +161,21 @@
 
 /* Account Info Cards Grid */
 .user-profile-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  display: flex;
   gap: 30px;
   width: 100%;
 }
 
-.user-profile-grid > * {
-  min-width: 0;
-}
-
 @media (max-width: 768px) {
   .user-profile-grid {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 }
 
 /* Membership Card Styling */
 .membership-card-glow {
+  flex: 1.2;
+  min-width: 0;
   background: linear-gradient(135deg, #1e293b, #0f172a);
   border: 1px solid var(--border-color);
   border-radius: 24px;
@@ -347,6 +344,8 @@
 
 /* User Profile Details Card */
 .user-profile-details {
+  flex: 1;
+  min-width: 0;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 24px;
@@ -390,8 +389,9 @@
   font-size: 14px;
   /* Trọng thêm: Đổi từ white sang var(--text-primary) để hiển thị chữ đúng màu khi đổi giao diện sáng/tối */
   color: var(--text-primary);
+  display: inline-block;
   word-break: break-all;
-  max-width: 70%;
+  max-width: 65%;
   text-align: right;
 }
 
