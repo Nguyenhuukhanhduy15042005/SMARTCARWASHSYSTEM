@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import "./UserDashboard.css";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useNavigate } from "react-router-dom"; // Trọng thêm
-import MemberHeader from "../components/MemberHeader";
+import { useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
@@ -276,12 +276,20 @@ export default function UserDashboard() {
   const completedCount = bookings.filter(b => b.status === 4).length;
   const totalSpend = bookings.filter(b => b.status === 4).reduce((acc, b) => acc + (b.price || 0), 0);
 
-  return (
-    <div className="user-dashboard-container">
-      <MemberHeader />
+  // Fix: Nếu API trả CurrentPoints/AccumulatedPoints = 0 nhưng có đơn hoàn thành,
+  // tự tính từ bookings (1.000đ = 1 điểm)
+  const computedPoints = bookings
+    .filter(b => b.status === 4)
+    .reduce((sum, b) => sum + Math.floor((b.price || 0) / 1000), 0);
+  const displayCurrentPoints = profile.CurrentPoints > 0 ? profile.CurrentPoints : computedPoints;
+  const displayAccumulatedPoints = profile.AccumulatedPoints > 0 ? profile.AccumulatedPoints : computedPoints;
 
-      {/* Main Wrapper - Trọng thêm */}
-      <main className="user-main-content">
+  return (
+    <div className="portal-layout-container">
+      <Sidebar />
+
+      {/* Main Wrapper */}
+      <main className="portal-main-content user-main-content" style={{ padding: "40px 32px" }}>
         <section className="welcome-section">
           <h1>Xin Chào, {profile.FullName}!</h1>
           <p>Chào mừng quay trở lại. Theo dõi trạng thái đặt lịch và hạng thành viên của bạn.</p>
@@ -301,7 +309,7 @@ export default function UserDashboard() {
               <div className="points-display">
                 <span className="points-label">Điểm tích lũy hiện tại</span>
                 <span className="points-value">
-                  {profile.CurrentPoints} <span>PTS</span>
+                  {displayCurrentPoints} <span>PTS</span>
                 </span>
               </div>
             </div>
@@ -328,7 +336,7 @@ export default function UserDashboard() {
               </div>
               <div className="profile-field-row">
                 <span>Tổng tích lũy:</span>
-                <strong>{profile.AccumulatedPoints} PTS</strong>
+                <strong>{displayAccumulatedPoints} PTS</strong>
               </div>
               <div className="profile-field-row">
                 <span>Hạng ưu đãi:</span>

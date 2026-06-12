@@ -265,22 +265,14 @@ export default function VehicleManagement() {
     window.location.href = "/login";
   };
 
-  const isMember = !currentUser || (currentUser.role !== "admin" && currentUser.role !== "staff"); // Trọng thêm
+  const isMember = !currentUser || (currentUser.role !== "admin" && currentUser.role !== "staff"); // kept for other logic
 
   return (
-    <div className={isMember ? "vehicles-page-container" : "portal-layout-container"} style={{ ...s.root, padding: 0, minHeight: isMember ? "" : "100vh" }}>
-      {isMember ? <MemberHeader /> : <Sidebar />}
+    <div className="portal-layout-container" style={{ ...s.root, padding: 0, minHeight: "100vh" }}>
+      <Sidebar />
       <div 
-        className={isMember ? "user-main-content" : "portal-main-content"} 
-        style={isMember ? { 
-          display: "flex", 
-          flexDirection: "column", 
-          flex: 1, 
-          padding: "24px 32px 60px", 
-          position: "relative", 
-          width: "100%", 
-          boxSizing: "border-box" 
-        } : { 
+        className="portal-main-content" 
+        style={{ 
           display: "flex", 
           flexDirection: "column", 
           flex: 1, 

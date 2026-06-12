@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import MemberHeader from "../components/MemberHeader";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
@@ -164,7 +164,6 @@ export default function LoyaltyHistory() {
       .map((b) => {
         let isCompleted = b.status === 4;
         let isCancelled = b.status === 5;
-
         return {
           id: b.id,
           date: b.date,
@@ -174,8 +173,21 @@ export default function LoyaltyHistory() {
           type: isCompleted ? "Earned" : isCancelled ? "Cancelled" : "Pending",
         };
       })
-      .filter((t) => t.type !== "Cancelled"); // Ẩn các đơn đã bị hủy
+      .filter((t) => t.type !== "Cancelled");
   }, [bookings]);
+
+  // Fix: Nếu API trả CurrentPoints/AccumulatedPoints = 0 nhưng có đơn hoàn thành, tự tính
+  const displayCurrentPoints = useMemo(() => {
+    if (profile.CurrentPoints > 0) return profile.CurrentPoints;
+    return transactionsList
+      .filter(t => t.type === "Earned")
+      .reduce((sum, t) => sum + (t.points || 0), 0);
+  }, [profile.CurrentPoints, transactionsList]);
+
+  const displayAccumulatedPoints = useMemo(() => {
+    if (profile.AccumulatedPoints > 0) return profile.AccumulatedPoints;
+    return displayCurrentPoints;
+  }, [profile.AccumulatedPoints, displayCurrentPoints]);
 
   // Filter & search logic
   const filteredTransactions = useMemo(() => {
@@ -197,7 +209,7 @@ export default function LoyaltyHistory() {
 
   // Calculate tier upgrade progression
   const tierProgress = useMemo(() => {
-    const pts = profile.AccumulatedPoints;
+    const pts = displayAccumulatedPoints;
 
     // Tiers threshold configuration
     // Bronze: 0, Silver: 500, Gold: 1500, Platinum: 5000
@@ -237,7 +249,7 @@ export default function LoyaltyHistory() {
         remaining: 0,
       };
     }
-  }, [profile.AccumulatedPoints]);
+  }, [displayAccumulatedPoints]);
 
   const money = (val) =>
     new Intl.NumberFormat("vi-VN", {
@@ -246,10 +258,9 @@ export default function LoyaltyHistory() {
     }).format(val);
 
   return (
-    <div className="loyalty-page-container">
-      <MemberHeader />
-
-      <main className="user-main-content" style={{ padding: 0 }}>
+    <div className="portal-layout-container">
+      <Sidebar />
+      <main className="portal-main-content" style={{ padding: 0 }}>
         <div className="loyalty-main-wrapper" style={{ padding: "40px" }}>
           {/* Header section */}
           <header className="loyalty-header-section">
@@ -279,7 +290,7 @@ export default function LoyaltyHistory() {
                 <div className="points-box">
                   <span className="points-label">Điểm khả dụng hiện tại</span>
                   <h2 className="points-num">
-                    {profile.CurrentPoints} <span>PTS</span>
+                    {displayCurrentPoints} <span>PTS</span>
                   </h2>
                 </div>
               </div>
@@ -301,7 +312,7 @@ export default function LoyaltyHistory() {
                 <h3>Tiến Trình Nâng Hạng</h3>
                 <span className="progress-label">
                   Tổng tích lũy:{" "}
-                  <strong>{profile.AccumulatedPoints} PTS</strong>
+                  <strong>{displayAccumulatedPoints} PTS</strong>
                 </span>
               </div>
 
@@ -333,7 +344,7 @@ export default function LoyaltyHistory() {
                     ></div>
                   </div>
                   <div className="progress-limits">
-                    <span>{profile.AccumulatedPoints} PTS</span>
+                    <span>{displayAccumulatedPoints} PTS</span>
                     <span>{tierProgress.required} PTS</span>
                   </div>
                   <div className="upgrade-bonus-tip">

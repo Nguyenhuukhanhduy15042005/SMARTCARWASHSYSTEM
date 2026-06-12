@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./Payment.css";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "/api";
 
@@ -87,7 +88,9 @@ export default function PaymentHistory() {
     : history.filter((h) => h.Method === filter);
 
   return (
-    <div className="payment-page-container">
+    <div className="portal-layout-container">
+      <Sidebar />
+      <div className="portal-main-content payment-page-container" style={{ padding: "32px 40px" }}>
       <div className="ph-wrapper">
         {/* Header */}
         <div className="ph-header">
@@ -196,6 +199,7 @@ export default function PaymentHistory() {
           <span>{toast.msg}</span>
         </div>
       )}
+      </div>
     </div>
   );
 }
