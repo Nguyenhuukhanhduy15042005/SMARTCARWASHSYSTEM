@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./UserDashboard.css";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useNavigate } from "react-router-dom"; // Trọng thêm
+import { Link, useNavigate } from "react-router-dom"; // Trọng thêm
 import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
@@ -320,7 +320,19 @@ export default function UserDashboard() {
             <div className="profile-fields-list">
               <div className="profile-field-row">
                 <span>Số điện thoại:</span>
-                <strong>{profile.PhoneNumber || "Chưa cập nhật"}</strong>
+                <strong>
+                  {!profile.PhoneNumber || profile.PhoneNumber.startsWith("G-") ? (
+                    <Link
+                      to="/profile"
+                      style={{ color: "var(--color-danger)", fontWeight: "bold", textDecoration: "underline", cursor: "pointer" }}
+                      title="Click để cập nhật số điện thoại"
+                    >
+                      Cần cập nhật số điện thoại
+                    </Link>
+                  ) : (
+                    profile.PhoneNumber
+                  )}
+                </strong>
               </div>
               <div className="profile-field-row">
                 <span>Email liên hệ:</span>

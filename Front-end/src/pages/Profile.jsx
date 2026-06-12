@@ -33,7 +33,8 @@ export default function Profile({ setUser }) {
         if (!res.ok) throw new Error("Không thể lấy thông tin!");
         const data = await res.json();
         setLocalUser(data);
-        setForm({ fullName: data.FullName || "", phone: data.PhoneNumber || "", email: data.Email || "", newPassword: "" });
+        const phoneVal = (data.PhoneNumber && !data.PhoneNumber.startsWith("G-")) ? data.PhoneNumber : "";
+        setForm({ fullName: data.FullName || "", phone: phoneVal, email: data.Email || "", newPassword: "" });
       } catch (err) {
         setMsg({ text: err.message, type: "error" });
       } finally {
@@ -46,6 +47,20 @@ export default function Profile({ setUser }) {
   const handleSave = async () => {
     setSaving(true);
     setMsg({ text: "", type: "" });
+
+    // Xác thực số điện thoại Việt Nam
+    if (!form.phone) {
+      setMsg({ text: "❌ Vui lòng nhập số điện thoại liên hệ!", type: "error" });
+      setSaving(false);
+      return;
+    }
+    const phoneRegex = /^(0[35789])[0-9]{8}$/;
+    if (!phoneRegex.test(form.phone)) {
+      setMsg({ text: "❌ Số điện thoại không hợp lệ! Định dạng đúng gồm 10 chữ số di động Việt Nam (ví dụ: 0912345678).", type: "error" });
+      setSaving(false);
+      return;
+    }
+
     try {
       const res = await fetch(`${API}/me`, {
         method: "PUT",
@@ -139,7 +154,13 @@ export default function Profile({ setUser }) {
             <label>Số điện thoại</label>
             {editing
               ? <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#1e293b" }}>{user?.PhoneNumber}</div>}
+              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#1e293b" }}>
+                  {!user?.PhoneNumber || user.PhoneNumber.startsWith("G-") ? (
+                    <span style={{ color: "#ef4444", fontWeight: 500 }}>Chưa cập nhật (Cần cập nhật để liên hệ)</span>
+                  ) : (
+                    user.PhoneNumber
+                  )}
+                </div>}
           </div>
           <div className="input-group" style={{ gridColumn: "1 / -1" }}>
             <label>Email</label>

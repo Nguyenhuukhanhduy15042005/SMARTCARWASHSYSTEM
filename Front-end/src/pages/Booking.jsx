@@ -125,10 +125,11 @@ export default function Booking() {
         { headers },
       );
       if (res.data) {
+        const phone = res.data.PhoneNumber && !res.data.PhoneNumber.startsWith("G-") ? res.data.PhoneNumber : "";
         setProfile({
           UserID: res.data.UserID || userId,
           FullName: res.data.FullName || "Khách hàng",
-          PhoneNumber: res.data.PhoneNumber || "",
+          PhoneNumber: phone,
           TierName: res.data.TierName || "Standard",
           DiscountRate:
             res.data.DiscountRate !== undefined ? res.data.DiscountRate : 0,

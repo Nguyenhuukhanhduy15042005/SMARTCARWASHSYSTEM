@@ -185,6 +185,17 @@ body {
   font-weight: 500;
 }
 
+.success-msg {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .nsm7Vb-HzV7m-LgbsSe {
   border-radius: 12px !important;
   border: 1px solid #e2e8f0 !important;

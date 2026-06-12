@@ -42,14 +42,14 @@ const getLoyaltyTransactions = async (req, res) => {
         SELECT 
           L.TransactionID as id,
           B.LicensePlate as licensePlate,
-          L.CreatedAt as date,
+          L.CreatedDate as date,
           B.TotalPrice as price,
           L.Points as points,
           B.Status as status
         FROM LOYALTY_TRANSACTION L
         LEFT JOIN BOOKING B ON L.BookingID = B.BookingID
         WHERE L.UserID = @userId
-        ORDER BY L.CreatedAt DESC
+        ORDER BY L.CreatedDate DESC
       `);
 
     res.status(200).json(result.recordset);

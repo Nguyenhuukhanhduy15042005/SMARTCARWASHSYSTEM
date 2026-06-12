@@ -22,7 +22,12 @@ router.get("/me", verifyToken, async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy người dùng!" });
     }
 
-    res.json(result.recordset[0]);
+    const user = result.recordset[0];
+    if (user.PhoneNumber && user.PhoneNumber.startsWith("G-")) {
+      user.PhoneNumber = "";
+    }
+
+    res.json(user);
   } catch (err) {
     res.status(500).json({ message: "Lỗi server: " + err.message });
   }
@@ -31,6 +36,15 @@ router.get("/me", verifyToken, async (req, res) => {
 // HEAD (main): Cập nhật thông tin cá nhân của người dùng hiện tại (dùng token)
 router.put("/me", verifyToken, async (req, res) => {
   const { fullName, phone, email, newPassword } = req.body;
+
+  // Xác thực định dạng số điện thoại ở backend
+  if (!phone) {
+    return res.status(400).json({ message: "Vui lòng nhập số điện thoại liên hệ!" });
+  }
+  const phoneRegex = /^(0[35789])[0-9]{8}$/;
+  if (!phoneRegex.test(phone)) {
+    return res.status(400).json({ message: "Số điện thoại không hợp lệ! Định dạng đúng gồm 10 chữ số di động Việt Nam." });
+  }
 
   try {
     const pool = await poolPromise;
@@ -160,7 +174,14 @@ router.get("/", verifyToken, async (req, res) => {
         ORDER BY u.UserID DESC
       `);
 
-    res.json(result.recordset);
+    const users = result.recordset.map(u => {
+      if (u.phone && u.phone.startsWith("G-")) {
+        u.phone = "";
+      }
+      return u;
+    });
+
+    res.json(users);
   } catch (err) {
     res.status(500).json({ message: "Lỗi server: " + err.message });
   }
@@ -224,7 +245,11 @@ router.get('/profile', async (req, res) => {
         if (result.recordset.length === 0) {
             return res.status(404).json({ message: "Không tìm thấy thông tin người dùng" });
         }
-        res.json(result.recordset[0]);
+        const profile = result.recordset[0];
+        if (profile.PhoneNumber && profile.PhoneNumber.startsWith("G-")) {
+            profile.PhoneNumber = "";
+        }
+        res.json(profile);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -279,7 +304,14 @@ router.get("/members", verifyToken, async (req, res) => {
       ORDER BY u.FullName ASC
     `);
 
-    res.json(result.recordset);
+    const members = result.recordset.map(m => {
+      if (m.phone && m.phone.startsWith("G-")) {
+        m.phone = "";
+      }
+      return m;
+    });
+
+    res.json(members);
   } catch (err) {
     res.status(500).json({ message: "Lỗi server: " + err.message });
   }
