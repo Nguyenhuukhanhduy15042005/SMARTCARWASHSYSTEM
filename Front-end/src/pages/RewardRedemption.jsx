@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import MemberHeader from "../components/MemberHeader";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
@@ -126,9 +126,9 @@ export default function RewardRedemption() {
   };
 
   return (
-    <div className="reward-page">
-      <MemberHeader />
-      <main className="reward-main user-main-content">
+    <div className="portal-layout-container">
+      <Sidebar />
+      <main className="portal-main-content">
         {toast && <div className={`reward-toast ${toast.type}`}>{toast.message}</div>}
 
         <section className="reward-hero">

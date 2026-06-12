@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import MemberHeader from "../components/MemberHeader";
+import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
@@ -115,7 +115,7 @@ export default function LoyaltyHistory() {
 
       // 2. Fetch bookings list
       const bookingsRes = await axios.get(
-        `${API_BASE}/bookings?customerId=${userId}`,
+        `${API_BASE}/loyalty/transactions?customerId=${userId}`,
         { headers },
       );
       const list = Array.isArray(bookingsRes.data) ? bookingsRes.data : [];
@@ -246,10 +246,10 @@ export default function LoyaltyHistory() {
     }).format(val);
 
   return (
-    <div className="loyalty-page-container">
-      <MemberHeader />
+    <div className="portal-layout-container">
+      <Sidebar />
 
-      <main className="user-main-content" style={{ padding: 0 }}>
+      <main className="portal-main-content" style={{ padding: 0 }}>
         <div className="loyalty-main-wrapper" style={{ padding: "40px" }}>
           {/* Header section */}
           <header className="loyalty-header-section">

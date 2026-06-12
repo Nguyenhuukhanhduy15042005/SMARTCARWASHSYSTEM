@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./Booking.css";
 import { useAuth } from "../context/AuthContext";
-import MemberHeader from "../components/MemberHeader";
+import Sidebar from "../components/Sidebar";
 
 // Trọng thêm: Danh sách các khung giờ hoạt động tiêu chuẩn (8:00 - 17:00, mỗi 30 phút)
 const TIME_SLOTS = [
@@ -336,10 +336,10 @@ export default function Booking() {
   };
 
   return (
-    <div className="booking-page-container">
-      <MemberHeader />
+    <div className="portal-layout-container">
+      <Sidebar />
       <main
-        className="user-main-content"
+        className="portal-main-content"
         style={{
           display: "flex",
           flexDirection: "column",

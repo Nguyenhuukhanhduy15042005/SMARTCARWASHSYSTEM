@@ -20,24 +20,26 @@ app.use(cors({
 }));
 
 // IMPORT ROUTERS
-const authRouter     = require('./routes/auth');
-const userRouter     = require('./routes/user');
-const vehicleRouter  = require('./routes/vehicle');
-const bookingRouter  = require('./routes/booking');
+const authRouter = require('./routes/auth');
+const userRouter = require('./routes/user');
+const vehicleRouter = require('./routes/vehicle');
+const bookingRouter = require('./routes/booking');
 const timeslotRouter = require('./routes/timeslot');
-const paymentRouter  = require('./routes/paymentRouter');
+const paymentRouter = require('./routes/paymentRouter');
 const promotionRouter = require('./routes/promotion'); // Trọng thêm
-const feedbackRouter  = require('./routes/feedback'); // Trọng thêm
+const feedbackRouter = require('./routes/feedback'); // Trọng thêm
+const loyaltyRouter = require('./routes/loyalty'); // Trọng thêm
 
 // MOUNT ROUTERS
-app.use('/api/auth',      authRouter);
-app.use('/api/users',     userRouter);
-app.use('/api/vehicles',  vehicleRouter);
-app.use('/api/bookings',  bookingRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/users', userRouter);
+app.use('/api/vehicles', vehicleRouter);
+app.use('/api/bookings', bookingRouter);
 app.use('/api/timeslots', timeslotRouter);
-app.use('/api/payments',  paymentRouter);
-app.use('/api/promotions', promotionRouter); // Trọng thêm
-app.use('/api/feedbacks',  feedbackRouter); // Trọng thêm
+app.use('/api/payments', paymentRouter);
+app.use('/api/promotions', promotionRouter);
+app.use('/api/feedbacks', feedbackRouter);
+app.use('/api/loyalty', loyaltyRouter);
 // Test Endpoint
 app.get("/api/test", (req, res) => {
   res.json({ message: "API Car Wash System hoạt động tốt!" });

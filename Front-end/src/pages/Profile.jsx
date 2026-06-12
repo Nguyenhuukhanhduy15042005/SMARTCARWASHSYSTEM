@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import MemberHeader from "../components/MemberHeader";
 import Sidebar from "../components/Sidebar"; // Trọng thêm: Import Sidebar cho Admin/Staff
 
 const API = "http://localhost:5000/api/users";
@@ -82,21 +81,12 @@ export default function Profile({ setUser }) {
     );
   }
 
-  const isMember = !user || (user.RoleID !== 1 && user.RoleID !== 2); // Trọng thêm
-
   return (
-    <div className={isMember ? "profile-page-container" : "portal-layout-container"} style={isMember ? {} : { minHeight: "100vh" }}>
-      {isMember ? <MemberHeader /> : <Sidebar />}
+    <div className="portal-layout-container">
+      <Sidebar />
       <main 
-        className={isMember ? "user-main-content" : "portal-main-content"} 
-        style={isMember ? { 
-          display: "flex", 
-          justifyContent: "center", 
-          alignItems: "center", 
-          padding: "40px 20px", 
-          width: "100%", 
-          boxSizing: "border-box" 
-        } : { 
+        className="portal-main-content" 
+        style={{ 
           display: "flex", 
           justifyContent: "center", 
           alignItems: "center", 
