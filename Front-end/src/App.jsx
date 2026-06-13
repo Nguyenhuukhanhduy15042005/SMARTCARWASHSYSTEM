@@ -22,8 +22,9 @@ import PaymentResult from "./pages/PaymentResult";
 import AccountManagement from "./pages/AccountManagement";
 import PromotionManagement from "./pages/PromotionManagement";
 import FeedbackManagement from "./pages/FeedbackManagement";
-import RewardRedemption from "./pages/RewardRedemption"; // Trọng thêm
-import LoyaltyHistory from "./pages/LoyaltyHistory"; // Trọng thêm
+import RewardRedemption from "./pages/RewardRedemption";
+import LoyaltyHistory from "./pages/LoyaltyHistory";
+import MachineDashboard from "./pages/MachineDashboard"; // Đã thêm import Machine Dashboard
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -39,23 +40,32 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
-        <Route path="/dashboard" element={
-          <ProtectedRoute requiredRole="user">
-            <UserDashboard />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/profile" element={
-          <ProtectedRoute>
-            <Profile setUser={setUser} />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile setUser={setUser} />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/vehicles" element={
-          <ProtectedRoute>
-            <VehicleManagement />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/vehicles"
+          element={
+            <ProtectedRoute>
+              <VehicleManagement />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/booking"
@@ -84,23 +94,32 @@ function App() {
           }
         />
 
-        <Route path="/timeslots" element={
-          <ProtectedRoute requiredRole={["admin", "staff"]}>
-            <TimeslotValidation />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/timeslots"
+          element={
+            <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <TimeslotValidation />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/staff/dashboard" element={
-          <ProtectedRoute requiredRole="staff">
-            <StaffDashboard />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/staff/dashboard"
+          element={
+            <ProtectedRoute requiredRole="staff">
+              <StaffDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/admin/dashboard" element={
-          <ProtectedRoute requiredRole="admin">
-            <AdminDashboard />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/admin/members"
@@ -139,25 +158,44 @@ function App() {
           }
         />
 
+        {/* --- DÒNG THÊM MỚI CHỖ NÀY --- */}
+        <Route
+          path="/admin/machines"
+          element={
+            <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <MachineDashboard />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
 
-        <Route path="/payments" element={
-          <ProtectedRoute requiredRole="user">
-            <Payment />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/payments"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <Payment />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/payments/history" element={
-          <ProtectedRoute requiredRole="user">
-            <PaymentHistory />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/payments/history"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <PaymentHistory />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/payments/result" element={
-          <ProtectedRoute requiredRole="user">
-            <PaymentResult />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/payments/result"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <PaymentResult />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

@@ -14,32 +14,35 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json());
-app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  }),
+);
 
 // IMPORT ROUTERS
-const authRouter = require('./routes/auth');
-const userRouter = require('./routes/user');
-const vehicleRouter = require('./routes/vehicle');
-const bookingRouter = require('./routes/booking');
-const timeslotRouter = require('./routes/timeslot');
-const paymentRouter = require('./routes/paymentRouter');
-const promotionRouter = require('./routes/promotion'); // Trọng thêm
-const feedbackRouter = require('./routes/feedback'); // Trọng thêm
-const loyaltyRouter = require('./routes/loyalty'); // Trọng thêm
-
+const authRouter = require("./routes/auth");
+const userRouter = require("./routes/user");
+const vehicleRouter = require("./routes/vehicle");
+const bookingRouter = require("./routes/booking");
+const timeslotRouter = require("./routes/timeslot");
+const paymentRouter = require("./routes/paymentRouter");
+const promotionRouter = require("./routes/promotion"); // Trọng thêm
+const feedbackRouter = require("./routes/feedback"); // Trọng thêm
+const loyaltyRouter = require("./routes/loyalty"); // Trọng thêm
+const machineRouter = require("./routes/machine"); // Thắng thêm
 // MOUNT ROUTERS
-app.use('/api/auth', authRouter);
-app.use('/api/users', userRouter);
-app.use('/api/vehicles', vehicleRouter);
-app.use('/api/bookings', bookingRouter);
-app.use('/api/timeslots', timeslotRouter);
-app.use('/api/payments', paymentRouter);
-app.use('/api/promotions', promotionRouter);
-app.use('/api/feedbacks', feedbackRouter);
-app.use('/api/loyalty', loyaltyRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/users", userRouter);
+app.use("/api/vehicles", vehicleRouter);
+app.use("/api/bookings", bookingRouter);
+app.use("/api/timeslots", timeslotRouter);
+app.use("/api/payments", paymentRouter);
+app.use("/api/promotions", promotionRouter);
+app.use("/api/feedbacks", feedbackRouter);
+app.use("/api/loyalty", loyaltyRouter);
+app.use("/api/machines", machineRouter);
 // Test Endpoint
 app.get("/api/test", (req, res) => {
   res.json({ message: "API Car Wash System hoạt động tốt!" });
@@ -50,4 +53,4 @@ app.listen(PORT, () => {
   console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });
 
-require('dotenv').config();
+require("dotenv").config();
