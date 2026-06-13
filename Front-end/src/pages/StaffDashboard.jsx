@@ -529,6 +529,7 @@ const getStyles = (mode) => ({ // Trọng thêm
     pointerEvents: "none"
   },
   dashboardCard: {
+    width: "100%",
     maxWidth: "100%", // Giêu nguyên theo plan cũ (maxWidth: "100%")
     margin: "0",
     backgroundColor: mode === "dark" ? "rgba(17, 24, 39, 0.45)" : "rgba(255, 255, 255, 0.75)", // Trọng thêm
