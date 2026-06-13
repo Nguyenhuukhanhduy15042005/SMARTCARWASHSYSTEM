@@ -9,25 +9,55 @@ const router = express.Router();
 router.get("/me", verifyToken, async (req, res) => {
   try {
     const pool = await poolPromise;
-    const result = await pool
+
+    // 1. Tự động tính toán lại TierID dựa trên AccumulatedPoints
+    const tierRes = await pool.request().query(`
+      SELECT TierID, RequiredPoints 
+      FROM LOYALTY_TIER 
+      ORDER BY RequiredPoints ASC
+    `);
+
+    let autoTierId = 1; // Mặc định là Bronze
+    for (const tier of tierRes.recordset) {
+      if (accumulatedPoints >= tier.RequiredPoints) {
+        autoTierId = tier.TierID;
+      }
+    }
+
+    // 2. Kiểm tra xem đã có bản ghi MEMBER_PROFILE chưa
+    const profileCheck = await pool
       .request()
-      .input("userId", sql.Int, req.user.userId)
-      .query(`
-        SELECT UserID, FullName, Email, PhoneNumber, RoleID
-        FROM [USER]
-        WHERE UserID = @userId
-      `);
+      .input("userId", sql.Int, userId)
+      .query("SELECT UserID FROM MEMBER_PROFILE WHERE UserID = @userId");
 
-    if (result.recordset.length === 0) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng!" });
+    if (profileCheck.recordset.length === 0) {
+      // Nếu chưa có, tiến hành INSERT (Dùng autoTierId vừa tính)
+      await pool
+        .request()
+        .input("userId", sql.Int, userId)
+        .input("tierId", sql.Int, autoTierId)
+        .input("currentPoints", sql.Int, currentPoints || 0)
+        .input("accumulatedPoints", sql.Int, accumulatedPoints || 0).query(`
+          INSERT INTO MEMBER_PROFILE (UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate)
+          VALUES (@userId, @tierId, @currentPoints, @accumulatedPoints, GETDATE())
+        `);
+    } else {
+      // Nếu đã có, tiến hành UPDATE (Dùng autoTierId vừa tính)
+      await pool
+        .request()
+        .input("userId", sql.Int, userId)
+        .input("tierId", sql.Int, autoTierId)
+        .input("currentPoints", sql.Int, currentPoints)
+        .input("accumulatedPoints", sql.Int, accumulatedPoints).query(`
+          UPDATE MEMBER_PROFILE
+          SET TierID = @tierId,
+              CurrentPoints = @currentPoints,
+              AccumulatedPoints = @accumulatedPoints
+          WHERE UserID = @userId
+        `);
     }
 
-    const user = result.recordset[0];
-    if (user.PhoneNumber && user.PhoneNumber.startsWith("G-")) {
-      user.PhoneNumber = "";
-    }
-
-    res.json(user);
+    res.json({ message: "Cập nhật điểm và tự động xét hạng thành công!" });
   } catch (err) {
     res.status(500).json({ message: "Lỗi server: " + err.message });
   }
@@ -39,11 +69,16 @@ router.put("/me", verifyToken, async (req, res) => {
 
   // Xác thực định dạng số điện thoại ở backend
   if (!phone) {
-    return res.status(400).json({ message: "Vui lòng nhập số điện thoại liên hệ!" });
+    return res
+      .status(400)
+      .json({ message: "Vui lòng nhập số điện thoại liên hệ!" });
   }
   const phoneRegex = /^(0[35789])[0-9]{8}$/;
   if (!phoneRegex.test(phone)) {
-    return res.status(400).json({ message: "Số điện thoại không hợp lệ! Định dạng đúng gồm 10 chữ số di động Việt Nam." });
+    return res.status(400).json({
+      message:
+        "Số điện thoại không hợp lệ! Định dạng đúng gồm 10 chữ số di động Việt Nam.",
+    });
   }
 
   try {
@@ -53,8 +88,7 @@ router.put("/me", verifyToken, async (req, res) => {
       .request()
       .input("phone", sql.VarChar, phone)
       .input("email", sql.VarChar, email)
-      .input("userId", sql.Int, req.user.userId)
-      .query(`
+      .input("userId", sql.Int, req.user.userId).query(`
         SELECT UserID, RoleID FROM [USER]
         WHERE (PhoneNumber = @phone OR Email = @email)
         AND UserID != @userId
@@ -62,9 +96,11 @@ router.put("/me", verifyToken, async (req, res) => {
 
     if (checkDuplicate.recordset.length > 0) {
       console.log("checkDuplicate.recordset:", checkDuplicate.recordset);
-      const hasNonGuest = checkDuplicate.recordset.some(u => u.RoleID !== 4);
+      const hasNonGuest = checkDuplicate.recordset.some((u) => u.RoleID !== 4);
       if (hasNonGuest) {
-        return res.status(400).json({ message: "Email hoặc Số điện thoại đã được người khác sử dụng!" });
+        return res.status(400).json({
+          message: "Email hoặc Số điện thoại đã được người khác sử dụng!",
+        });
       }
 
       // Ghép toàn bộ tài khoản vãng lai trùng lặp (RoleID = 4)
@@ -113,7 +149,9 @@ router.put("/me", verifyToken, async (req, res) => {
         await transaction.commit();
       } catch (err) {
         await transaction.rollback();
-        return res.status(500).json({ message: "Lỗi ghép tài khoản vãng lai: " + err.message });
+        return res
+          .status(500)
+          .json({ message: "Lỗi ghép tài khoản vãng lai: " + err.message });
       }
     }
 
@@ -125,8 +163,7 @@ router.put("/me", verifyToken, async (req, res) => {
         .input("phone", sql.VarChar, phone)
         .input("email", sql.VarChar, email)
         .input("password", sql.NVarChar, hashedPassword)
-        .input("userId", sql.Int, req.user.userId)
-        .query(`
+        .input("userId", sql.Int, req.user.userId).query(`
           UPDATE [USER]
           SET FullName = @fullName, PhoneNumber = @phone, Email = @email, Password = @password
           WHERE UserID = @userId
@@ -137,8 +174,7 @@ router.put("/me", verifyToken, async (req, res) => {
         .input("fullName", sql.NVarChar, fullName)
         .input("phone", sql.VarChar, phone)
         .input("email", sql.VarChar, email)
-        .input("userId", sql.Int, req.user.userId)
-        .query(`
+        .input("userId", sql.Int, req.user.userId).query(`
           UPDATE [USER]
           SET FullName = @fullName, PhoneNumber = @phone, Email = @email
           WHERE UserID = @userId
@@ -154,14 +190,14 @@ router.put("/me", verifyToken, async (req, res) => {
 // HEAD (main): Lấy danh sách toàn bộ người dùng kèm theo tên vai trò (chỉ Admin)
 router.get("/", verifyToken, async (req, res) => {
   if (req.user.roleId !== 1) {
-    return res.status(403).json({ message: "Chỉ admin mới được xem danh sách người dùng!" });
+    return res
+      .status(403)
+      .json({ message: "Chỉ admin mới được xem danh sách người dùng!" });
   }
 
   try {
     const pool = await poolPromise;
-    const result = await pool
-      .request()
-      .query(`
+    const result = await pool.request().query(`
         SELECT 
           u.UserID AS id, 
           u.FullName AS name, 
@@ -174,7 +210,7 @@ router.get("/", verifyToken, async (req, res) => {
         ORDER BY u.UserID DESC
       `);
 
-    const users = result.recordset.map(u => {
+    const users = result.recordset.map((u) => {
       if (u.phone && u.phone.startsWith("G-")) {
         u.phone = "";
       }
@@ -191,7 +227,9 @@ router.get("/", verifyToken, async (req, res) => {
 // Cập nhật vai trò người dùng (Chỉ Admin)
 router.put("/:userId/role", verifyToken, async (req, res) => {
   if (req.user.roleId !== 1) {
-    return res.status(403).json({ message: "Chỉ admin mới được thực hiện hành động này!" });
+    return res
+      .status(403)
+      .json({ message: "Chỉ admin mới được thực hiện hành động này!" });
   }
 
   const userId = parseInt(req.params.userId, 10);
@@ -207,7 +245,8 @@ router.put("/:userId/role", verifyToken, async (req, res) => {
 
   try {
     const pool = await poolPromise;
-    await pool.request()
+    await pool
+      .request()
       .input("userId", sql.Int, userId)
       .input("roleId", sql.Int, roleId)
       .query("UPDATE [USER] SET RoleID = @roleId WHERE UserID = @userId");
@@ -219,14 +258,12 @@ router.put("/:userId/role", verifyToken, async (req, res) => {
 });
 
 // booking-Customer: Lấy thông tin cá nhân (Profile & Loyalty points & Tier)
-router.get('/profile', async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const userId = req.query.userId || 12; // Mặc định userId = 12 cho mục đích test trực tiếp
+router.get("/profile", async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const userId = req.query.userId || 12; // Mặc định userId = 12 cho mục đích test trực tiếp
 
-        const result = await pool.request()
-            .input('userId', sql.Int, userId)
-            .query(`
+    const result = await pool.request().input("userId", sql.Int, userId).query(`
                 SELECT 
                     u.UserID, 
                     u.FullName, 
@@ -241,46 +278,50 @@ router.get('/profile', async (req, res) => {
                 LEFT JOIN LOYALTY_TIER lt ON mp.TierID = lt.TierID
                 WHERE u.UserID = @userId
             `);
-            
-        if (result.recordset.length === 0) {
-            return res.status(404).json({ message: "Không tìm thấy thông tin người dùng" });
-        }
-        const profile = result.recordset[0];
-        if (profile.PhoneNumber && profile.PhoneNumber.startsWith("G-")) {
-            profile.PhoneNumber = "";
-        }
-        res.json(profile);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
+
+    if (result.recordset.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy thông tin người dùng" });
     }
+    const profile = result.recordset[0];
+    if (profile.PhoneNumber && profile.PhoneNumber.startsWith("G-")) {
+      profile.PhoneNumber = "";
+    }
+    res.json(profile);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // booking-Customer: Cập nhật profile từ User Dashboard
-router.put('/profile', async (req, res) => {
-    try {
-        const { FullName, Email, PhoneNumber, UserID } = req.body;
-        const pool = await poolPromise;
-        await pool.request()
-            .input('userId', sql.Int, UserID || 12)
-            .input('fullName', sql.NVarChar, FullName)
-            .input('email', sql.NVarChar, Email)
-            .input('phoneNumber', sql.NVarChar, PhoneNumber)
-            .query(`
+router.put("/profile", async (req, res) => {
+  try {
+    const { FullName, Email, PhoneNumber, UserID } = req.body;
+    const pool = await poolPromise;
+    await pool
+      .request()
+      .input("userId", sql.Int, UserID || 12)
+      .input("fullName", sql.NVarChar, FullName)
+      .input("email", sql.NVarChar, Email)
+      .input("phoneNumber", sql.NVarChar, PhoneNumber).query(`
                 UPDATE [USER]
                 SET FullName = @fullName, Email = @email, PhoneNumber = @phoneNumber
                 WHERE UserID = @userId
             `);
-        res.json({ message: "Cập nhật thông tin cá nhân thành công!" });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
+    res.json({ message: "Cập nhật thông tin cá nhân thành công!" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // GET /api/users/members
 // Lấy danh sách toàn bộ thành viên kèm theo thông tin hạng thành viên và tích điểm (Admin & Staff)
 router.get("/members", verifyToken, async (req, res) => {
   if (req.user.roleId !== 1 && req.user.roleId !== 2) {
-    return res.status(403).json({ message: "Bạn không có quyền thực hiện hành động này!" });
+    return res
+      .status(403)
+      .json({ message: "Bạn không có quyền thực hiện hành động này!" });
   }
 
   try {
@@ -304,7 +345,7 @@ router.get("/members", verifyToken, async (req, res) => {
       ORDER BY u.FullName ASC
     `);
 
-    const members = result.recordset.map(m => {
+    const members = result.recordset.map((m) => {
       if (m.phone && m.phone.startsWith("G-")) {
         m.phone = "";
       }
@@ -321,7 +362,9 @@ router.get("/members", verifyToken, async (req, res) => {
 // Cập nhật hạng thành viên và tích điểm của khách hàng (Admin & Staff)
 router.put("/members/:userId/tier", verifyToken, async (req, res) => {
   if (req.user.roleId !== 1 && req.user.roleId !== 2) {
-    return res.status(403).json({ message: "Bạn không có quyền thực hiện hành động này!" });
+    return res
+      .status(403)
+      .json({ message: "Bạn không có quyền thực hiện hành động này!" });
   }
 
   const userId = parseInt(req.params.userId, 10);
@@ -335,29 +378,30 @@ router.put("/members/:userId/tier", verifyToken, async (req, res) => {
     const pool = await poolPromise;
 
     // Kiểm tra xem đã có bản ghi MEMBER_PROFILE chưa
-    const profileCheck = await pool.request()
+    const profileCheck = await pool
+      .request()
       .input("userId", sql.Int, userId)
       .query("SELECT UserID FROM MEMBER_PROFILE WHERE UserID = @userId");
 
     if (profileCheck.recordset.length === 0) {
       // Nếu chưa có, tiến hành INSERT
-      await pool.request()
+      await pool
+        .request()
         .input("userId", sql.Int, userId)
         .input("tierId", sql.Int, tierId || 1)
         .input("currentPoints", sql.Int, currentPoints || 0)
-        .input("accumulatedPoints", sql.Int, accumulatedPoints || 0)
-        .query(`
+        .input("accumulatedPoints", sql.Int, accumulatedPoints || 0).query(`
           INSERT INTO MEMBER_PROFILE (UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate)
           VALUES (@userId, @tierId, @currentPoints, @accumulatedPoints, GETDATE())
         `);
     } else {
       // Nếu đã có, tiến hành UPDATE
-      await pool.request()
+      await pool
+        .request()
         .input("userId", sql.Int, userId)
         .input("tierId", sql.Int, tierId)
         .input("currentPoints", sql.Int, currentPoints)
-        .input("accumulatedPoints", sql.Int, accumulatedPoints)
-        .query(`
+        .input("accumulatedPoints", sql.Int, accumulatedPoints).query(`
           UPDATE MEMBER_PROFILE
           SET TierID = @tierId,
               CurrentPoints = @currentPoints,
@@ -377,7 +421,9 @@ router.put("/members/:userId/tier", verifyToken, async (req, res) => {
 router.get("/tiers", verifyToken, async (req, res) => {
   try {
     const pool = await poolPromise;
-    const result = await pool.request().query("SELECT * FROM LOYALTY_TIER ORDER BY RequiredPoints ASC");
+    const result = await pool
+      .request()
+      .query("SELECT * FROM LOYALTY_TIER ORDER BY RequiredPoints ASC");
     res.json(result.recordset);
   } catch (err) {
     res.status(500).json({ message: "Lỗi server: " + err.message });
@@ -388,7 +434,9 @@ router.get("/tiers", verifyToken, async (req, res) => {
 // Xóa tài khoản hệ thống (Chỉ Admin)
 router.delete("/:userId", verifyToken, async (req, res) => {
   if (req.user.roleId !== 1) {
-    return res.status(403).json({ message: "Chỉ admin mới được thực hiện hành động này!" });
+    return res
+      .status(403)
+      .json({ message: "Chỉ admin mới được thực hiện hành động này!" });
   }
 
   const userId = parseInt(req.params.userId, 10);
@@ -397,17 +445,20 @@ router.delete("/:userId", verifyToken, async (req, res) => {
   }
 
   if (userId === req.user.userId) {
-    return res.status(400).json({ message: "Bạn không thể tự xóa tài khoản của chính mình!" });
+    return res
+      .status(400)
+      .json({ message: "Bạn không thể tự xóa tài khoản của chính mình!" });
   }
 
   try {
     const pool = await poolPromise;
-    
+
     // Check if user exists
-    const userCheck = await pool.request()
+    const userCheck = await pool
+      .request()
       .input("userId", sql.Int, userId)
       .query("SELECT UserID, RoleID FROM [USER] WHERE UserID = @userId");
-      
+
     if (userCheck.recordset.length === 0) {
       return res.status(404).json({ message: "Người dùng không tồn tại!" });
     }
@@ -432,7 +483,7 @@ router.delete("/:userId", verifyToken, async (req, res) => {
         DELETE FROM PAYMENT 
         WHERE BookingID IN (SELECT BookingID FROM BOOKING WHERE CustomerID = @userId)
       `);
-      
+
       await request.query(`
         DELETE FROM BOOKING_DETAIL 
         WHERE BookingID IN (SELECT BookingID FROM BOOKING WHERE CustomerID = @userId)
@@ -451,7 +502,9 @@ router.delete("/:userId", verifyToken, async (req, res) => {
     }
   } catch (err) {
     console.error("Lỗi khi xóa tài khoản:", err);
-    res.status(500).json({ message: "Lỗi server khi xóa tài khoản: " + err.message });
+    res
+      .status(500)
+      .json({ message: "Lỗi server khi xóa tài khoản: " + err.message });
   }
 });
 
