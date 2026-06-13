@@ -8,7 +8,9 @@ function normalizeRating(rating) {
 }
 
 function normalizeText(value, maxLength = 1000) {
-  return String(value || "").trim().slice(0, maxLength);
+  return String(value || "")
+    .trim()
+    .slice(0, maxLength);
 }
 
 function mapFeedback(row) {
@@ -124,12 +126,12 @@ router.get("/", async (req, res) => {
 // GET /api/feedbacks/:id
 router.get("/:id", async (req, res) => {
   const feedbackId = Number(req.params.id);
-  if (!feedbackId) return res.status(400).json({ message: "FeedbackID không hợp lệ" });
+  if (!feedbackId)
+    return res.status(400).json({ message: "FeedbackID không hợp lệ" });
 
   try {
     const pool = await poolPromise;
-    const result = await pool.request()
-      .input("feedbackId", sql.Int, feedbackId)
+    const result = await pool.request().input("feedbackId", sql.Int, feedbackId)
       .query(`
         SELECT
           f.FeedbackID,
@@ -175,12 +177,14 @@ router.post("/", async (req, res) => {
   const comment = normalizeText(req.body.Comment || req.body.comment, 1000);
 
   if (!bookingId) return res.status(400).json({ message: "Thiếu BookingID" });
-  if (!rating) return res.status(400).json({ message: "Rating phải từ 1 đến 5" });
+  if (!rating)
+    return res.status(400).json({ message: "Rating phải từ 1 đến 5" });
 
   try {
     const pool = await poolPromise;
 
-    const booking = await pool.request()
+    const booking = await pool
+      .request()
       .input("bookingId", sql.Int, bookingId)
       .query("SELECT BookingID FROM BOOKING WHERE BookingID = @bookingId");
 
@@ -188,7 +192,8 @@ router.post("/", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy booking" });
     }
 
-    const existed = await pool.request()
+    const existed = await pool
+      .request()
       .input("bookingId", sql.Int, bookingId)
       .query("SELECT FeedbackID FROM FEEDBACK WHERE BookingID = @bookingId");
 
@@ -196,11 +201,11 @@ router.post("/", async (req, res) => {
       return res.status(409).json({ message: "Booking này đã có feedback" });
     }
 
-    const result = await pool.request()
+    const result = await pool
+      .request()
       .input("bookingId", sql.Int, bookingId)
       .input("rating", sql.Int, rating)
-      .input("comment", sql.NVarChar(1000), comment || null)
-      .query(`
+      .input("comment", sql.NVarChar(1000), comment || null).query(`
         INSERT INTO FEEDBACK (BookingID, Rating, Comment)
         OUTPUT INSERTED.FeedbackID, INSERTED.BookingID, INSERTED.Rating, INSERTED.Comment, INSERTED.CreatedDate
         VALUES (@bookingId, @rating, @comment)
@@ -219,12 +224,12 @@ router.post("/", async (req, res) => {
 // DELETE /api/feedbacks/:id
 router.delete("/:id", async (req, res) => {
   const feedbackId = Number(req.params.id);
-  if (!feedbackId) return res.status(400).json({ message: "FeedbackID không hợp lệ" });
+  if (!feedbackId)
+    return res.status(400).json({ message: "FeedbackID không hợp lệ" });
 
   try {
     const pool = await poolPromise;
-    const result = await pool.request()
-      .input("feedbackId", sql.Int, feedbackId)
+    const result = await pool.request().input("feedbackId", sql.Int, feedbackId)
       .query(`
         DELETE FROM FEEDBACK
         OUTPUT DELETED.FeedbackID
@@ -232,7 +237,9 @@ router.delete("/:id", async (req, res) => {
       `);
 
     if (!result.recordset.length) {
-      return res.status(404).json({ message: "Không tìm thấy feedback để xóa" });
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy feedback để xóa" });
     }
 
     res.json({ message: "Xóa feedback thành công", FeedbackID: feedbackId });

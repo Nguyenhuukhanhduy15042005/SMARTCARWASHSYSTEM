@@ -41,7 +41,9 @@ router.post("/register-step1", async (req, res) => {
       .request()
       .input("phone", sql.VarChar, phone)
       .input("email", sql.VarChar, email)
-      .query(`SELECT UserID FROM [USER] WHERE PhoneNumber = @phone OR Email = @email`);
+      .query(
+        `SELECT UserID FROM [USER] WHERE PhoneNumber = @phone OR Email = @email`,
+      );
 
     if (checkExist.recordset.length > 0) {
       return res
@@ -122,8 +124,7 @@ router.post("/register-step2", async (req, res) => {
       .input("fullName", sql.NVarChar, fullName)
       .input("phone", sql.VarChar, phone)
       .input("email", sql.VarChar, email)
-      .input("password", sql.NVarChar, hashedPassword)
-      .query(`
+      .input("password", sql.NVarChar, hashedPassword).query(`
         INSERT INTO [USER] (FullName, PhoneNumber, Email, Password, RoleID)
         VALUES (@fullName, @phone, @email, @password, 3)
       `);
@@ -155,10 +156,14 @@ router.post("/register", async (req, res) => {
       .request()
       .input("phone", sql.VarChar, phone)
       .input("email", sql.VarChar, email)
-      .query(`SELECT UserID FROM [USER] WHERE PhoneNumber = @phone OR Email = @email`);
+      .query(
+        `SELECT UserID FROM [USER] WHERE PhoneNumber = @phone OR Email = @email`,
+      );
 
     if (checkExist.recordset.length > 0) {
-      return res.status(400).json({ message: "Email hoặc Số điện thoại đã được sử dụng!" });
+      return res
+        .status(400)
+        .json({ message: "Email hoặc Số điện thoại đã được sử dụng!" });
     }
 
     // [FIX] Hash mật khẩu trước khi lưu DB
@@ -169,8 +174,7 @@ router.post("/register", async (req, res) => {
       .input("fullName", sql.NVarChar, fullName)
       .input("phone", sql.VarChar, phone)
       .input("email", sql.VarChar, email)
-      .input("password", sql.NVarChar, hashedPassword)
-      .query(`
+      .input("password", sql.NVarChar, hashedPassword).query(`
         INSERT INTO [USER] (FullName, PhoneNumber, Email, Password, RoleID)
         VALUES (@fullName, @phone, @email, @password, 3)
       `);
@@ -188,16 +192,16 @@ router.post("/login", async (req, res) => {
   const { account, password } = req.body;
 
   if (!account || !password) {
-    return res.status(400).json({ message: "Vui lòng nhập tài khoản và mật khẩu!" });
+    return res
+      .status(400)
+      .json({ message: "Vui lòng nhập tài khoản và mật khẩu!" });
   }
 
   try {
     const pool = await poolPromise;
 
     // [FIX] Chỉ query theo account, KHÔNG so sánh password trong SQL nữa
-    const result = await pool
-      .request()
-      .input("account", sql.VarChar, account)
+    const result = await pool.request().input("account", sql.VarChar, account)
       .query(`
         SELECT UserID, FullName, RoleID, Password
         FROM [USER]
@@ -212,10 +216,13 @@ router.post("/login", async (req, res) => {
 
     // So sánh mật khẩu bằng bcrypt hoặc plaintext fallback cho môi trường test/development
     let isMatch = false;
-    if (user.Password && (user.Password.startsWith('$2a$') || user.Password.startsWith('$2b$'))) {
+    if (
+      user.Password &&
+      (user.Password.startsWith("$2a$") || user.Password.startsWith("$2b$"))
+    ) {
       isMatch = await bcrypt.compare(password, user.Password);
     } else {
-      isMatch = (password === user.Password);
+      isMatch = password === user.Password;
     }
 
     if (!isMatch) {
@@ -227,7 +234,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { userId: user.UserID, roleId: user.RoleID, role: role },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "1d" },
     );
 
     res.json({
@@ -247,7 +254,9 @@ router.post("/google-login", async (req, res) => {
   const { email, fullName } = req.body;
 
   if (!email) {
-    return res.status(400).json({ message: "Thiếu thông tin email từ Google!" });
+    return res
+      .status(400)
+      .json({ message: "Thiếu thông tin email từ Google!" });
   }
 
   try {
@@ -256,7 +265,9 @@ router.post("/google-login", async (req, res) => {
     let result = await pool
       .request()
       .input("email", sql.VarChar, email)
-      .query(`SELECT UserID, FullName, RoleID FROM [USER] WHERE Email = @email`);
+      .query(
+        `SELECT UserID, FullName, RoleID FROM [USER] WHERE Email = @email`,
+      );
 
     let user;
 
@@ -273,8 +284,7 @@ router.post("/google-login", async (req, res) => {
         .input("email", sql.VarChar, email)
         .input("fullName", sql.NVarChar, fullName)
         .input("phone", sql.VarChar, dummyPhone)
-        .input("password", sql.NVarChar, dummyPassword)
-        .query(`
+        .input("password", sql.NVarChar, dummyPassword).query(`
           INSERT INTO [USER] (FullName, Email, PhoneNumber, Password, RoleID)
           OUTPUT INSERTED.UserID, INSERTED.FullName, INSERTED.RoleID
           VALUES (@fullName, @email, @phone, @password, 3)
@@ -288,7 +298,7 @@ router.post("/google-login", async (req, res) => {
     const token = jwt.sign(
       { userId: user.UserID, roleId: user.RoleID, role: role },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "1d" },
     );
 
     res.json({
@@ -297,7 +307,9 @@ router.post("/google-login", async (req, res) => {
       user: { fullName: user.FullName, roleId: user.RoleID, role: role },
     });
   } catch (err) {
-    res.status(500).json({ message: "Lỗi server Google Login: " + err.message });
+    res
+      .status(500)
+      .json({ message: "Lỗi server Google Login: " + err.message });
   }
 });
 
