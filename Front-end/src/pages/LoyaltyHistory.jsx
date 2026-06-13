@@ -120,32 +120,41 @@ export default function LoyaltyHistory() {
       );
       const list = Array.isArray(bookingsRes.data) ? bookingsRes.data : [];
       // Trọng thêm: Chuẩn hóa dữ liệu trả về từ DB (hỗ trợ cả chữ hoa/thường)
-      const normalizedList = list.map(b => {
+      const normalizedList = list.map((b) => {
         const id = b.id !== undefined ? b.id : b.BookingID;
         const licensePlate = b.licensePlate || b.LicensePlate || "N/A";
-        const price = b.price !== undefined ? b.price : (b.FinalPrice || b.TotalPrice || 0);
+        const price =
+          b.price !== undefined ? b.price : b.FinalPrice || b.TotalPrice || 0;
         const status = b.status !== undefined ? b.status : b.Status;
-        
+
         let rawDate = b.date || b.BookingDate;
         let dateStr = "";
         if (rawDate) {
           const d = new Date(rawDate);
-          dateStr = d.toLocaleDateString("vi-VN") + " " + d.toLocaleTimeString("vi-VN", {
-            hour: "2-digit",
-            minute: "2-digit"
-          });
+          dateStr =
+            d.toLocaleDateString("vi-VN") +
+            " " +
+            d.toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
         }
-        
+
         // Tính điểm tích lũy: 1.000đ = 1 điểm
-        const points = b.points !== undefined ? b.points : (b.Points !== undefined ? b.Points : Math.floor(price / 1000));
-        
+        const points =
+          b.points !== undefined
+            ? b.points
+            : b.Points !== undefined
+              ? b.Points
+              : Math.floor(price / 1000);
+
         return {
           id,
           licensePlate,
           price,
           status,
           date: dateStr,
-          points
+          points,
         };
       });
       setBookings(normalizedList);
@@ -239,6 +248,17 @@ export default function LoyaltyHistory() {
     }
   }, [profile.AccumulatedPoints]);
 
+  // ========================================================
+  // ÉP FRONTEND TỰ TÍNH TÊN HẠNG CHUẨN XÁC DỰA VÀO TỔNG ĐIỂM
+  // ========================================================
+  const currentCalculatedTier = useMemo(() => {
+    const pts = profile.AccumulatedPoints;
+    if (pts < 500) return "Bronze";
+    if (pts < 1500) return "Silver";
+    if (pts < 5000) return "Gold";
+    return "Platinum";
+  }, [profile.AccumulatedPoints]);
+
   const money = (val) =>
     new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -267,13 +287,13 @@ export default function LoyaltyHistory() {
           <section className="loyalty-cards-grid">
             {/* Card 1: Membership card */}
             <div
-              className={`loyalty-membership-card tier-${profile.TierName.toLowerCase()}`}
+              className={`loyalty-membership-card tier-${currentCalculatedTier.toLowerCase()}`}
             >
               <div className="card-header">
                 <span className="card-brand">
                   <i className="fa-solid fa-gem"></i> MOTO SHINE
                 </span>
-                <span className="card-tier">{profile.TierName}</span>
+                <span className="card-tier">{currentCalculatedTier}</span>
               </div>
               <div className="card-body">
                 <div className="points-box">
@@ -354,9 +374,9 @@ export default function LoyaltyHistory() {
             <div className="tiers-grid">
               {/* Bronze */}
               <div
-                className={`tier-perk-item ${profile.TierName.toLowerCase() === "bronze" ? "active" : ""}`}
+                className={`tier-perk-item ${currentCalculatedTier.toLowerCase() === "bronze" ? "active" : ""}`}
               >
-                {profile.TierName.toLowerCase() === "bronze" && (
+                {currentCalculatedTier.toLowerCase() === "bronze" && (
                   <span className="active-badge">Đang đạt</span>
                 )}
                 <div className="tier-icon-circle bronze">
@@ -382,9 +402,9 @@ export default function LoyaltyHistory() {
 
               {/* Silver */}
               <div
-                className={`tier-perk-item ${profile.TierName.toLowerCase() === "silver" ? "active" : ""}`}
+                className={`tier-perk-item ${currentCalculatedTier.toLowerCase() === "silver" ? "active" : ""}`}
               >
-                {profile.TierName.toLowerCase() === "silver" && (
+                {currentCalculatedTier.toLowerCase() === "silver" && (
                   <span className="active-badge">Đang đạt</span>
                 )}
                 <div className="tier-icon-circle silver">
@@ -410,9 +430,9 @@ export default function LoyaltyHistory() {
 
               {/* Gold */}
               <div
-                className={`tier-perk-item ${profile.TierName.toLowerCase() === "gold" ? "active" : ""}`}
+                className={`tier-perk-item ${currentCalculatedTier.toLowerCase() === "gold" ? "active" : ""}`}
               >
-                {profile.TierName.toLowerCase() === "gold" && (
+                {currentCalculatedTier.toLowerCase() === "gold" && (
                   <span className="active-badge">Đang đạt</span>
                 )}
                 <div className="tier-icon-circle gold">
@@ -438,9 +458,9 @@ export default function LoyaltyHistory() {
 
               {/* Platinum */}
               <div
-                className={`tier-perk-item ${profile.TierName.toLowerCase() === "platinum" ? "active" : ""}`}
+                className={`tier-perk-item ${currentCalculatedTier.toLowerCase() === "platinum" ? "active" : ""}`}
               >
-                {profile.TierName.toLowerCase() === "platinum" && (
+                {currentCalculatedTier.toLowerCase() === "platinum" && (
                   <span className="active-badge">Đang đạt</span>
                 )}
                 <div className="tier-icon-circle platinum">

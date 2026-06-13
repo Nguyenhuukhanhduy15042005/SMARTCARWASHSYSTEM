@@ -1,19 +1,18 @@
-// Back-end/routes/loyaltyController.js
 const sql = require("mssql");
 const { poolPromise } = require("../db");
 
+// Đường dẫn cùng thư mục routes
+const { redeemRewardPoints } = require("./rewardService");
+
 // ─────────────────────────────────────────────────────────────────────────────
 // API 1: GET /api/loyalty/profile?userId=...
-// Lấy thông tin hạng thành viên + điểm (đúng theo schema thực tế)
 // ─────────────────────────────────────────────────────────────────────────────
 const getLoyaltyProfile = async (req, res) => {
   try {
     const userId = req.query.userId || 12;
-    const pool   = await poolPromise;
+    const pool = await poolPromise;
 
-    const result = await pool.request()
-      .input("userId", sql.Int, userId)
-      .query(`
+    const result = await pool.request().input("userId", sql.Int, userId).query(`
         SELECT
           u.UserID,
           u.FullName,
@@ -32,7 +31,9 @@ const getLoyaltyProfile = async (req, res) => {
       `);
 
     if (!result.recordset.length) {
-      return res.status(404).json({ message: "Không tìm thấy hồ sơ thành viên" });
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy hồ sơ thành viên" });
     }
 
     res.status(200).json(result.recordset[0]);
@@ -44,24 +45,18 @@ const getLoyaltyProfile = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API 2: GET /api/loyalty/transactions?customerId=...
-// Lấy lịch sử giao dịch điểm từ bảng LOYALTY_TRANSACTION (đúng schema)
-// Bao gồm: EARN (cộng điểm rửa xe) + REDEEM (trừ điểm đổi voucher)
-// Sắp xếp mới nhất lên đầu
 // ─────────────────────────────────────────────────────────────────────────────
 const getLoyaltyTransactions = async (req, res) => {
   try {
     const userId = req.query.customerId || req.query.userId || 12;
-    const pool   = await poolPromise;
+    const pool = await poolPromise;
 
-    const result = await pool.request()
-      .input("userId", sql.Int, userId)
-      .query(`
+    const result = await pool.request().input("userId", sql.Int, userId).query(`
         SELECT
           lt.TransactionID,
           lt.TransactionType,
           lt.Points,
           lt.CreatedDate,
-
           b.BookingID,
           b.LicensePlate,
           b.VehicleType,
@@ -69,43 +64,38 @@ const getLoyaltyTransactions = async (req, res) => {
           b.TotalPrice,
           b.Status,
           b.BookingDate,
-
           (
             SELECT TOP 1 s.ServiceName
             FROM BOOKING_DETAIL bd
             INNER JOIN SERVICE s ON bd.ServiceID = s.ServiceID
             WHERE bd.BookingID = b.BookingID
           ) AS ServiceName
-
         FROM LOYALTY_TRANSACTION lt
         LEFT JOIN BOOKING b ON lt.BookingID = b.BookingID
         WHERE lt.UserID = @userId
         ORDER BY lt.CreatedDate DESC
       `);
 
-    // Format đúng theo cách frontend normalizedList đang đọc
-    const transactions = result.recordset.map(row => ({
-      // Field chữ thường (frontend normalizedList dùng)
-      id:           row.BookingID    || row.TransactionID,
-      licensePlate: row.LicensePlate || 'N/A',
-      date:         row.CreatedDate  || row.BookingDate || null,
-      price:        row.price        || row.TotalPrice  || 0,
-      points:       row.Points,
-      status:       row.Status       || null,
+    const transactions = result.recordset.map((row) => ({
+      id: row.BookingID || row.TransactionID,
+      licensePlate: row.LicensePlate || "N/A",
+      date: row.CreatedDate || row.BookingDate || null,
+      price: row.price || row.TotalPrice || 0,
+      points: row.Points,
+      status: row.Status || null,
 
-      // Field chữ hoa (để normalizedList fallback được)
-      TransactionID:   row.TransactionID,
-      TransactionType: row.TransactionType, // 'Accumulate' hoặc 'REDEEM'
-      Points:          row.Points,
-      CreatedDate:     row.CreatedDate,
-      BookingID:       row.BookingID    || null,
-      LicensePlate:    row.LicensePlate || 'N/A',
-      VehicleType:     row.VehicleType  || 'N/A',
-      FinalPrice:      row.price        || 0,
-      TotalPrice:      row.TotalPrice   || 0,
-      Status:          row.Status       || null,
-      BookingDate:     row.BookingDate  || null,
-      ServiceName:     row.ServiceName  || 'Dịch vụ rửa xe',
+      TransactionID: row.TransactionID,
+      TransactionType: row.TransactionType,
+      Points: row.Points,
+      CreatedDate: row.CreatedDate,
+      BookingID: row.BookingID || null,
+      LicensePlate: row.LicensePlate || "N/A",
+      VehicleType: row.VehicleType || "N/A",
+      FinalPrice: row.price || 0,
+      TotalPrice: row.TotalPrice || 0,
+      Status: row.Status || null,
+      BookingDate: row.BookingDate || null,
+      ServiceName: row.ServiceName || "Dịch vụ rửa xe",
     }));
 
     res.status(200).json(transactions);
@@ -115,7 +105,60 @@ const getLoyaltyTransactions = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// API 3: POST /api/loyalty/redeem (HÀM ĐÃ ĐƯỢC KHÔI PHỤC VÀ SỬA LỖI)
+// ─────────────────────────────────────────────────────────────────────────────
+const handleRedeem = async (req, res) => {
+  try {
+    const { userId, bookingId, RewardCode, RewardPointsUsed } = req.body;
+
+    if (!userId || !RewardCode || !RewardPointsUsed) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu thông tin đổi quà bắt buộc." });
+    }
+
+    // Gọi hàm xử lý nghiệp vụ từ rewardService
+    const result = await redeemRewardPoints(
+      userId,
+      bookingId,
+      RewardCode,
+      RewardPointsUsed,
+    );
+
+    if (result.success) {
+      return res.status(200).json(result);
+    } else {
+      return res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error("[handleRedeem]", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi nội bộ hệ thống: " + error.message,
+    });
+  }
+};
+
+// API mới: Lấy danh sách voucher khách đã đổi
+const getMyVouchers = async (req, res) => {
+  try {
+    const userId = req.query.userId || 12;
+    const pool = await poolPromise;
+    const result = await pool.request().input("userId", sql.Int, userId).query(`
+        SELECT Points, CreatedDate, 'Đổi điểm ' + CAST(Points AS VARCHAR) + ' PTS' AS Description 
+        FROM LOYALTY_TRANSACTION 
+        WHERE UserID = @userId AND TransactionType = 'Redeem'
+        ORDER BY CreatedDate DESC`);
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getLoyaltyProfile,
   getLoyaltyTransactions,
+  handleRedeem,
+  getMyVouchers, // Export hàm mới
 };
