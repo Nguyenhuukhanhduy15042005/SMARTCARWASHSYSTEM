@@ -1,112 +1,133 @@
-const sql = require("mssql");
-// Require file cấu hình pool kết nối db của nhóm bạn
+// Back-end/routes/loyaltyService.js
+// NOTE: Logic cộng điểm chính đã nằm trong booking.js (processBookingStatusChange)
+// File này chỉ export hàm helper nếu cần dùng ở nơi khác
+
+const sql            = require("mssql");
 const { poolPromise } = require("../db");
 
-// Bảng cấu hình mốc nâng hạng
-const TIER_THRESHOLDS = {
-  BRONZE: 0,
-  SILVER: 1000,
-  GOLD: 5000,
-  PLATINUM: 10000,
-};
-
-// Hàm xác định hạng mới dựa trên tổng điểm
-const determineTier = (totalAccumulatedPoints) => {
-  if (totalAccumulatedPoints >= TIER_THRESHOLDS.PLATINUM) return "Platinum";
-  if (totalAccumulatedPoints >= TIER_THRESHOLDS.GOLD) return "Gold";
-  if (totalAccumulatedPoints >= TIER_THRESHOLDS.SILVER) return "Silver";
-  return "Bronze";
-};
-
 /**
- * Hàm tự động cộng điểm và xét hạng (Thắng)
- * @param {number} userId - Mã người dùng
- * @param {number} bookingId - Mã đơn hàng vừa hoàn tất
- * @param {number} paymentAmount - Tổng tiền thanh toán (VNĐ)
+ * Tính điểm và cập nhật MEMBER_PROFILE + LOYALTY_TRANSACTION
+ * Được gọi từ booking.js khi status chuyển sang 4 (Hoàn thành)
+ *
+ * Schema thực tế (smartcarwash_final_merged.sql):
+ *   MEMBER_PROFILE: UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate
+ *   LOYALTY_TIER:   TierID, TierName, RequiredPoints, DiscountRate, BookingWindow
+ *   LOYALTY_TRANSACTION: TransactionID, UserID, BookingID, TransactionType, Points, CreatedDate
+ *
+ * @param {number} userId         - UserID của khách hàng
+ * @param {number} bookingId      - BookingID vừa hoàn thành
+ * @param {number} paymentAmount  - FinalPrice của booking (VNĐ)
  */
 const processLoyaltyPoints = async (userId, bookingId, paymentAmount) => {
-  const pool = await poolPromise;
+  const pool        = await poolPromise;
   const transaction = new sql.Transaction(pool);
 
   try {
-    // 1. Tính toán số điểm nhận được (1000đ = 1 điểm)
+    // 1. Tính điểm: 1,000đ = 1 điểm
     const earnedPoints = Math.floor(paymentAmount / 1000);
-    if (earnedPoints <= 0)
-      return { success: true, message: "Không có điểm cộng thêm" };
-
-    // 2. Bắt đầu Transaction để bảo vệ dữ liệu
-    await transaction.begin();
-    const request = new sql.Request(transaction);
-
-    // 3. Lấy thông tin điểm hiện tại của Member
-    request.input("userId", sql.Int, userId);
-    const memberResult = await request.query(`
-            SELECT CurrentPoints, TotalAccumulatedPoints, Tier 
-            FROM MEMBER_PROFILE WITH (UPDLOCK) -- Khóa row để tránh xung đột dữ liệu (Race condition)
-            WHERE UserID = @userId
-        `);
-
-    if (memberResult.recordset.length === 0) {
-      throw new Error("Không tìm thấy thông tin thành viên");
+    if (earnedPoints <= 0) {
+      return { success: true, earnedPoints: 0, message: "Không đủ điều kiện cộng điểm" };
     }
 
-    const member = memberResult.recordset[0];
-    const newCurrentPoints = member.CurrentPoints + earnedPoints;
-    const newTotalAccumulatedPoints =
-      member.TotalAccumulatedPoints + earnedPoints;
+    await transaction.begin();
+    const req = new sql.Request(transaction);
 
-    // 4. Xét hạng tự động (Task 4)
-    const newTier = determineTier(newTotalAccumulatedPoints);
-    const isUpgraded = newTier !== member.Tier;
+    // 2. Kiểm tra đã ghi điểm cho booking này chưa (tránh double-insert)
+    req.input("bookingId", sql.Int, bookingId);
+    const dupCheck = await req.query(`
+      SELECT TransactionID FROM LOYALTY_TRANSACTION
+      WHERE BookingID = @bookingId AND TransactionType = 'Accumulate'
+    `);
 
-    // 5. Cập nhật bảng MEMBER_PROFILE
-    request.input("newCurrentPoints", sql.Int, newCurrentPoints);
-    request.input("newTotalPoints", sql.Int, newTotalAccumulatedPoints);
-    request.input("newTier", sql.NVarChar, newTier);
+    if (dupCheck.recordset.length > 0) {
+      await transaction.rollback();
+      return { success: true, earnedPoints: 0, message: "Điểm đã được ghi trước đó" };
+    }
 
-    await request.query(`
-            UPDATE MEMBER_PROFILE 
-            SET CurrentPoints = @newCurrentPoints, 
-                TotalAccumulatedPoints = @newTotalPoints, 
-                Tier = @newTier,
-                UpdatedAt = GETDATE()
-            WHERE UserID = @userId
+    // 3. Lấy thông tin điểm hiện tại
+    const req2 = new sql.Request(transaction);
+    req2.input("userId", sql.Int, userId);
+    const memberRes = await req2.query(`
+      SELECT UserID, TierID, CurrentPoints, AccumulatedPoints
+      FROM MEMBER_PROFILE WITH (UPDLOCK)
+      WHERE UserID = @userId
+    `);
+
+    let newAccumulatedPoints = earnedPoints;
+
+    if (memberRes.recordset.length === 0) {
+      // Chưa có profile → tạo mới với tier Bronze (TierID = 1)
+      const req3 = new sql.Request(transaction);
+      await req3
+        .input("userId",  sql.Int, userId)
+        .input("points",  sql.Int, earnedPoints)
+        .query(`
+          INSERT INTO MEMBER_PROFILE (UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate)
+          VALUES (@userId, 1, @points, @points, GETDATE())
         `);
+    } else {
+      newAccumulatedPoints = Number(memberRes.recordset[0].AccumulatedPoints || 0) + earnedPoints;
 
-    // 6. Ghi lại lịch sử giao dịch vào LOYALTY_TRANSACTION (Task 3)
-    request.input("bookingId", sql.Int, bookingId);
-    request.input("points", sql.Int, earnedPoints);
-    request.input(
-      "desc",
-      sql.NVarChar,
-      `Tích điểm từ hóa đơn đặt lịch #${bookingId}`,
-    );
-
-    await request.query(`
-            INSERT INTO LOYALTY_TRANSACTION (UserID, BookingID, Points, TransactionType, Description, CreatedAt)
-            VALUES (@userId, @bookingId, @points, 'EARN', @desc, GETDATE())
+      // Cập nhật điểm
+      const req4 = new sql.Request(transaction);
+      await req4
+        .input("userId", sql.Int, userId)
+        .input("points", sql.Int, earnedPoints)
+        .query(`
+          UPDATE MEMBER_PROFILE
+          SET CurrentPoints     = CurrentPoints     + @points,
+              AccumulatedPoints = AccumulatedPoints + @points
+          WHERE UserID = @userId
         `);
+    }
 
-    // 7. Hoàn tất Transaction
+    // 4. Xét hạng tự động theo LOYALTY_TIER trong DB (không hardcode)
+    const req5    = new sql.Request(transaction);
+    const tierRes = await req5.query(`
+      SELECT TierID, RequiredPoints
+      FROM LOYALTY_TIER
+      ORDER BY RequiredPoints ASC
+    `);
+
+    let newTierId = 1; // Bronze mặc định
+    for (const tier of tierRes.recordset) {
+      if (newAccumulatedPoints >= tier.RequiredPoints) {
+        newTierId = tier.TierID;
+      }
+    }
+
+    // Cập nhật hạng mới
+    const req6 = new sql.Request(transaction);
+    await req6
+      .input("userId", sql.Int, userId)
+      .input("tierId", sql.Int, newTierId)
+      .query(`UPDATE MEMBER_PROFILE SET TierID = @tierId WHERE UserID = @userId`);
+
+    // 5. Ghi vào LOYALTY_TRANSACTION
+    const req7 = new sql.Request(transaction);
+    await req7
+      .input("userId",    sql.Int, userId)
+      .input("bookingId", sql.Int, bookingId)
+      .input("points",    sql.Int, earnedPoints)
+      .query(`
+        INSERT INTO LOYALTY_TRANSACTION (UserID, BookingID, TransactionType, Points, CreatedDate)
+        VALUES (@userId, @bookingId, 'Accumulate', @points, GETDATE())
+      `);
+
     await transaction.commit();
 
     return {
-      success: true,
+      success:     true,
       earnedPoints,
-      newTier,
-      isUpgraded,
-      message: isUpgraded
-        ? `Chúc mừng! Khách hàng đã được thăng hạng lên ${newTier}.`
-        : "Cộng điểm thành công.",
+      newTierId,
+      message:     `Cộng ${earnedPoints} điểm thành công`,
     };
+
   } catch (error) {
-    // Nếu có bất kỳ lỗi nào (Code hoặc Database), Rollback toàn bộ
-    if (transaction) await transaction.rollback();
-    console.error("Lỗi trong quá trình tính điểm Loyalty:", error);
+    try { await transaction.rollback(); } catch (_) {}
+    console.error("[processLoyaltyPoints]", error);
     throw error;
   }
 };
 
-module.exports = {
-  processLoyaltyPoints,
-};
+module.exports = { processLoyaltyPoints };
