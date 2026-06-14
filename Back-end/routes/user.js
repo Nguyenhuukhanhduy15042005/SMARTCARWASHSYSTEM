@@ -9,55 +9,24 @@ const router = express.Router();
 router.get("/me", verifyToken, async (req, res) => {
   try {
     const pool = await poolPromise;
-
-    // 1. Tự động tính toán lại TierID dựa trên AccumulatedPoints
-    const tierRes = await pool.request().query(`
-      SELECT TierID, RequiredPoints 
-      FROM LOYALTY_TIER 
-      ORDER BY RequiredPoints ASC
-    `);
-
-    let autoTierId = 1; // Mặc định là Bronze
-    for (const tier of tierRes.recordset) {
-      if (accumulatedPoints >= tier.RequiredPoints) {
-        autoTierId = tier.TierID;
-      }
-    }
-
-    // 2. Kiểm tra xem đã có bản ghi MEMBER_PROFILE chưa
-    const profileCheck = await pool
+    const result = await pool
       .request()
-      .input("userId", sql.Int, userId)
-      .query("SELECT UserID FROM MEMBER_PROFILE WHERE UserID = @userId");
-
-    if (profileCheck.recordset.length === 0) {
-      // Nếu chưa có, tiến hành INSERT (Dùng autoTierId vừa tính)
-      await pool
-        .request()
-        .input("userId", sql.Int, userId)
-        .input("tierId", sql.Int, autoTierId)
-        .input("currentPoints", sql.Int, currentPoints || 0)
-        .input("accumulatedPoints", sql.Int, accumulatedPoints || 0).query(`
-          INSERT INTO MEMBER_PROFILE (UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate)
-          VALUES (@userId, @tierId, @currentPoints, @accumulatedPoints, GETDATE())
-        `);
-    } else {
-      // Nếu đã có, tiến hành UPDATE (Dùng autoTierId vừa tính)
-      await pool
-        .request()
-        .input("userId", sql.Int, userId)
-        .input("tierId", sql.Int, autoTierId)
-        .input("currentPoints", sql.Int, currentPoints)
-        .input("accumulatedPoints", sql.Int, accumulatedPoints).query(`
-          UPDATE MEMBER_PROFILE
-          SET TierID = @tierId,
-              CurrentPoints = @currentPoints,
-              AccumulatedPoints = @accumulatedPoints
-          WHERE UserID = @userId
-        `);
+      .input("userId", sql.Int, req.user.userId)
+      .query(`
+        SELECT UserID, FullName, Email, PhoneNumber, RoleID
+        FROM [USER]
+        WHERE UserID = @userId
+      `);
+    if (result.recordset.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy thông tin người dùng" });
     }
-
-    res.json({ message: "Cập nhật điểm và tự động xét hạng thành công!" });
+    const profile = result.recordset[0];
+    if (profile.PhoneNumber && profile.PhoneNumber.startsWith("G-")) {
+      profile.PhoneNumber = "";
+    }
+    res.json(profile);
   } catch (err) {
     res.status(500).json({ message: "Lỗi server: " + err.message });
   }

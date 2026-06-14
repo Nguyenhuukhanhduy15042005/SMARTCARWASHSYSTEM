@@ -15,6 +15,7 @@ export default function RewardRedemption() {
   const [selectedReward, setSelectedReward] = useState(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const font = document.createElement("link");
@@ -137,11 +138,11 @@ export default function RewardRedemption() {
   };
 
   const handleCheckout = async () => {
-    if (!selectedReward) {
-      showToast("Bạn chưa chọn reward để đổi điểm.", "error");
+    if (!selectedReward || submitting) {
       return;
     }
 
+    setSubmitting(true);
     try {
       // 1. Tạo payload gửi xuống BE
       const payloadForBE = {
@@ -175,6 +176,8 @@ export default function RewardRedemption() {
         error.response?.data?.message || "Đã xảy ra lỗi khi đổi điểm!",
         "error",
       );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -284,9 +287,11 @@ export default function RewardRedemption() {
             <button
               className="summary-btn"
               onClick={handleCheckout}
-              disabled={!selectedReward}
+              disabled={!selectedReward || submitting}
             >
-              {selectedReward
+              {submitting
+                ? "Đang đổi điểm..."
+                : selectedReward
                 ? "Đổi điểm nhận voucher"
                 : "Chọn voucher để đổi"}
             </button>

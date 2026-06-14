@@ -155,6 +155,7 @@ export default function LoyaltyHistory() {
           status,
           date: dateStr,
           points,
+          transactionType: b.TransactionType || b.transactionType || "Accumulate",
         };
       });
       setBookings(normalizedList);
@@ -174,13 +175,23 @@ export default function LoyaltyHistory() {
         let isCompleted = b.status === 4;
         let isCancelled = b.status === 5;
 
+        let type = "Pending";
+        const tType = String(b.transactionType || "").toLowerCase();
+        if (tType === "redeem") {
+          type = "Redeem";
+        } else if (tType === "accumulate" || tType === "earn" || isCompleted) {
+          type = "Earned";
+        } else if (isCancelled) {
+          type = "Cancelled";
+        }
+
         return {
           id: b.id,
           date: b.date,
           licensePlate: b.licensePlate || "N/A",
           price: b.price || 0,
           points: b.points || 0,
-          type: isCompleted ? "Earned" : isCancelled ? "Cancelled" : "Pending",
+          type: type,
         };
       })
       .filter((t) => t.type !== "Cancelled"); // Ẩn các đơn đã bị hủy
@@ -190,7 +201,7 @@ export default function LoyaltyHistory() {
   const filteredTransactions = useMemo(() => {
     return transactionsList.filter((t) => {
       // Status filter
-      if (statusFilter === "Completed" && t.type !== "Earned") return false;
+      if (statusFilter === "Completed" && t.type !== "Earned" && t.type !== "Redeem") return false;
       if (statusFilter === "Pending" && t.type !== "Pending") return false;
 
       // Search term
@@ -545,8 +556,10 @@ export default function LoyaltyHistory() {
                   </thead>
                   <tbody>
                     {filteredTransactions.map((tx) => (
-                      <tr key={tx.id}>
-                        <td style={{ fontWeight: 700 }}>#{tx.id}</td>
+                      <tr key={tx.id + "-" + tx.type}>
+                        <td style={{ fontWeight: 700 }}>
+                          {tx.type === "Redeem" ? `GD-${tx.id}` : `#${tx.id}`}
+                        </td>
                         <td>
                           <span className="license-plate-badge">
                             {tx.licensePlate}
@@ -556,13 +569,21 @@ export default function LoyaltyHistory() {
                         <td style={{ fontWeight: 600 }}>
                           {tx.type === "Earned"
                             ? "Tích lũy từ đơn rửa xe"
-                            : "Tích lũy dự kiến"}
+                            : tx.type === "Redeem"
+                              ? "Đổi voucher giảm giá"
+                              : "Tích lũy dự kiến"}
                         </td>
                         <td>
                           <span
-                            className={`points-val ${tx.type === "Earned" ? "positive" : "pending"}`}
+                            className={`points-val ${
+                              tx.type === "Earned"
+                                ? "positive"
+                                : tx.type === "Redeem"
+                                  ? "negative"
+                                  : "pending"
+                            }`}
                           >
-                            +{tx.points} PTS
+                            {tx.type === "Redeem" ? "-" : "+"}{tx.points} PTS
                           </span>
                         </td>
                         <td>
@@ -570,6 +591,10 @@ export default function LoyaltyHistory() {
                             <span className="status-badge success-badge">
                               <i className="fa-solid fa-circle-check"></i> Đã
                               tích điểm
+                            </span>
+                          ) : tx.type === "Redeem" ? (
+                            <span className="status-badge success-badge">
+                              <i className="fa-solid fa-circle-check"></i> Đã đổi thành công
                             </span>
                           ) : (
                             <span className="status-badge pending-badge">
@@ -1172,6 +1197,10 @@ const loyaltyCss = `
 
 .points-val.pending {
   color: #f59e0b;
+}
+
+.points-val.negative {
+  color: #ef4444;
 }
 
 .status-badge {
