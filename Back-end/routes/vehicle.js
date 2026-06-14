@@ -12,6 +12,16 @@ const normalizeText = (value) => String(value || "").trim();
 const normalizePlate = (value) =>
   normalizeText(value).toUpperCase().replace(/\s+/g, "");
 
+const normalizeVehicleType = (value) => {
+  const type = normalizeText(value).toUpperCase();
+  if (["CAR", "OTO", "Ô TÔ", "OTÔ"].includes(type)) return "CAR";
+  if (["MOTORBIKE", "BIKE", "XE MÁY", "XEMAY"].includes(type)) return "MOTORBIKE";
+  return "";
+};
+
+const isMemberRole = (role) =>
+  ["user", "member"].includes(String(role || "").toLowerCase());
+
 const isValidPlate = (plate) => /^[A-Z0-9\-.]{5,20}$/.test(plate);
 
 // Helper to get logged-in user from JWT token
@@ -42,6 +52,7 @@ async function getVehicleById(pool, vehicleId) {
         u.PhoneNumber AS ownerPhone,
         u.Email AS ownerEmail,
         v.PlateNumber AS plateNumber,
+        v.VehicleType AS vehicleType,
         v.Brand AS brand,
         v.Model AS model,
         v.Color AS color,
@@ -92,7 +103,7 @@ router.get("/", async (req, res) => {
 
   // Enforce customer restriction: only view their own vehicles
   const user = getUserFromToken(req);
-  if (user && user.role === "user") {
+  if (user && isMemberRole(user.role)) {
     userId = user.userId;
   }
 
@@ -116,6 +127,7 @@ router.get("/", async (req, res) => {
       where += `
         AND (
           v.PlateNumber LIKE @search OR
+          v.VehicleType LIKE @search OR
           v.Brand LIKE @search OR
           v.Model LIKE @search OR
           v.Color LIKE @search OR
@@ -133,6 +145,7 @@ router.get("/", async (req, res) => {
         u.PhoneNumber AS ownerPhone,
         u.Email AS ownerEmail,
         v.PlateNumber AS plateNumber,
+        v.VehicleType AS vehicleType,
         v.Brand AS brand,
         v.Model AS model,
         v.Color AS color,
@@ -164,7 +177,7 @@ router.get("/:id", async (req, res) => {
 
     // Enforce customer restriction: can only view their own vehicle detail
     const user = getUserFromToken(req);
-    if (user && user.role === "user" && vehicle.userId !== user.userId) {
+    if (user && isMemberRole(user.role) && vehicle.userId !== user.userId) {
       return res
         .status(403)
         .json({ message: "Bạn không có quyền xem thông tin xe này" });
@@ -178,21 +191,22 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST /api/vehicles
-// Body: { userId, plateNumber, brand, model, color }
+// Body: { userId, plateNumber, vehicleType, brand, model, color }
 router.post("/", async (req, res) => {
   let userId = toInt(req.body.userId);
   const plateNumber = normalizePlate(req.body.plateNumber);
+  const vehicleType = normalizeVehicleType(req.body.vehicleType);
   const brand = normalizeText(req.body.brand);
   const model = normalizeText(req.body.model);
   const color = normalizeText(req.body.color);
 
   // Enforce customer restriction: only create vehicle for self
   const user = getUserFromToken(req);
-  if (user && user.role === "user") {
+  if (user && isMemberRole(user.role)) {
     userId = user.userId;
   }
 
-  if (userId === null || !plateNumber || !brand || !model || !color) {
+  if (userId === null || !plateNumber || !vehicleType || !brand || !model || !color) {
     return res
       .status(400)
       .json({ message: "Vui lòng điền đầy đủ thông tin xe" });
@@ -234,12 +248,13 @@ router.post("/", async (req, res) => {
       .request()
       .input("userId", sql.Int, userId)
       .input("plateNumber", sql.NVarChar(20), plateNumber)
+      .input("vehicleType", sql.VarChar(20), vehicleType)
       .input("brand", sql.NVarChar(50), brand)
       .input("model", sql.NVarChar(50), model)
       .input("color", sql.NVarChar(30), color).query(`
-        INSERT INTO VEHICLE (UserID, PlateNumber, Brand, Model, Color)
+        INSERT INTO VEHICLE (UserID, PlateNumber, VehicleType, Brand, Model, Color)
         OUTPUT INSERTED.VehicleID AS id
-        VALUES (@userId, @plateNumber, @brand, @model, @color)
+        VALUES (@userId, @plateNumber, @vehicleType, @brand, @model, @color)
       `);
 
     const vehicle = await getVehicleById(pool, inserted.recordset[0].id);
@@ -251,17 +266,18 @@ router.post("/", async (req, res) => {
 });
 
 // PUT /api/vehicles/:id
-// Body: { plateNumber, brand, model, color }
+// Body: { plateNumber, vehicleType, brand, model, color }
 router.put("/:id", async (req, res) => {
   const vehicleId = toInt(req.params.id);
   const plateNumber = normalizePlate(req.body.plateNumber);
+  const vehicleType = normalizeVehicleType(req.body.vehicleType);
   const brand = normalizeText(req.body.brand);
   const model = normalizeText(req.body.model);
   const color = normalizeText(req.body.color);
 
   if (vehicleId === null)
     return res.status(400).json({ message: "VehicleID không hợp lệ" });
-  if (!plateNumber || !brand || !model || !color) {
+  if (!plateNumber || !vehicleType || !brand || !model || !color) {
     return res
       .status(400)
       .json({ message: "Vui lòng điền đầy đủ thông tin xe" });
@@ -293,7 +309,7 @@ router.put("/:id", async (req, res) => {
     const vehicleRecord = exists.recordset[0];
     // Enforce customer restriction: only edit their own vehicle
     const user = getUserFromToken(req);
-    if (user && user.role === "user" && vehicleRecord.UserID !== user.userId) {
+    if (user && isMemberRole(user.role) && vehicleRecord.UserID !== user.userId) {
       return res
         .status(403)
         .json({ message: "Bạn không có quyền chỉnh sửa xe này" });
@@ -317,11 +333,13 @@ router.put("/:id", async (req, res) => {
       .request()
       .input("vehicleId", sql.Int, vehicleId)
       .input("plateNumber", sql.NVarChar(20), plateNumber)
+      .input("vehicleType", sql.VarChar(20), vehicleType)
       .input("brand", sql.NVarChar(50), brand)
       .input("model", sql.NVarChar(50), model)
       .input("color", sql.NVarChar(30), color).query(`
         UPDATE VEHICLE
         SET PlateNumber = @plateNumber,
+            VehicleType = @vehicleType,
             Brand = @brand,
             Model = @model,
             Color = @color
@@ -350,7 +368,7 @@ router.delete("/:id", async (req, res) => {
 
     // Enforce customer restriction: only delete their own vehicle
     const user = getUserFromToken(req);
-    if (user && user.role === "user" && vehicle.userId !== user.userId) {
+    if (user && isMemberRole(user.role) && vehicle.userId !== user.userId) {
       return res.status(403).json({ message: "Bạn không có quyền xóa xe này" });
     }
 
