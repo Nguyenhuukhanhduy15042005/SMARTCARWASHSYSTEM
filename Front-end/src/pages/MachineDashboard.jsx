@@ -7,6 +7,9 @@ import "./MachineDashboard.css";
 const API_BASE = "http://127.0.0.1:5000/api/machines";
 
 export default function MachineDashboard() {
+  // Lấy ngày hôm nay theo định dạng YYYY-MM-DD để chặn chọn ngày quá khứ
+  const todayDate = new Date().toISOString().split("T")[0];
+
   const { mode } = useTheme();
   const [machines, setMachines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -404,6 +407,7 @@ export default function MachineDashboard() {
                 type="date"
                 className="mc-input"
                 required
+                min={todayDate}
                 value={maintenanceForm.maintenanceDate}
                 onChange={(e) =>
                   setMaintenanceForm({

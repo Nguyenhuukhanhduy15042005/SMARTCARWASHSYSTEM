@@ -140,13 +140,13 @@ export default function LoyaltyHistory() {
             });
         }
 
-        // Tính điểm tích lũy: 1.000đ = 1 điểm
+        // Tính điểm tích lũy: 10.000đ = 1 điểm
         const points =
           b.points !== undefined
             ? b.points
             : b.Points !== undefined
               ? b.Points
-              : Math.floor(price / 1000);
+              : Math.floor(price / 10000);
 
         return {
           id,
@@ -208,39 +208,36 @@ export default function LoyaltyHistory() {
   const tierProgress = useMemo(() => {
     const pts = profile.AccumulatedPoints;
 
-    // Tiers threshold configuration
-    // Bronze: 0, Silver: 500, Gold: 1500, Platinum: 5000
-    if (pts < 500) {
+    // Tiers threshold configuration MỚI
+    // Bronze: 0, Silver: 140, Gold: 300, Platinum: 550
+    if (pts < 140) {
       return {
         nextTier: "Silver",
-        required: 500,
+        required: 140,
         currentInTier: pts,
-        percent: Math.min(100, Math.round((pts / 500) * 100)),
-        remaining: 500 - pts,
+        percent: Math.min(100, Math.round((pts / 140) * 100)),
+        remaining: 140 - pts,
       };
-    } else if (pts < 1500) {
+    } else if (pts < 300) {
       return {
         nextTier: "Gold",
-        required: 1500,
+        required: 300,
         currentInTier: pts,
-        percent: Math.min(100, Math.round(((pts - 500) / (1500 - 500)) * 100)),
-        remaining: 1500 - pts,
+        percent: Math.min(100, Math.round(((pts - 140) / (300 - 140)) * 100)),
+        remaining: 300 - pts,
       };
-    } else if (pts < 5000) {
+    } else if (pts < 550) {
       return {
         nextTier: "Platinum",
-        required: 5000,
+        required: 550,
         currentInTier: pts,
-        percent: Math.min(
-          100,
-          Math.round(((pts - 1500) / (5000 - 1500)) * 100),
-        ),
-        remaining: 5000 - pts,
+        percent: Math.min(100, Math.round(((pts - 300) / (550 - 300)) * 100)),
+        remaining: 550 - pts,
       };
     } else {
       return {
         nextTier: "Maxed",
-        required: 5000,
+        required: 550,
         currentInTier: pts,
         percent: 100,
         remaining: 0,
@@ -253,9 +250,9 @@ export default function LoyaltyHistory() {
   // ========================================================
   const currentCalculatedTier = useMemo(() => {
     const pts = profile.AccumulatedPoints;
-    if (pts < 500) return "Bronze";
-    if (pts < 1500) return "Silver";
-    if (pts < 5000) return "Gold";
+    if (pts < 140) return "Bronze";
+    if (pts < 300) return "Silver";
+    if (pts < 550) return "Gold";
     return "Platinum";
   }, [profile.AccumulatedPoints]);
 
@@ -411,7 +408,7 @@ export default function LoyaltyHistory() {
                   <i className="fa-solid fa-gem"></i>
                 </div>
                 <h3>Silver (Bạc)</h3>
-                <span className="tier-req">Yêu cầu: 500 PTS</span>
+                <span className="tier-req">Yêu cầu: 140-299 PTS</span>
                 <ul className="perks-list">
                   <li>
                     <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
@@ -439,7 +436,7 @@ export default function LoyaltyHistory() {
                   <i className="fa-solid fa-crown"></i>
                 </div>
                 <h3>Gold (Vàng)</h3>
-                <span className="tier-req">Yêu cầu: 1,500 PTS</span>
+                <span className="tier-req">Yêu cầu: 300-549 PTS</span>
                 <ul className="perks-list">
                   <li>
                     <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
@@ -467,7 +464,7 @@ export default function LoyaltyHistory() {
                   <i className="fa-solid fa-certificate"></i>
                 </div>
                 <h3>Platinum (Bạch Kim)</h3>
-                <span className="tier-req">Yêu cầu: 5,000 PTS</span>
+                <span className="tier-req">Yêu cầu: 500 PTS trở lên</span>
                 <ul className="perks-list">
                   <li>
                     <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
