@@ -38,6 +38,24 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
     
     if (oldStatus === statusInt) return; // No change needed
 
+    // 2.1. Kiểm tra thanh toán trước khi cho phép bắt đầu rửa xe (status = 3)
+    if (statusInt === 3) {
+        const paymentCheck = await pool.request()
+            .input('bookingId', sql.Int, bookingId)
+            .query('SELECT PaymentID, PaymentMethod FROM PAYMENT WHERE BookingID = @bookingId');
+
+        if (paymentCheck.recordset.length === 0) {
+            throw new Error('Khách hàng chưa thanh toán, không thể bắt đầu rửa xe!');
+        }
+
+        const paymentInfo = paymentCheck.recordset[0];
+        // Nếu thanh toán qua VNPay nhưng chưa được VNPay xác nhận (booking vẫn ở status 2)
+        // thì không cho staff tự chuyển sang "Đang rửa"
+        if (paymentInfo.PaymentMethod === 'vnpay' && oldStatus !== 3) {
+            throw new Error('Giao dịch VNPay chưa được xác nhận, không thể bắt đầu rửa xe!');
+        }
+    }
+
     // 2. Update booking status & CheckInTime if In Service (status = 3)
     await pool.request()
         .input('bookingId', sql.Int, bookingId)
