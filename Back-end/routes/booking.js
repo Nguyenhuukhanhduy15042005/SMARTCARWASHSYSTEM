@@ -128,8 +128,8 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
             .input("userId", sql.Int, customerId)
             .input("points", sql.Int, points).query(`
                             UPDATE MEMBER_PROFILE
-                            SET CurrentPoints = CurrentPoints + @points,
-                                AccumulatedPoints = AccumulatedPoints + @points
+                            SET CurrentPoints = ISNULL(CurrentPoints, 0) + @points,
+                            AccumulatedPoints = ISNULL(AccumulatedPoints, 0) + @points
                             WHERE UserID = @userId
                         `);
         }

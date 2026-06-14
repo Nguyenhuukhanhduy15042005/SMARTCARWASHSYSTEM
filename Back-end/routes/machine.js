@@ -300,10 +300,6 @@ router.post("/:id/maintenance", verifyToken, requireStaff, async (req, res) => {
       `);
 
     // Tự động cập nhật Status = 3 (Maintenance)
-    await pool
-      .request()
-      .input("machineId", sql.Int, req.params.id)
-      .query("UPDATE MACHINE SET Status = 3 WHERE MachineID = @machineId");
 
     res.status(201).json({
       message:

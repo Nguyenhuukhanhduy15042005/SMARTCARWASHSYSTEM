@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import "./AdminDashboard.css";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
-import MachineStatusWidget from "./MachineStatusWidget";
 const API_BASE = "http://127.0.0.1:5000/api/bookings/admin";
 
 export default function AdminDashboard() {
