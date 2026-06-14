@@ -4,35 +4,6 @@ import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
-const mockRewards = [
-  {
-    RewardID: 1,
-    RewardCode: "WASH10",
-    RewardName: "Giảm 10.000đ",
-    PointsRequired: 100,
-    DiscountAmount: 10000,
-    MinOrderValue: 50000,
-    Description: "Dùng cho mọi gói rửa xe",
-  },
-  {
-    RewardID: 2,
-    RewardCode: "WASH25",
-    RewardName: "Giảm 25.000đ",
-    PointsRequired: 220,
-    DiscountAmount: 25000,
-    MinOrderValue: 90000,
-    Description: "Phù hợp gói Premium / Combo",
-  },
-  {
-    RewardID: 3,
-    RewardCode: "VIP50",
-    RewardName: "Giảm 50.000đ",
-    PointsRequired: 420,
-    DiscountAmount: 50000,
-    MinOrderValue: 150000,
-    Description: "Ưu đãi thành viên tích điểm cao",
-  },
-];
 
 export default function RewardRedemption() {
   const [profile, setProfile] = useState({
@@ -40,7 +11,7 @@ export default function RewardRedemption() {
     CurrentPoints: 0,
     TierName: "Standard",
   });
-  const [rewards, setRewards] = useState(mockRewards);
+  const [rewards, setRewards] = useState([]);
   const [selectedReward, setSelectedReward] = useState(null);
   const [orderValue, setOrderValue] = useState(120000);
   const [loading, setLoading] = useState(true);
@@ -86,6 +57,27 @@ export default function RewardRedemption() {
     return 12;
   };
 
+  const getHeaders = () => {
+    const token = localStorage.getItem("token") || localStorage.getItem("TOKEN");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const normalizePromotionToReward = (promotion) => {
+    const discountPercent = Number(promotion.DiscountPercent || 0);
+
+    return {
+      RewardID: promotion.PromotionID,
+      RewardCode: `PR-${promotion.PromotionID}`,
+      RewardName: promotion.PromoName || `Khuyến mãi PR-${promotion.PromotionID}`,
+      PointsRequired: Math.max(1, Math.round(discountPercent * 10)),
+      DiscountPercent: discountPercent,
+      DiscountAmount: Math.round((Number(orderValue || 0) * discountPercent) / 100),
+      MinOrderValue: 0,
+      Description: `Ưu đãi giảm ${discountPercent}% do hệ thống khuyến mãi cung cấp.`,
+      RawPromotion: promotion,
+    };
+  };
+
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
@@ -94,20 +86,25 @@ export default function RewardRedemption() {
   const fetchRewardData = async () => {
     setLoading(true);
     const userId = getCustomerId();
-    const headers = {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
+    const headers = getHeaders();
+
     try {
-      const [pRes, vRes] = await Promise.all([
+      const [profileRes, promotionRes] = await Promise.all([
         axios.get(`${API_BASE}/loyalty/profile?userId=${userId}`, { headers }),
-        axios.get(`${API_BASE}/loyalty/my-vouchers?userId=${userId}`, {
-          headers,
-        }),
+        axios.get(`${API_BASE}/promotions?status=active`, { headers }),
       ]);
-      setProfile(pRes.data);
-      setMyVouchers(vRes.data);
+
+      setProfile(profileRes.data);
+
+      const mappedRewards = Array.isArray(promotionRes.data)
+        ? promotionRes.data.map(normalizePromotionToReward)
+        : [];
+
+      setRewards(mappedRewards);
     } catch (err) {
       console.error(err);
+      showToast("Không tải được dữ liệu voucher.", "error");
+      setRewards([]);
     } finally {
       setLoading(false);
     }
@@ -121,23 +118,29 @@ export default function RewardRedemption() {
 
   const canUseReward = (reward) => {
     return (
-      profile.CurrentPoints >= reward.PointsRequired &&
-      orderValue >= reward.MinOrderValue
+      profile.CurrentPoints >= Number(reward.PointsRequired || 0) &&
+      orderValue >= Number(reward.MinOrderValue || 0)
     );
   };
 
   const checkoutSummary = useMemo(() => {
     const discount = selectedReward
-      ? Math.min(
-          Number(selectedReward.DiscountAmount || 0),
-          Number(orderValue || 0),
-        )
+      ? selectedReward.DiscountPercent !== undefined
+        ? Math.min(
+            Math.round((Number(orderValue || 0) * Number(selectedReward.DiscountPercent || 0)) / 100),
+            Number(orderValue || 0),
+          )
+        : Math.min(
+            Number(selectedReward.DiscountAmount || 0),
+            Number(orderValue || 0),
+          )
       : 0;
+
     return {
       discount,
       finalPrice: Math.max(Number(orderValue || 0) - discount, 0),
       remainingPoints: selectedReward
-        ? profile.CurrentPoints - selectedReward.PointsRequired
+        ? profile.CurrentPoints - Number(selectedReward.PointsRequired || 0)
         : profile.CurrentPoints,
     };
   }, [orderValue, profile.CurrentPoints, selectedReward]);
@@ -169,6 +172,7 @@ export default function RewardRedemption() {
         userId: getCustomerId(),
         bookingId: null,
         RewardCode: selectedReward.RewardCode,
+        promotionId: selectedReward.RewardID,
         RewardPointsUsed: selectedReward.PointsRequired,
       };
 
@@ -226,7 +230,7 @@ export default function RewardRedemption() {
             <div className="reward-section-title">
               <div>
                 <h2>Voucher khả dụng</h2>
-                <p>Đổi điểm tích lũy để nhận ưu đãi phù hợp với đơn hàng.</p>
+                <p>Voucher đang hiệu lực từ hệ thống khuyến mãi.</p>
               </div>
               <input
                 type="number"
@@ -239,6 +243,10 @@ export default function RewardRedemption() {
 
             {loading ? (
               <div className="reward-empty">Đang tải dữ liệu...</div>
+            ) : rewards.length === 0 ? (
+              <div className="reward-empty">
+                Hiện chưa có voucher đang hiệu lực từ hệ thống.
+              </div>
             ) : (
               <div className="reward-list">
                 {rewards.map((reward) => {
@@ -269,7 +277,9 @@ export default function RewardRedemption() {
                           </small>
                           <small>
                             <i className="fa-solid fa-tags"></i> Giảm{" "}
-                            {money(reward.DiscountAmount)}
+                            {reward.DiscountPercent !== undefined
+                              ? `${reward.DiscountPercent}%`
+                              : money(reward.DiscountAmount)}
                           </small>
                         </div>
                       </div>
@@ -309,6 +319,10 @@ export default function RewardRedemption() {
               <span>Điểm còn lại</span>
               <b>{checkoutSummary.remainingPoints}</b>
             </div>
+            <div className="summary-code">
+              <span>Voucher khả dụng</span>
+              <b>{rewards.filter(canUseReward).length}/{rewards.length}</b>
+            </div>
             <button
               className="summary-btn"
               onClick={handleCheckout}
@@ -317,6 +331,12 @@ export default function RewardRedemption() {
               {selectedReward
                 ? "Áp dụng vào thanh toán"
                 : "Chọn voucher để áp dụng"}
+            </button>
+            <button
+              className="reward-back-btn"
+              onClick={() => window.history.back()}
+            >
+              Quay lại
             </button>
           </aside>
         </section>
@@ -639,6 +659,22 @@ const rewardRedemptionCss = `
   .reward-section-title input{
     width:100%;
   }
+}
+  .reward-back-btn{
+  width:100%;
+  margin-top:12px;
+  padding:15px 18px;
+  border:0;
+  border-radius:18px;
+  background:#e2e8f0;
+  color:#334155;
+  font-weight:800;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.reward-back-btn:hover{
+  background:#cbd5e1;
 }
   
 `;
