@@ -23,8 +23,8 @@ const processLoyaltyPoints = async (userId, bookingId, paymentAmount) => {
   const transaction = new sql.Transaction(pool);
 
   try {
-    // 1. Tính điểm: 1,000đ = 1 điểm
-    const earnedPoints = Math.floor(paymentAmount / 1000);
+    // 1. Tính điểm: 10,000đ = 1 điểm
+    const earnedPoints = Math.floor(paymentAmount / 10000);
     if (earnedPoints <= 0) {
       return {
         success: true,
