@@ -7,7 +7,7 @@ import Sidebar from "../components/Sidebar";
 
 const API_BASE = "/api";
 
-const METHOD_LABEL = { cash: "💵 Tiền mặt", vnpay: "🏦 VNPay", momo: "💜 MoMo" };
+const METHOD_LABEL = { cash: "💵 Tiền mặt", vnpay: "🏦 VNPay" };
 
 export default function PaymentHistory() {
   const navigate = useNavigate();
@@ -111,7 +111,6 @@ export default function PaymentHistory() {
             { key: "all",   label: "Tất cả"    },
             { key: "cash",  label: "💵 Tiền mặt" },
             { key: "vnpay", label: "🏦 VNPay"   },
-            { key: "momo",  label: "💜 MoMo"    },
           ].map((f) => (
             <button key={f.key}
               className={`ph-tab ${filter === f.key ? "active" : ""}`}
@@ -141,7 +140,7 @@ export default function PaymentHistory() {
               <div key={p.PaymentID} className="ph-item">
                 <div className="ph-item-left">
                   <div className="ph-item-icon">
-                    {p.Method === "cash" ? "💵" : p.Method === "vnpay" ? "🏦" : "💜"}
+                    {p.Method === "cash" ? "💵" : "🏦"}
                   </div>
                   <div className="ph-item-info">
                     <p className="ph-item-service">

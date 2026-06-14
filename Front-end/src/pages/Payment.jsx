@@ -9,7 +9,6 @@ const API_BASE = "/api";
 const PAYMENT_METHODS = [
   { id: "cash",  label: "Tiền mặt", desc: "Thanh toán tại quầy khi đến", icon: "💵" },
   { id: "vnpay", label: "VNPay",    desc: "Thanh toán qua cổng VNPay",   icon: "🏦" },
-  { id: "momo",  label: "MoMo",     desc: "Ví điện tử MoMo",             icon: "💜" },
 ];
 
 const TIER_INFO = {
@@ -33,6 +32,7 @@ export default function Payment() {
   const [tierID, setTierID]     = useState(null);
   const [loadingTier, setLoadingTier] = useState(true);
   const [toast, setToast]       = useState(null);
+  const [qrModal, setQrModal]   = useState(null);
 
   const getToken = () => localStorage.getItem("token") || localStorage.getItem("TOKEN");
 
@@ -91,8 +91,8 @@ export default function Payment() {
   };
 
   const getButtonLabel = () => {
-    if (method !== "cash") return `Thanh toán qua ${method === "vnpay" ? "VNPay" : "MoMo"} →`;
-    if (tier.needDeposit) return `Đặt cọc ${formatPrice(depositAmount)} ngay`;
+    if (method === "vnpay") return `Thanh toán qua VNPay →`;
+    if (tier.needDeposit) return `Đặt cọc ${formatPrice(depositAmount)} qua VNPay →`;
     return "✓ Xác nhận giữ chỗ (Miễn phí)";
   };
 
@@ -112,6 +112,12 @@ export default function Payment() {
       if (res.data.paymentUrl) {
         showToast("Đang chuyển hướng đến cổng thanh toán...", "success");
         setTimeout(() => window.location.href = res.data.paymentUrl, 1200);
+      } else if (res.data.qrData) {
+        // Cash + Bronze/Silver → hiện modal QR đặt cọc
+        setQrModal({
+          qrData: res.data.qrData,
+          depositAmount: res.data.depositAmount,
+        });
       } else if (method === "cash" && tier.needDeposit) {
         showToast(`Đặt cọc ${formatPrice(depositAmount)} thành công!`, "success");
         setTimeout(() => navigate("/payments/history"), 1500);
@@ -181,10 +187,10 @@ export default function Payment() {
           {/* Ghi chú theo tier/method */}
           {!loadingTier && getPaymentNote()}
 
-          {(method === "vnpay" || method === "momo") && (
+          {method === "vnpay" && (
             <div className="payment-redirect-note">
               <span>ℹ️</span>
-              <p>Bạn sẽ được chuyển hướng đến <strong>{method === "vnpay" ? "VNPay" : "MoMo"}</strong>. Sau khi hoàn tất sẽ tự động quay về.</p>
+              <p>Bạn sẽ được chuyển hướng đến <strong>VNPay</strong>. Sau khi hoàn tất sẽ tự động quay về.</p>
             </div>
           )}
 

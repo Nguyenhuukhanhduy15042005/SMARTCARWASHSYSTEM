@@ -125,21 +125,36 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
 
   const payment = result.recordset[0];
 
-  await pool.request()
-    .input('bookingId', sql.Int, bookingId)
-    .query(`UPDATE BOOKING SET Status = 2 WHERE BookingID = @bookingId`);
-
-  let paymentUrl = null;
-  if (method === 'vnpay' && paymentAmount > 0) {
-    paymentUrl = createVNPayUrl(payment.PaymentID, paymentAmount, `Thanh toan booking ${bookingId}`, ipAddr);
-  } else if (method === 'momo') {
-    paymentUrl = `https://test-payment.momo.vn/v2/gateway/pay?amount=${paymentAmount}&orderId=${payment.PaymentID}&returnUrl=${encodeURIComponent(VNPAY_CONFIG.returnUrl)}`;
+  // Cash Gold/Platinum (amount=0) → xác nhận giữ chỗ luôn (Status = 2)
+  // Cash Bronze/Silver → chờ VNPay callback mới lên Status 2
+  // VNPay/MoMo chọn thẳng → chờ callback
+  if (method === 'cash' && !depositOnly) {
+    await pool.request()
+      .input('bookingId', sql.Int, bookingId)
+      .query(`UPDATE BOOKING SET Status = 2 WHERE BookingID = @bookingId`);
   }
 
-  return { payment, paymentUrl, tierID, depositOnly,
+  let paymentUrl = null;
+
+  if (method === 'vnpay') {
+    // Thanh toán VNPay thường — toàn bộ giá trị
+    paymentUrl = createVNPayUrl(payment.PaymentID, paymentAmount, `Thanh toan booking ${bookingId}`, ipAddr);
+  } else if (method === 'cash' && depositOnly) {
+    // Cash Bronze/Silver → dùng VNPay để thu 10% đặt cọc
+    paymentUrl = createVNPayUrl(
+      payment.PaymentID,
+      paymentAmount, // đã là 10% rồi
+      `Dat coc booking ${bookingId}`,
+      ipAddr
+    );
+  }
+
+  return {
+    payment, paymentUrl, tierID, depositOnly,
     depositAmount: depositOnly ? paymentAmount : 0,
     remainingAmount: depositOnly ? finalAmount - paymentAmount : 0,
-    fullAmount: finalAmount };
+    fullAmount: finalAmount
+  };
 };
 
 const confirmVNPay = async (query) => {

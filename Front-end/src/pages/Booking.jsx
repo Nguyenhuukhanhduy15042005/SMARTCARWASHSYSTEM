@@ -4,7 +4,6 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./Booking.css";
 import { useAuth } from "../context/AuthContext";
-import MemberHeader from "../components/MemberHeader"; // kept for reference
 import Sidebar from "../components/Sidebar";
 
 // Trọng thêm: Danh sách các khung giờ hoạt động tiêu chuẩn (8:00 - 17:00, mỗi 30 phút)
@@ -306,16 +305,25 @@ export default function Booking() {
     };
 
     try {
-      await axios.post("http://127.0.0.1:5000/api/bookings", body, { headers });
-      showToast(
-        "Đặt lịch rửa xe thành công! Đang chuyển đến Trang cá nhân...",
-        "success",
-      );
+      const res = await axios.post("http://127.0.0.1:5000/api/bookings", body, { headers });
+      const newBooking = res.data;
 
-      // Đợi 2s để người dùng xem thông báo rồi chuyển hướng
+      showToast("Đặt lịch thành công! Đang chuyển đến thanh toán...", "success");
+
       setTimeout(() => {
-        navigate("/dashboard");
-      }, 2000);
+        navigate("/payments", {
+          state: {
+            booking: {
+              BookingID:    newBooking.BookingID || newBooking.bookingId || newBooking.id,
+              ServiceName:  selectedService?.serviceName || selectedService?.ServiceName || "Dịch vụ rửa xe",
+              Date:         date,
+              Time:         time,
+              TotalPrice:   finalPrice || basePrice,
+              LicensePlate: licensePlate.trim().toUpperCase(),
+            }
+          }
+        });
+      }, 1500);
     } catch (err) {
       console.error("Lỗi khi gửi yêu cầu đặt lịch:", err);
       const errMsg = err.response?.data?.message || err.message;
