@@ -6,10 +6,41 @@ import { useTheme } from "../context/ThemeContext";
 
 const API_BASE = "http://localhost:5000";
 
-const BRANDS = [
-  "Toyota","Honda","Yamaha","Suzuki","Hyundai",
-  "Kia","VinFast","Mazda","Ford","Mitsubishi","Khác"
-];
+const VEHICLE_BRANDS = {
+  MOTORBIKE: ["Honda", "Yamaha", "Suzuki", "Piaggio", "SYM", "VinFast", "Khác"],
+  CAR: ["Toyota", "Honda", "Hyundai", "Kia", "VinFast", "Mazda", "Ford", "Mitsubishi", "Khác"],
+};
+
+const VEHICLE_MODELS = {
+  MOTORBIKE: {
+    Honda: ["SH", "Vision", "Air Blade", "Lead", "Wave Alpha", "Winner X"],
+    Yamaha: ["Exciter", "Janus", "Grande", "Sirius", "NVX"],
+    Suzuki: ["Raider", "Satria", "Address", "Burgman"],
+    Piaggio: ["Vespa Sprint", "Vespa Primavera", "Liberty", "Medley"],
+    SYM: ["Husky", "Attila", "Elegant", "Galaxy"],
+    VinFast: ["Klara", "Feliz", "Vento", "Evo"],
+    Khác: ["Khác"],
+  },
+  CAR: {
+    Toyota: ["Vios", "Camry", "Corolla Cross", "Fortuner", "Innova", "Raize"],
+    Honda: ["City", "Civic", "CR-V", "HR-V", "Accord"],
+    Hyundai: ["Accent", "Elantra", "Tucson", "Santa Fe", "Grand i10"],
+    Kia: ["Morning", "K3", "Seltos", "Sonet", "Carnival"],
+    VinFast: ["VF 3", "VF 5", "VF 6", "VF 7", "VF 8", "VF 9"],
+    Mazda: ["Mazda 2", "Mazda 3", "CX-3", "CX-5", "CX-8"],
+    Ford: ["Ranger", "Everest", "Territory", "Transit"],
+    Mitsubishi: ["Xpander", "Attrage", "Outlander", "Triton"],
+    Khác: ["Khác"],
+  },
+};
+
+const getBrandsByType = (type) => VEHICLE_BRANDS[type] || [];
+
+const getModelsByTypeAndBrand = (type, brand) =>
+  VEHICLE_MODELS[type]?.[brand] || [];
+
+const vehicleIcon = (type) =>
+  type === "MOTORBIKE" ? "🏍️" : type === "CAR" ? "🚗" : "🚙";
 
 const COLORS = ["Đen","Trắng","Bạc","Xám","Đỏ","Xanh dương","Xanh lá","Vàng","Nâu","Cam"];
 
@@ -77,6 +108,9 @@ export default function VehicleManagement() {
     }
     return decoded;
   }, [token]);
+
+  const availableBrands = getBrandsByType(formData.vehicleType);
+  const availableModels = getModelsByTypeAndBrand(formData.vehicleType, formData.brand);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -384,7 +418,12 @@ export default function VehicleManagement() {
               <div style={s.field}>
                 <label style={s.label}>Loại xe *</label>
                 <select style={s.input} value={formData.vehicleType}
-                  onChange={e => setFormData({ ...formData, vehicleType: e.target.value })}>
+                  onChange={e => setFormData({
+                    ...formData,
+                    vehicleType: e.target.value,
+                    brand: "",
+                    model: "",
+                  })}>
                   <option value="">-- Chọn loại xe --</option>
                   <option value="MOTORBIKE">Xe máy</option>
                   <option value="CAR">Ô tô</option>
@@ -392,17 +431,43 @@ export default function VehicleManagement() {
               </div>
               <div style={s.field}>
                 <label style={s.label}>Hãng xe *</label>
-                <select style={s.input} value={formData.brand}
-                  onChange={e => setFormData({ ...formData, brand: e.target.value })}>
-                  <option value="">-- Chọn hãng --</option>
-                  {BRANDS.map(b => <option key={b}>{b}</option>)}
+                <select
+                  style={s.input}
+                  value={formData.brand}
+                  disabled={!formData.vehicleType}
+                  onChange={e => setFormData({
+                    ...formData,
+                    brand: e.target.value,
+                    model: "",
+                  })}
+                >
+                  <option value="">
+                    {formData.vehicleType ? "-- Chọn hãng --" : "-- Chọn loại xe trước --"}
+                  </option>
+                  {availableBrands.map(b => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
                 </select>
               </div>
               <div style={s.field}>
                 <label style={s.label}>Dòng xe *</label>
-                <input style={s.input} placeholder="VD: Vios, Exciter..."
+                <select
+                  style={s.input}
                   value={formData.model}
-                  onChange={e => setFormData({ ...formData, model: e.target.value })} />
+                  disabled={!formData.vehicleType || !formData.brand}
+                  onChange={e => setFormData({ ...formData, model: e.target.value })}
+                >
+                  <option value="">
+                    {!formData.vehicleType
+                      ? "-- Chọn loại xe trước --"
+                      : !formData.brand
+                        ? "-- Chọn hãng trước --"
+                        : "-- Chọn dòng xe --"}
+                  </option>
+                  {availableModels.map(model => (
+                    <option key={model} value={model}>{model}</option>
+                  ))}
+                </select>
               </div>
               <div style={s.field}>
                 <label style={s.label}>Màu sắc *</label>
@@ -537,7 +602,7 @@ export default function VehicleManagement() {
           <div style={s.detailPanel}>
             {!selectedVehicle ? (
               <div style={s.detailEmpty}>
-                <div style={{ fontSize: 52 }}>🚗</div>
+                <div style={{ fontSize: 52 }}>🚙</div>
                 <p style={{ color: "var(--text-secondary)", textAlign: "center", fontSize: 14, margin: 0 }}>
                   Chọn một xe để xem chi tiết
                 </p>
@@ -546,7 +611,9 @@ export default function VehicleManagement() {
               <div style={{ padding: 24 }}>
                 {/* Header */}
                 <div style={{ textAlign: "center", marginBottom: 20, paddingBottom: 20, borderBottom: "1px solid var(--border)" }}>
-                  <div style={{ fontSize: 48, marginBottom: 8 }}>🚗</div>
+                  <div style={{ fontSize: 48, marginBottom: 8 }}>
+                    {vehicleIcon(selectedVehicle.vehicleType)}
+                  </div>
                   <h2 style={{ color: "var(--text-primary)", fontSize: 24, fontWeight: 800, margin: "0 0 4px", letterSpacing: 1 }}>
                     {selectedVehicle.plateNumber}
                   </h2>
