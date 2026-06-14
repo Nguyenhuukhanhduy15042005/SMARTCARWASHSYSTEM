@@ -4,7 +4,6 @@ import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
-
 export default function RewardRedemption() {
   const [profile, setProfile] = useState({
     FullName: "Khách hàng",
@@ -58,7 +57,8 @@ export default function RewardRedemption() {
   };
 
   const getHeaders = () => {
-    const token = localStorage.getItem("token") || localStorage.getItem("TOKEN");
+    const token =
+      localStorage.getItem("token") || localStorage.getItem("TOKEN");
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
@@ -68,7 +68,8 @@ export default function RewardRedemption() {
     return {
       RewardID: promotion.PromotionID,
       RewardCode: `PR-${promotion.PromotionID}`,
-      RewardName: promotion.PromoName || `Khuyến mãi PR-${promotion.PromotionID}`,
+      RewardName:
+        promotion.PromoName || `Khuyến mãi PR-${promotion.PromotionID}`,
       PointsRequired: Math.max(1, Math.round(discountPercent * 10)),
       DiscountPercent: discountPercent,
       Description: `Voucher giảm ${discountPercent}% khi thanh toán booking.`,
@@ -86,21 +87,41 @@ export default function RewardRedemption() {
     const userId = getCustomerId();
     const headers = getHeaders();
 
+    // 1. TẢI ĐIỂM ĐỘC LẬP (Sử dụng lại API /users/profile đang chạy cực tốt bên LoyaltyHistory)
     try {
-      const [profileRes, promotionRes] = await Promise.all([
-        axios.get(`${API_BASE}/loyalty/profile?userId=${userId}`, { headers }),
-        axios.get(`${API_BASE}/promotions?status=active`, { headers }),
-      ]);
+      const profileRes = await axios.get(
+        `${API_BASE}/users/profile?userId=${userId}`,
+        { headers },
+      );
+      if (profileRes.data) {
+        setProfile({
+          FullName:
+            profileRes.data.FullName ||
+            profileRes.data.fullName ||
+            "Khách hàng",
+          CurrentPoints: Number(
+            profileRes.data.CurrentPoints ?? profileRes.data.currentPoints ?? 0,
+          ),
+          TierName:
+            profileRes.data.TierName || profileRes.data.tierName || "Standard",
+        });
+      }
+    } catch (err) {
+      console.error("Lỗi lấy thông tin Profile:", err);
+    }
 
-      setProfile(profileRes.data);
-
+    // 2. TẢI VOUCHER ĐỘC LẬP
+    try {
+      const promotionRes = await axios.get(
+        `${API_BASE}/promotions?status=active`,
+        { headers },
+      );
       const mappedRewards = Array.isArray(promotionRes.data)
         ? promotionRes.data.map(normalizePromotionToReward)
         : [];
-
       setRewards(mappedRewards);
     } catch (err) {
-      console.error(err);
+      console.error("Lỗi lấy danh sách Voucher:", err);
       showToast("Không tải được dữ liệu voucher.", "error");
       setRewards([]);
     } finally {
@@ -108,14 +129,15 @@ export default function RewardRedemption() {
     }
   };
 
-
   const canUseReward = (reward) => {
     return profile.CurrentPoints >= Number(reward.PointsRequired || 0);
   };
 
   const checkoutSummary = useMemo(() => {
     return {
-      pointsUsed: selectedReward ? Number(selectedReward.PointsRequired || 0) : 0,
+      pointsUsed: selectedReward
+        ? Number(selectedReward.PointsRequired || 0)
+        : 0,
       remainingPoints: selectedReward
         ? profile.CurrentPoints - Number(selectedReward.PointsRequired || 0)
         : profile.CurrentPoints,
@@ -248,7 +270,8 @@ export default function RewardRedemption() {
                             {reward.PointsRequired} điểm
                           </small>
                           <small>
-                            <i className="fa-solid fa-tags"></i> Giảm {reward.DiscountPercent}%
+                            <i className="fa-solid fa-tags"></i> Giảm{" "}
+                            {reward.DiscountPercent}%
                           </small>
                         </div>
                       </div>
@@ -282,7 +305,9 @@ export default function RewardRedemption() {
             </div>
             <div className="summary-code">
               <span>Voucher khả dụng</span>
-              <b>{rewards.filter(canUseReward).length}/{rewards.length}</b>
+              <b>
+                {rewards.filter(canUseReward).length}/{rewards.length}
+              </b>
             </div>
             <button
               className="summary-btn"
@@ -292,8 +317,8 @@ export default function RewardRedemption() {
               {submitting
                 ? "Đang đổi điểm..."
                 : selectedReward
-                ? "Đổi điểm nhận voucher"
-                : "Chọn voucher để đổi"}
+                  ? "Đổi điểm nhận voucher"
+                  : "Chọn voucher để đổi"}
             </button>
           </aside>
         </section>

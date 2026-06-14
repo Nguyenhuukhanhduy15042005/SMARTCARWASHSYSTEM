@@ -110,7 +110,9 @@ const getLoyaltyTransactions = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const handleRedeem = async (req, res) => {
   try {
-    const { userId, bookingId, RewardCode, RewardPointsUsed } = req.body;
+    // 1. ĐÃ BỔ SUNG promotionId Ở ĐÂY
+    const { userId, bookingId, RewardCode, RewardPointsUsed, promotionId } =
+      req.body;
 
     if (!userId || !RewardCode || !RewardPointsUsed) {
       return res
@@ -118,12 +120,13 @@ const handleRedeem = async (req, res) => {
         .json({ success: false, message: "Thiếu thông tin đổi quà bắt buộc." });
     }
 
-    // Gọi hàm xử lý nghiệp vụ từ rewardService
+    // 2. ĐÃ TRUYỀN THÊM promotionId VÀO HÀM Ở ĐÂY
     const result = await redeemRewardPoints(
       userId,
       bookingId,
       RewardCode,
       RewardPointsUsed,
+      promotionId,
     );
 
     if (result.success) {

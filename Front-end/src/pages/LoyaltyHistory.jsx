@@ -488,7 +488,7 @@ export default function LoyaltyHistory() {
                   <i className="fa-solid fa-certificate"></i>
                 </div>
                 <h3>Platinum (Bạch Kim)</h3>
-                <span className="tier-req">Yêu cầu: 500 PTS trở lên</span>
+                <span className="tier-req">Yêu cầu: 550 PTS trở lên</span>
                 <ul className="perks-list">
                   <li>
                     <i className="fa-solid fa-circle-check text-green-500"></i>{" "}

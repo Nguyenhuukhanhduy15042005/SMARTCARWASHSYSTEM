@@ -18,6 +18,7 @@ const requireStaff = (req, res, next) => {
 // ================================================================
 
 // GET /api/machines — Lấy danh sách tất cả máy + lịch bảo trì gần nhất
+// GET /api/machines — Lấy danh sách tất cả máy + lịch bảo trì gần nhất
 router.get("/", verifyToken, requireStaff, async (req, res) => {
   try {
     const pool = await poolPromise;
@@ -33,13 +34,17 @@ router.get("/", verifyToken, requireStaff, async (req, res) => {
           WHEN 3 THEN N'Đang bảo trì'
           ELSE N'Không xác định'
         END AS StatusLabel,
-        -- Lần bảo trì gần nhất
+        -- Lần bảo trì gần nhất (CHỈ LẤY NGÀY TRONG QUÁ KHỨ HOẶC HIỆN TẠI)
         (SELECT TOP 1 mt.MaintenanceDate 
          FROM MAINTENANCE mt 
          WHERE mt.MachineID = m.MachineID 
+           AND mt.MaintenanceDate <= GETDATE()
          ORDER BY mt.MaintenanceDate DESC) AS LastMaintenanceDate,
-        -- Số lần bảo trì
-        (SELECT COUNT(*) FROM MAINTENANCE mt WHERE mt.MachineID = m.MachineID) AS TotalMaintenances
+        -- Số lần bảo trì thực tế đã chạy (KHÔNG TÍNH LỊCH HẸN TƯƠNG LAI)
+        (SELECT COUNT(*) 
+         FROM MAINTENANCE mt 
+         WHERE mt.MachineID = m.MachineID 
+           AND mt.MaintenanceDate <= GETDATE()) AS TotalMaintenances
       FROM MACHINE m
       ORDER BY m.MachineID ASC
     `);
