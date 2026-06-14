@@ -62,14 +62,36 @@ export default function Profile({ setUser }) {
     // Xác thực số điện thoại Việt Nam
     if (!form.phone) {
       setMsg({ text: "❌ Vui lòng nhập số điện thoại liên hệ!", type: "error" });
-      setSaving(false);
       return;
     }
     const phoneRegex = /^(0[35789])[0-9]{8}$/;
     if (!phoneRegex.test(form.phone)) {
       setMsg({ text: "❌ Số điện thoại không hợp lệ! Định dạng đúng gồm 10 chữ số di động Việt Nam (ví dụ: 0912345678).", type: "error" });
-      setSaving(false);
       return;
+    }
+
+    // Xác thực mật khẩu mới (nếu có nhập)
+    if (form.newPassword) {
+      if (form.newPassword !== form.confirmPassword) {
+        setMsg({ text: "❌ Mật khẩu mới và xác nhận mật khẩu mới không khớp!", type: "error" });
+        return;
+      }
+      const pwdErrors = validatePasswordStrength(form.newPassword);
+      if (pwdErrors.length > 0) {
+        setMsg({ text: `❌ Mật khẩu mới chưa đủ mạnh: ${pwdErrors.join(", ")}.`, type: "error" });
+        return;
+      }
+    }
+
+    setSaving(true);
+
+    const payload = {
+      fullName: form.fullName,
+      phone: form.phone,
+      email: form.email,
+    };
+    if (form.newPassword) {
+      payload.newPassword = form.newPassword;
     }
 
     try {
