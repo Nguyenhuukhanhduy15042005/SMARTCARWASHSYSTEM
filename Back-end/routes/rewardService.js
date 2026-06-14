@@ -80,6 +80,14 @@ const redeemRewardPoints = async (
         SET CurrentPoints = CurrentPoints - @points
         WHERE UserID = @userId
       `);
+    const reqWallet = new sql.Request(transaction);
+    await reqWallet
+      .input("userId", sql.Int, userId)
+      .input("promotionId", sql.Int, promotionId)
+      .query(`
+        INSERT INTO MEMBER_PROMOTION (UserID, PromotionID, IsUsed)
+        VALUES (@userId, @promotionId, 0)
+      `);
 
     // 4. Lưu voucher vào ví member
     const reqWallet = new sql.Request(transaction);
