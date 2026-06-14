@@ -318,6 +318,12 @@ export default function RewardRedemption() {
                 ? "Áp dụng vào thanh toán"
                 : "Chọn voucher để áp dụng"}
             </button>
+            <button
+              className="reward-back-btn"
+              onClick={() => window.history.back()}
+            >
+              Quay lại
+            </button>
           </aside>
         </section>
       </main>
@@ -639,6 +645,22 @@ const rewardRedemptionCss = `
   .reward-section-title input{
     width:100%;
   }
+}
+  .reward-back-btn{
+  width:100%;
+  margin-top:12px;
+  padding:15px 18px;
+  border:0;
+  border-radius:18px;
+  background:#e2e8f0;
+  color:#334155;
+  font-weight:800;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.reward-back-btn:hover{
+  background:#cbd5e1;
 }
   
 `;
