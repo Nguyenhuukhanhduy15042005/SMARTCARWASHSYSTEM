@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const { sql, poolPromise } = require("../db");
+const { processLoyaltyPoints } = require("./loyaltyService");
 
 // Helper to format date and time safely preserving local timezone offsets
 const formatLocalDateTime = (dateInput) => {
@@ -80,97 +81,36 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
   // 4. Booking Completion Flow (statusInt === 4)
   if (statusInt === 4) {
     const finalPrice = Number(booking.FinalPrice || booking.TotalPrice || 0);
-    const points = Math.floor(finalPrice / 1000);
 
-    if (points > 0) {
-      // Check if loyalty transaction already recorded for this booking
-      const txCheck = await pool
-        .request()
-        .input("bookingId", sql.Int, bookingId)
-        .query(
-          "SELECT TransactionID FROM LOYALTY_TRANSACTION WHERE BookingID = @bookingId AND TransactionType = 'Accumulate'",
+    // GỌI HÀM SERVICE CHUẨN ĐỂ XỬ LÝ ĐIỂM & HẠNG TỪ FILE LOYALTY_SERVICE
+    if (customerId && finalPrice > 0) {
+      try {
+        await processLoyaltyPoints(customerId, bookingId, finalPrice);
+        console.log(
+          `[Loyalty] Đã cộng điểm cho Khách ${customerId}, Mã đơn ${bookingId}`,
         );
-
-      if (txCheck.recordset.length === 0) {
-        // a. Insert loyalty transaction
-        await pool
-          .request()
-          .input("userId", sql.Int, customerId)
-          .input("bookingId", sql.Int, bookingId)
-          .input("points", sql.Int, points).query(`
-                        INSERT INTO LOYALTY_TRANSACTION (UserID, BookingID, TransactionType, Points, CreatedDate)
-                        VALUES (@userId, @bookingId, 'Accumulate', @points, GETDATE())
-                    `);
-
-        // b. Update/Insert customer MEMBER_PROFILE
-        const profileCheck = await pool
-          .request()
-          .input("userId", sql.Int, customerId)
-          .query(
-            "SELECT UserID, AccumulatedPoints FROM MEMBER_PROFILE WHERE UserID = @userId",
-          );
-
-        let newAccumulatedPoints = points;
-
-        if (profileCheck.recordset.length === 0) {
-          await pool
-            .request()
-            .input("userId", sql.Int, customerId)
-            .input("points", sql.Int, points).query(`
-                            INSERT INTO MEMBER_PROFILE (UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate)
-                            VALUES (@userId, 1, @points, @points, GETDATE())
-                        `);
-        } else {
-          newAccumulatedPoints =
-            Number(profileCheck.recordset[0].AccumulatedPoints || 0) + points;
-          await pool
-            .request()
-            .input("userId", sql.Int, customerId)
-            .input("points", sql.Int, points).query(`
-                            UPDATE MEMBER_PROFILE
-                            SET CurrentPoints = ISNULL(CurrentPoints, 0) + @points,
-                            AccumulatedPoints = ISNULL(AccumulatedPoints, 0) + @points
-                            WHERE UserID = @userId
-                        `);
-        }
-
-        // c. Tier Evaluation: Silver >= 500, Gold >= 1500, Platinum >= 5000
-        const tiersRes = await pool
-          .request()
-          .query(
-            "SELECT TierID, RequiredPoints FROM LOYALTY_TIER ORDER BY RequiredPoints ASC",
-          );
-        let newTierId = 1; // Bronze
-        for (const tier of tiersRes.recordset) {
-          if (newAccumulatedPoints >= tier.RequiredPoints) {
-            newTierId = tier.TierID;
-          }
-        }
-
-        await pool
-          .request()
-          .input("userId", sql.Int, customerId)
-          .input("tierId", sql.Int, newTierId)
-          .query(
-            "UPDATE MEMBER_PROFILE SET TierID = @tierId WHERE UserID = @userId",
-          );
+      } catch (err) {
+        console.error("❌ Lỗi khi chạy service cộng điểm:", err.message);
       }
     }
 
-    // d. Auto-generate payment log
-    const paymentCheck = await pool
-      .request()
-      .input("bookingId", sql.Int, bookingId)
-      .query("SELECT PaymentID FROM PAYMENT WHERE BookingID = @bookingId");
-
-    if (paymentCheck.recordset.length === 0) {
-      await pool
+    // Ghi nhận hóa đơn thanh toán (Payment)
+    try {
+      const paymentCheck = await pool
         .request()
         .input("bookingId", sql.Int, bookingId)
-        .input("amount", sql.Decimal, finalPrice).query(`
-                    INSERT INTO PAYMENT (BookingID, PaymentMethod, Amount, PaidAt)
-                    VALUES (@bookingId, N'Tiền mặt', @amount, GETDATE())
-                `);
+        .query("SELECT PaymentID FROM PAYMENT WHERE BookingID = @bookingId");
+
+      if (paymentCheck.recordset.length === 0) {
+        await pool
+          .request()
+          .input("bookingId", sql.Int, bookingId)
+          .input("amount", sql.Decimal, finalPrice)
+          .query(`INSERT INTO PAYMENT (BookingID, PaymentMethod, Amount, PaidAt)
+                  VALUES (@bookingId, N'Tiền mặt', @amount, GETDATE())`);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi tạo Payment:", err.message);
     }
   }
 };
