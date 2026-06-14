@@ -6,11 +6,26 @@ import "./Booking.css";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 
-// Trọng thêm: Danh sách các khung giờ hoạt động tiêu chuẩn (8:00 - 17:00, mỗi 30 phút)
 const TIME_SLOTS = [
-  "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
-  "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
-  "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"
+  "08:00",
+  "08:30",
+  "09:00",
+  "09:30",
+  "10:00",
+  "10:30",
+  "11:00",
+  "11:30",
+  "12:00",
+  "12:30",
+  "13:00",
+  "13:30",
+  "14:00",
+  "14:30",
+  "15:00",
+  "15:30",
+  "16:00",
+  "16:30",
+  "17:00",
 ];
 
 export default function Booking() {
@@ -19,18 +34,18 @@ export default function Booking() {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // State quản lý dữ liệu form
-  const [vehicleType, setVehicleType] = useState("CAR"); // CAR hoặc BIKE
+  const [vehicleType, setVehicleType] = useState("CAR");
   const [licensePlate, setLicensePlate] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
 
-  // Trọng thêm: State quản lý thông tin timeslots
+  // State quản lý thông tin timeslots
   const [slotsAvailability, setSlotsAvailability] = useState({});
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [fetchError, setFetchError] = useState("");
 
-  // State quản lý dịch vụ từ DB và thông tin khách hàng
+  // State quản lý dịch vụ và profile
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
   const [profile, setProfile] = useState({
@@ -43,8 +58,9 @@ export default function Booking() {
 
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Dùng 1 lần duy nhất
 
-  // Helper giải mã token an toàn để lấy userId
+  // Helper giải mã token
   const getCustomerId = () => {
     const token =
       localStorage.getItem("TOKEN") || localStorage.getItem("token");
@@ -60,9 +76,7 @@ export default function Booking() {
         const jsonPayload = decodeURIComponent(
           atob(base64)
             .split("")
-            .map(function (c) {
-              return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-            })
+            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
             .join(""),
         );
         const decoded = JSON.parse(jsonPayload);
@@ -71,10 +85,9 @@ export default function Booking() {
         console.error("Lỗi decode token:", err);
       }
     }
-    return 12; // ID mặc định khi không tìm thấy token để test
+    return 12;
   };
 
-  // Show auto dismiss alerts
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => {
@@ -82,7 +95,7 @@ export default function Booking() {
     }, 4000);
   };
 
-  // Load Google Fonts & FontAwesome icons
+  // Khởi tạo Font và Fetch Profile
   useEffect(() => {
     const linkFont = document.createElement("link");
     linkFont.href =
@@ -99,7 +112,7 @@ export default function Booking() {
     fetchUserProfile();
   }, []);
 
-  // Đóng dropdown khi click ra ngoài
+  // Đóng dropdown khi click ngoài
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest("[data-user-menu]")) {
@@ -110,7 +123,7 @@ export default function Booking() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch thông tin ưu đãi và profile thành viên
+  // Fetch Profile
   const fetchUserProfile = async () => {
     const userId = getCustomerId();
     const token =
@@ -125,10 +138,14 @@ export default function Booking() {
         { headers },
       );
       if (res.data) {
+        const phone =
+          res.data.PhoneNumber && !res.data.PhoneNumber.startsWith("G-")
+            ? res.data.PhoneNumber
+            : "";
         setProfile({
           UserID: res.data.UserID || userId,
           FullName: res.data.FullName || "Khách hàng",
-          PhoneNumber: res.data.PhoneNumber || "",
+          PhoneNumber: phone,
           TierName: res.data.TierName || "Standard",
           DiscountRate:
             res.data.DiscountRate !== undefined ? res.data.DiscountRate : 0,
@@ -139,7 +156,7 @@ export default function Booking() {
     }
   };
 
-  // Fetch dịch vụ tương ứng với loại xe (CAR hoặc BIKE)
+  // Fetch Services
   useEffect(() => {
     const fetchServices = async () => {
       setLoading(true);
@@ -149,11 +166,7 @@ export default function Booking() {
         );
         const list = Array.isArray(res.data) ? res.data : [];
         setServices(list);
-        if (list.length > 0) {
-          setSelectedService(list[0]); // Mặc định chọn dịch vụ đầu tiên
-        } else {
-          setSelectedService(null);
-        }
+        setSelectedService(list.length > 0 ? list[0] : null);
       } catch (err) {
         console.error("Lỗi tải gói dịch vụ:", err);
         showToast("Không thể tải danh sách dịch vụ từ Server CSDL!", "error");
@@ -161,15 +174,13 @@ export default function Booking() {
         setLoading(false);
       }
     };
-
     fetchServices();
   }, [vehicleType]);
 
-  // Trọng thêm: Kiểm tra xem slotTime có nằm trong quá khứ không nếu ngày được chọn là ngày hôm nay
+  // Kiểm tra thời gian quá khứ
   const checkIfPast = (slotTime) => {
     if (!date) return false;
-    
-    const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const todayStr = new Date().toLocaleDateString("en-CA");
     if (date !== todayStr) return false;
 
     const now = new Date();
@@ -177,19 +188,17 @@ export default function Booking() {
     const currentMinutes = now.getMinutes();
 
     const [slotHours, slotMinutes] = slotTime.split(":").map(Number);
-
     if (slotHours < currentHours) return true;
-    if (slotHours === currentHours && slotMinutes <= currentMinutes) return true;
-
+    if (slotHours === currentHours && slotMinutes <= currentMinutes)
+      return true;
     return false;
   };
 
-  // Trọng thêm: Click vào timeslot
   const handleSlotClick = (slotTime) => {
     setTime(slotTime);
   };
 
-  // Trọng thêm: Hook tự động tải danh sách và kiểm tra slot trống mỗi khi thay đổi loại xe hoặc ngày
+  // Fetch Timeslots
   useEffect(() => {
     if (!date) {
       setSlotsAvailability({});
@@ -201,37 +210,48 @@ export default function Booking() {
       setFetchError("");
       try {
         const typeParam = vehicleType === "BIKE" ? "BIKE" : "CAR";
-        const machinesRes = await axios.get(`http://127.0.0.1:5000/api/timeslots/machines?type=${typeParam}`);
-        const machines = Array.isArray(machinesRes.data) ? machinesRes.data : [];
+        const machinesRes = await axios.get(
+          `http://127.0.0.1:5000/api/timeslots/machines?type=${typeParam}`,
+        );
+        const machines = Array.isArray(machinesRes.data)
+          ? machinesRes.data
+          : [];
 
         if (machines.length === 0) {
           const initialSlots = {};
-          TIME_SLOTS.forEach(t => { initialSlots[t] = "booked"; });
+          TIME_SLOTS.forEach((t) => {
+            initialSlots[t] = "booked";
+          });
           setSlotsAvailability(initialSlots);
-          setFetchError(`Không tìm thấy máy rửa hoạt động nào cho ${vehicleType === "BIKE" ? "Xe máy" : "Ô tô"}!`);
+          setFetchError(
+            `Không tìm thấy máy rửa hoạt động nào cho ${vehicleType === "BIKE" ? "Xe máy" : "Ô tô"}!`,
+          );
           return;
         }
 
-        const promises = machines.map(m =>
-          axios.get(`http://127.0.0.1:5000/api/timeslots?machineId=${m.machineId}&date=${date}`)
-            .then(res => res.data)
-            .catch(err => {
+        const promises = machines.map((m) =>
+          axios
+            .get(
+              `http://127.0.0.1:5000/api/timeslots?machineId=${m.machineId}&date=${date}`,
+            )
+            .then((res) => res.data)
+            .catch((err) => {
               console.error(`Lỗi fetch slots máy ${m.machineId}:`, err);
               return null;
-            })
+            }),
         );
 
         const results = await Promise.all(promises);
-
         const aggregated = {};
-        TIME_SLOTS.forEach(slotTime => {
+
+        TIME_SLOTS.forEach((slotTime) => {
           let hasFreeMachine = false;
-          results.forEach(machineResult => {
+          results.forEach((machineResult) => {
             if (machineResult && Array.isArray(machineResult.slots)) {
-              const found = machineResult.slots.find(s => s.time === slotTime);
-              if (found && found.status === "free") {
-                hasFreeMachine = true;
-              }
+              const found = machineResult.slots.find(
+                (s) => s.time === slotTime,
+              );
+              if (found && found.status === "free") hasFreeMachine = true;
             }
           });
           aggregated[slotTime] = hasFreeMachine ? "free" : "booked";
@@ -239,24 +259,27 @@ export default function Booking() {
 
         setSlotsAvailability(aggregated);
 
-        // Reset selected time if it becomes invalid/unavailable
+        // Reset nếu time đang chọn bị khóa
         if (time) {
           const isBooked = aggregated[time] === "booked";
           const isPast = checkIfPast(time);
           if (isBooked || isPast) {
             setTime("");
-            showToast("Khung giờ bạn chọn trước đó hiện tại không còn trống, vui lòng chọn lại!", "error");
+            showToast(
+              "Khung giờ bạn chọn hiện tại không còn trống, vui lòng chọn lại!",
+              "error",
+            );
           }
         }
-
       } catch (err) {
         console.error("Lỗi tải thông tin chi tiết các timeslot:", err);
-        setFetchError("Có lỗi xảy ra khi đồng bộ lịch trống từ hệ thống máy rửa.");
+        setFetchError(
+          "Có lỗi xảy ra khi đồng bộ lịch trống từ hệ thống máy rửa.",
+        );
       } finally {
         setSlotsLoading(false);
       }
     };
-
     fetchSlotsAvailability();
   }, [date, vehicleType]);
 
@@ -269,16 +292,24 @@ export default function Booking() {
   const discountAmount = basePrice * discountRate;
   const finalPrice = Math.max(0, basePrice - discountAmount);
 
-  // Xử lý gửi đặt lịch
+  // ============================================
+  // HÀM SUBMIT CHÍNH (Đã sửa lỗi trùng lặp và Spam Click)
+  // ============================================
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // Chặn spam click
+
     if (!licensePlate.trim())
       return showToast("Vui lòng nhập biển số xe!", "error");
 
     const cleanPlate = licensePlate.trim().toUpperCase();
-    const plateRegex = /^[0-9]{2}[- ]?([A-Z]{1,2}|[A-Z][0-9])[- ]?[0-9]{3,5}(\.[0-9]{2})?$/i; // Trọng thêm: Regex kiểm tra biển số xe thật
+    const plateRegex =
+      /^[0-9]{2}[- ]?([A-Z]{1,2}|[A-Z][0-9])[- ]?[0-9]{3,5}(\.[0-9]{2})?$/i;
     if (!plateRegex.test(cleanPlate)) {
-      return showToast("Biển số xe không hợp lệ! Định dạng đúng VD: 59A-123.45 hoặc 59G1-123.45", "error"); // Trọng thêm: Khai báo lỗi định dạng biển số
+      return showToast(
+        "Biển số xe không hợp lệ! Định dạng đúng VD: 59A-123.45 hoặc 59G1-123.45",
+        "error",
+      );
     }
 
     if (!selectedService)
@@ -297,12 +328,14 @@ export default function Booking() {
       CustomerID: userId,
       BookingDate: `${date}T${time}:00`,
       VehicleType: vehicleType === "BIKE" ? "Xe máy" : "Ô tô",
-      LicensePlate: licensePlate.trim().toUpperCase(),
+      LicensePlate: cleanPlate,
       TotalPrice: basePrice,
       FinalPrice: finalPrice,
-      Status: 1, // Chờ duyệt
+      Status: 1,
       ServiceIDs: [selectedService.serviceId],
     };
+
+    setIsSubmitting(true); // KHÓA NÚT
 
     try {
       const res = await axios.post("http://127.0.0.1:5000/api/bookings", body, { headers });
@@ -328,16 +361,10 @@ export default function Booking() {
       console.error("Lỗi khi gửi yêu cầu đặt lịch:", err);
       const errMsg = err.response?.data?.message || err.message;
       showToast(`Không thể tạo lịch: ${errMsg}`, "error");
+
+      setIsSubmitting(false); // MỞ LẠI NÚT NẾU LỖI
     }
   };
-
-  const getInitials = (name = "") =>
-    name
-      .split(" ")
-      .slice(-2)
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase();
 
   const handleLogout = () => {
     logout();
@@ -359,7 +386,6 @@ export default function Booking() {
         }}
       >
         <div>
-          {/* Tiêu đề */}
           <div style={{ marginBottom: 28, paddingTop: 40 }}>
             <div className="booking-badge">
               <i className="fa-regular fa-calendar-check"></i> Đặt lịch dịch vụ
@@ -374,15 +400,13 @@ export default function Booking() {
             onSubmit={handleSubmit}
             className="grid grid-cols-1 lg:grid-cols-3 gap-8"
           >
-            {/* Cột trái: Nội dung form (Chiếm 2 cột) */}
+            {/* Cột trái */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Mục 1: Loại xe & Biển số */}
               <div className="form-section-card">
                 <h3 className="form-section-title">
                   <i className="fa-solid fa-car-side text-orange-500"></i> Thông
                   tin phương tiện
                 </h3>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="form-label">Loại xe *</label>
@@ -403,7 +427,6 @@ export default function Booking() {
                       </div>
                     </div>
                   </div>
-
                   <div>
                     <label className="form-label" htmlFor="licensePlate">
                       Biển số xe *
@@ -431,13 +454,12 @@ export default function Booking() {
                 </div>
               </div>
 
-              {/* Mục 2: Chọn Gói dịch vụ */}
+              {/* Chọn Gói dịch vụ */}
               <div className="form-section-card">
                 <h3 className="form-section-title">
                   <i className="fa-solid fa-hand-holding-hand text-orange-500"></i>{" "}
                   Chọn Gói dịch vụ
                 </h3>
-
                 {loading ? (
                   <div
                     style={{
@@ -495,14 +517,19 @@ export default function Booking() {
                 )}
               </div>
 
-              {/* Mục 3: Ngày & Giờ - Trọng thêm: Thiết kế dạng timeslot grid trực quan */}
+              {/* Ngày & Giờ */}
               <div className="form-section-card">
                 <h3 className="form-section-title">
                   <i className="fa-regular fa-calendar-check text-orange-500"></i>{" "}
                   Thời gian hẹn gặp
                 </h3>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "20px",
+                  }}
+                >
                   <div>
                     <label className="form-label" htmlFor="date">
                       Ngày rửa xe *
@@ -513,41 +540,57 @@ export default function Booking() {
                       value={date}
                       onChange={(e) => {
                         setDate(e.target.value);
-                        setTime(""); // Trọng thêm: reset giờ khi đổi ngày
+                        setTime("");
                       }}
                       required
                       className="form-input"
                     />
                   </div>
-
                   <div>
                     <label className="form-label">
-                      Giờ rửa xe * {time && <span style={{ color: "#f97316", textTransform: "none" }}> (Đang chọn: {time})</span>}
+                      Giờ rửa xe *{" "}
+                      {time && (
+                        <span
+                          style={{ color: "#f97316", textTransform: "none" }}
+                        >
+                          {" "}
+                          (Đang chọn: {time})
+                        </span>
+                      )}
                     </label>
                     {!date ? (
                       <div className="select-date-prompt">
-                        <i className="fa-regular fa-calendar-days" style={{ marginRight: '8px' }}></i>
+                        <i
+                          className="fa-regular fa-calendar-days"
+                          style={{ marginRight: "8px" }}
+                        ></i>
                         Vui lòng chọn ngày rửa xe để xem các khung giờ trống.
                       </div>
                     ) : slotsLoading ? (
                       <div className="slots-loading">
-                        <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>
+                        <i
+                          className="fa-solid fa-spinner fa-spin"
+                          style={{ marginRight: "8px" }}
+                        ></i>
                         Đang đồng bộ tình trạng máy rửa xe...
                       </div>
                     ) : fetchError ? (
                       <div className="slots-error">
-                        <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '8px' }}></i>
+                        <i
+                          className="fa-solid fa-triangle-exclamation"
+                          style={{ marginRight: "8px" }}
+                        ></i>{" "}
                         {fetchError}
                       </div>
                     ) : (
                       <div className="slots-container">
                         <div className="slots-grid">
                           {TIME_SLOTS.map((slotTime) => {
-                            const isBooked = slotsAvailability[slotTime] === "booked";
+                            const isBooked =
+                              slotsAvailability[slotTime] === "booked";
                             const isPast = checkIfPast(slotTime);
                             const isAvailable = !isBooked && !isPast;
                             const isSelected = time === slotTime;
-                            
                             return (
                               <button
                                 key={slotTime}
@@ -558,14 +601,18 @@ export default function Booking() {
                               >
                                 <span className="slot-time">{slotTime}</span>
                                 <span className="slot-status">
-                                  {isBooked ? "Hết máy" : isPast ? "Đã qua" : isSelected ? "Đang chọn" : "Còn trống"}
+                                  {isBooked
+                                    ? "Hết máy"
+                                    : isPast
+                                      ? "Đã qua"
+                                      : isSelected
+                                        ? "Đang chọn"
+                                        : "Còn trống"}
                                 </span>
                               </button>
                             );
                           })}
                         </div>
-
-                        {/* Legend */}
                         <div className="slots-legend">
                           <div className="legend-item">
                             <span className="legend-dot legend-available"></span>
@@ -588,7 +635,6 @@ export default function Booking() {
                     )}
                   </div>
                 </div>
-
                 <div className="mt-6">
                   <label className="form-label" htmlFor="note">
                     Ghi chú (Tùy chọn)
@@ -605,14 +651,15 @@ export default function Booking() {
               </div>
             </div>
 
-            {/* Cột phải: Tóm tắt đơn hàng (Sticky) */}
+            {/* Cột phải: Tóm tắt */}
             <div className="lg:col-span-1">
               <div className="summary-card sticky top-10">
-                {/* Trọng thêm: Viền động theo theme */}
-                <h3 className="text-2xl font-bold mb-6 border-b pb-4" style={{ borderColor: "var(--border)" }}>
+                <h3
+                  className="text-2xl font-bold mb-6 border-b pb-4"
+                  style={{ borderColor: "var(--border)" }}
+                >
                   Tóm tắt lịch đặt
                 </h3>
-
                 <div className="space-y-4 mb-6">
                   <div className="summary-row">
                     <span>Loại phương tiện:</span>
@@ -633,9 +680,10 @@ export default function Booking() {
                     <span>{date && time ? `${time} (${date})` : "..."}</span>
                   </div>
                 </div>
-
-                {/* Trọng thêm: Viền động theo theme */}
-                <div className="space-y-3 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
+                <div
+                  className="space-y-3 pt-4 border-t"
+                  style={{ borderColor: "var(--border)" }}
+                >
                   <div className="summary-row">
                     <span>Giá niêm yết:</span>
                     <span>{basePrice.toLocaleString("vi-VN")} đ</span>
@@ -653,7 +701,6 @@ export default function Booking() {
                     </div>
                   )}
                 </div>
-
                 <div className="summary-total-section">
                   <div className="flex justify-between items-center">
                     <span className="text-lg">Tổng chi phí</span>
@@ -662,13 +709,21 @@ export default function Booking() {
                     </span>
                   </div>
                 </div>
-
-                <button type="submit" className="btn-book-submit">
-                  Xác nhận đặt lịch
+                <button
+                  type="submit"
+                  className="btn-book-submit"
+                  disabled={isSubmitting}
+                  style={{
+                    opacity: isSubmitting ? 0.7 : 1,
+                    cursor: isSubmitting ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {isSubmitting ? "Đang xử lý..." : "Xác nhận đặt lịch"}
                 </button>
-
-                {/* Trọng thêm: Màu chữ phụ động theo theme */}
-                <p className="text-center text-xs mt-4" style={{ color: "var(--text-secondary)" }}>
+                <p
+                  className="text-center text-xs mt-4"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   Bằng việc nhấn "Xác nhận đặt lịch", bạn đồng ý chịu trách
                   nhiệm với thời gian đã hẹn gặp.
                 </p>
@@ -677,7 +732,6 @@ export default function Booking() {
           </form>
         </div>
 
-        {/* Alert Banner Toast */}
         {toast && (
           <div
             className={`booking-toast ${toast.type === "error" ? "booking-toast-error" : "booking-toast-success"}`}

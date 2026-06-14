@@ -1,65 +1,164 @@
 const sql = require("mssql");
 const { poolPromise } = require("../db");
 
-// API 1: Phục vụ axios.get('/users/profile?userId=...')
+// Đường dẫn cùng thư mục routes
+const { redeemRewardPoints } = require("./rewardService");
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API 1: GET /api/loyalty/profile?userId=...
+// ─────────────────────────────────────────────────────────────────────────────
 const getLoyaltyProfile = async (req, res) => {
   try {
-    const userId = req.query.userId;
+    const userId = req.query.userId || 12;
     const pool = await poolPromise;
 
-    // Truy vấn bốc dữ liệu từ bảng MEMBER_PROFILE mà Thắng vừa Update
     const result = await pool.request().input("userId", sql.Int, userId).query(`
-        SELECT 
-          UserID, FullName, PhoneNumber, Email, 
-          CurrentPoints, 
-          TotalAccumulatedPoints AS AccumulatedPoints, 
-          Tier AS TierName
-        FROM MEMBER_PROFILE
-        WHERE UserID = @userId
+        SELECT
+          u.UserID,
+          u.FullName,
+          u.PhoneNumber,
+          u.Email,
+          COALESCE(mp.CurrentPoints,     0)          AS CurrentPoints,
+          COALESCE(mp.AccumulatedPoints, 0)          AS AccumulatedPoints,
+          COALESCE(lt.TierName, N'Bronze')           AS TierName,
+          COALESCE(lt.DiscountRate,      0)          AS DiscountRate,
+          COALESCE(lt.RequiredPoints,    0)          AS RequiredPoints,
+          COALESCE(lt.BookingWindow,     1)          AS BookingWindow
+        FROM [USER] u
+        LEFT JOIN MEMBER_PROFILE mp ON u.UserID  = mp.UserID
+        LEFT JOIN LOYALTY_TIER   lt ON mp.TierID = lt.TierID
+        WHERE u.UserID = @userId
       `);
 
-    if (result.recordset.length > 0) {
-      res.status(200).json(result.recordset[0]);
-    } else {
-      res.status(404).json({ message: "Không tìm thấy hồ sơ thành viên" });
+    if (!result.recordset.length) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy hồ sơ thành viên" });
     }
+
+    res.status(200).json(result.recordset[0]);
   } catch (error) {
-    console.error("Lỗi lấy profile:", error);
-    res.status(500).json({ message: "Lỗi Server Backend" });
+    console.error("[getLoyaltyProfile]", error);
+    res.status(500).json({ message: "Lỗi Server Backend: " + error.message });
   }
 };
 
-// API 2: Phục vụ axios.get('/bookings?customerId=...')
-// Nâng cấp: Lấy trực tiếp từ bảng LOYALTY_TRANSACTION kết hợp BOOKING để chuẩn xác hơn
+// ─────────────────────────────────────────────────────────────────────────────
+// API 2: GET /api/loyalty/transactions?customerId=...
+// ─────────────────────────────────────────────────────────────────────────────
 const getLoyaltyTransactions = async (req, res) => {
   try {
-    const customerId = req.query.customerId;
+    const userId = req.query.customerId || req.query.userId || 12;
     const pool = await poolPromise;
 
-    // Lấy lịch sử giao dịch điểm bám sát vào bảng của Thắng
-    const result = await pool.request().input("userId", sql.Int, customerId)
-      .query(`
-        SELECT 
-          L.TransactionID as id,
-          B.LicensePlate as licensePlate,
-          L.CreatedAt as date,
-          B.TotalPrice as price,
-          L.Points as points,
-          B.Status as status
-        FROM LOYALTY_TRANSACTION L
-        LEFT JOIN BOOKING B ON L.BookingID = B.BookingID
-        WHERE L.UserID = @userId
-        ORDER BY L.CreatedAt DESC
+    const result = await pool.request().input("userId", sql.Int, userId).query(`
+        SELECT
+          lt.TransactionID,
+          lt.TransactionType,
+          lt.Points,
+          lt.CreatedDate,
+          b.BookingID,
+          b.LicensePlate,
+          b.VehicleType,
+          b.FinalPrice   AS price,
+          b.TotalPrice,
+          b.Status,
+          b.BookingDate,
+          (
+            SELECT TOP 1 s.ServiceName
+            FROM BOOKING_DETAIL bd
+            INNER JOIN SERVICE s ON bd.ServiceID = s.ServiceID
+            WHERE bd.BookingID = b.BookingID
+          ) AS ServiceName
+        FROM LOYALTY_TRANSACTION lt
+        LEFT JOIN BOOKING b ON lt.BookingID = b.BookingID
+        WHERE lt.UserID = @userId
+        ORDER BY lt.CreatedDate DESC
       `);
 
+    const transactions = result.recordset.map((row) => ({
+      id: row.BookingID || row.TransactionID,
+      licensePlate: row.LicensePlate || "N/A",
+      date: row.CreatedDate || row.BookingDate || null,
+      price: row.price || row.TotalPrice || 0,
+      points: row.Points,
+      status: row.Status || null,
+
+      TransactionID: row.TransactionID,
+      TransactionType: row.TransactionType,
+      Points: row.Points,
+      CreatedDate: row.CreatedDate,
+      BookingID: row.BookingID || null,
+      LicensePlate: row.LicensePlate || "N/A",
+      VehicleType: row.VehicleType || "N/A",
+      FinalPrice: row.price || 0,
+      TotalPrice: row.TotalPrice || 0,
+      Status: row.Status || null,
+      BookingDate: row.BookingDate || null,
+      ServiceName: row.ServiceName || "Dịch vụ rửa xe",
+    }));
+
+    res.status(200).json(transactions);
+  } catch (error) {
+    console.error("[getLoyaltyTransactions]", error);
+    res.status(500).json({ message: "Lỗi Server Backend: " + error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API 3: POST /api/loyalty/redeem (HÀM ĐÃ ĐƯỢC KHÔI PHỤC VÀ SỬA LỖI)
+// ─────────────────────────────────────────────────────────────────────────────
+const handleRedeem = async (req, res) => {
+  try {
+    const { userId, bookingId, RewardCode, RewardPointsUsed } = req.body;
+
+    if (!userId || !RewardCode || !RewardPointsUsed) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu thông tin đổi quà bắt buộc." });
+    }
+
+    // Gọi hàm xử lý nghiệp vụ từ rewardService
+    const result = await redeemRewardPoints(
+      userId,
+      bookingId,
+      RewardCode,
+      RewardPointsUsed,
+    );
+
+    if (result.success) {
+      return res.status(200).json(result);
+    } else {
+      return res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error("[handleRedeem]", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi nội bộ hệ thống: " + error.message,
+    });
+  }
+};
+
+// API mới: Lấy danh sách voucher khách đã đổi
+const getMyVouchers = async (req, res) => {
+  try {
+    const userId = req.query.userId || 12;
+    const pool = await poolPromise;
+    const result = await pool.request().input("userId", sql.Int, userId).query(`
+        SELECT Points, CreatedDate, 'Đổi điểm ' + CAST(Points AS VARCHAR) + ' PTS' AS Description 
+        FROM LOYALTY_TRANSACTION 
+        WHERE UserID = @userId AND TransactionType = 'Redeem'
+        ORDER BY CreatedDate DESC`);
     res.status(200).json(result.recordset);
   } catch (error) {
-    console.error("Lỗi lấy lịch sử giao dịch:", error);
-    res.status(500).json({ message: "Lỗi Server Backend" });
+    res.status(500).json({ message: error.message });
   }
 };
 
 module.exports = {
   getLoyaltyProfile,
   getLoyaltyTransactions,
+  handleRedeem,
+  getMyVouchers, // Export hàm mới
 };

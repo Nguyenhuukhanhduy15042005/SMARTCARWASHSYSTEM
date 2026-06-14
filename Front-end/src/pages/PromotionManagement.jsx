@@ -15,6 +15,7 @@ export default function PromotionManagement() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [expireTarget, setExpireTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     const font = document.createElement("link");
@@ -165,6 +166,27 @@ export default function PromotionManagement() {
       );
     }
   };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
+    try {
+      await axios.delete(`${API_BASE}/promotions/${deleteTarget.PromotionID}`, {
+        headers: getHeaders(),
+      });
+
+      showToast("Xóa khuyến mãi thành công");
+      setDeleteTarget(null);
+      fetchPromotions();
+    } catch (err) {
+      console.error(err);
+      showToast(
+        err.response?.data?.message || "Xóa khuyến mãi thất bại",
+        "error",
+      );
+    }
+  };
+
 
   const formatDate = (value) => {
     if (!value) return "Không giới hạn";
@@ -332,6 +354,14 @@ export default function PromotionManagement() {
                           >
                             <i className="fa-solid fa-ban"></i>
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(item)}
+                            className="danger"
+                            title="Xóa khuyến mãi"
+                          >
+                            <i className="fa-solid fa-trash"></i>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -433,6 +463,31 @@ export default function PromotionManagement() {
           </div>
         </div>
       )}
+      {deleteTarget && (
+        <div
+          className="pm-modal-backdrop"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div className="pm-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="pm-confirm-icon danger">
+              <i className="fa-solid fa-trash"></i>
+            </div>
+            <h2>Xóa khuyến mãi?</h2>
+            <p>
+              {deleteTarget.PromoName} sẽ bị xóa vĩnh viễn khỏi hệ thống.
+            </p>
+            <div className="pm-confirm-actions">
+              <button type="button" onClick={() => setDeleteTarget(null)}>
+                Hủy
+              </button>
+              <button type="button" className="danger" onClick={handleDelete}>
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -701,6 +756,10 @@ const promotionManagementCss = ` .pm-page{
     background:#fff7ed;
     color:#ea580c
 }
+.pm-row-actions button.danger{
+    background:#fee2e2;
+    color:#dc2626
+}
 .pm-row-actions button:disabled{
     opacity:.45;
     cursor:not-allowed
@@ -792,6 +851,10 @@ const promotionManagementCss = ` .pm-page{
     background:#fff7ed;
     color:#ea580c;
     font-size:30px
+}
+.pm-confirm-icon.danger{
+    background:#fee2e2;
+    color:#dc2626
 }
 .pm-confirm p{
     color:#64748b;

@@ -29,6 +29,12 @@ export default function MemberHeader() {
         <Link to="/vehicles" className={`nav-link ${currentPath === "/vehicles" ? "active" : ""}`}>
           Xe của tôi
         </Link>
+        <Link to="/reward-redemption" className={`nav-link ${currentPath === "/reward-redemption" ? "active" : ""}`}>
+          Đổi điểm thưởng
+        </Link>
+        <Link to="/loyalty" className={`nav-link ${currentPath === "/loyalty" ? "active" : ""}`}>
+          Lịch sử tích điểm
+        </Link>
         <Link to="/profile" className={`nav-link ${currentPath === "/profile" ? "active" : ""}`}>
           Hồ sơ cá nhân
         </Link>

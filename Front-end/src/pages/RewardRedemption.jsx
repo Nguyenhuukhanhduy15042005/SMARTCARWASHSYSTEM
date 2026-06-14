@@ -4,28 +4,29 @@ import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
-const mockRewards = [
-  { RewardID: 1, RewardCode: "WASH10", RewardName: "Giảm 10.000đ", PointsRequired: 100, DiscountAmount: 10000, MinOrderValue: 50000, Description: "Dùng cho mọi gói rửa xe" },
-  { RewardID: 2, RewardCode: "WASH25", RewardName: "Giảm 25.000đ", PointsRequired: 220, DiscountAmount: 25000, MinOrderValue: 90000, Description: "Phù hợp gói Premium / Combo" },
-  { RewardID: 3, RewardCode: "VIP50", RewardName: "Giảm 50.000đ", PointsRequired: 420, DiscountAmount: 50000, MinOrderValue: 150000, Description: "Ưu đãi thành viên tích điểm cao" },
-];
 
 export default function RewardRedemption() {
-  const [profile, setProfile] = useState({ FullName: "Khách hàng", CurrentPoints: 0, TierName: "Standard" });
-  const [rewards, setRewards] = useState(mockRewards);
+  const [profile, setProfile] = useState({
+    FullName: "Khách hàng",
+    CurrentPoints: 0,
+    TierName: "Standard",
+  });
+  const [rewards, setRewards] = useState([]);
   const [selectedReward, setSelectedReward] = useState(null);
-  const [orderValue, setOrderValue] = useState(120000);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const font = document.createElement("link");
-    font.href = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap";
+    font.href =
+      "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap";
     font.rel = "stylesheet";
     document.head.appendChild(font);
 
     const icons = document.createElement("link");
-    icons.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
+    icons.href =
+      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
     icons.rel = "stylesheet";
     document.head.appendChild(icons);
 
@@ -38,8 +39,14 @@ export default function RewardRedemption() {
   }, []);
 
   const getCustomerId = () => {
-    const token = localStorage.getItem("token") || localStorage.getItem("TOKEN");
-    if (token && token !== "mock-token" && token !== "null" && token !== "undefined") {
+    const token =
+      localStorage.getItem("token") || localStorage.getItem("TOKEN");
+    if (
+      token &&
+      token !== "mock-token" &&
+      token !== "null" &&
+      token !== "undefined"
+    ) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
         return payload.id || payload.userId || 12;
@@ -50,6 +57,25 @@ export default function RewardRedemption() {
     return 12;
   };
 
+  const getHeaders = () => {
+    const token = localStorage.getItem("token") || localStorage.getItem("TOKEN");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const normalizePromotionToReward = (promotion) => {
+    const discountPercent = Number(promotion.DiscountPercent || 0);
+
+    return {
+      RewardID: promotion.PromotionID,
+      RewardCode: `PR-${promotion.PromotionID}`,
+      RewardName: promotion.PromoName || `Khuyến mãi PR-${promotion.PromotionID}`,
+      PointsRequired: Math.max(1, Math.round(discountPercent * 10)),
+      DiscountPercent: discountPercent,
+      Description: `Voucher giảm ${discountPercent}% khi thanh toán booking.`,
+      RawPromotion: promotion,
+    };
+  };
+
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
@@ -58,78 +84,110 @@ export default function RewardRedemption() {
   const fetchRewardData = async () => {
     setLoading(true);
     const userId = getCustomerId();
-    const token = localStorage.getItem("token") || localStorage.getItem("TOKEN") || "mock-token";
-    const headers = { Authorization: `Bearer ${token}` };
+    const headers = getHeaders();
 
     try {
-      const profileRes = await axios.get(`${API_BASE}/users/profile?userId=${userId}`, { headers });
-      if (profileRes.data) {
-        setProfile({
-          FullName: profileRes.data.FullName || profileRes.data.fullName || "Khách hàng",
-          CurrentPoints: Number(profileRes.data.CurrentPoints ?? profileRes.data.currentPoints ?? 0),
-          TierName: profileRes.data.TierName || profileRes.data.tierName || "Standard",
-        });
-      }
-    } catch (err) {
-      setProfile({ FullName: "Khách hàng test", CurrentPoints: 520, TierName: "Gold" });
-    }
+      const [profileRes, promotionRes] = await Promise.all([
+        axios.get(`${API_BASE}/loyalty/profile?userId=${userId}`, { headers }),
+        axios.get(`${API_BASE}/promotions?status=active`, { headers }),
+      ]);
 
-    try {
-      const rewardRes = await axios.get(`${API_BASE}/rewards/available?userId=${userId}`, { headers });
-      if (Array.isArray(rewardRes.data) && rewardRes.data.length > 0) setRewards(rewardRes.data);
+      setProfile(profileRes.data);
+
+      const mappedRewards = Array.isArray(promotionRes.data)
+        ? promotionRes.data.map(normalizePromotionToReward)
+        : [];
+
+      setRewards(mappedRewards);
     } catch (err) {
-      setRewards(mockRewards);
+      console.error(err);
+      showToast("Không tải được dữ liệu voucher.", "error");
+      setRewards([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const money = (value) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Number(value || 0));
 
   const canUseReward = (reward) => {
-    return profile.CurrentPoints >= reward.PointsRequired && orderValue >= reward.MinOrderValue;
+    return profile.CurrentPoints >= Number(reward.PointsRequired || 0);
   };
 
   const checkoutSummary = useMemo(() => {
-    const discount = selectedReward ? Math.min(Number(selectedReward.DiscountAmount || 0), Number(orderValue || 0)) : 0;
     return {
-      discount,
-      finalPrice: Math.max(Number(orderValue || 0) - discount, 0),
-      remainingPoints: selectedReward ? profile.CurrentPoints - selectedReward.PointsRequired : profile.CurrentPoints,
+      pointsUsed: selectedReward ? Number(selectedReward.PointsRequired || 0) : 0,
+      remainingPoints: selectedReward
+        ? profile.CurrentPoints - Number(selectedReward.PointsRequired || 0)
+        : profile.CurrentPoints,
     };
-  }, [orderValue, profile.CurrentPoints, selectedReward]);
+  }, [profile.CurrentPoints, selectedReward]);
 
   const handleApplyReward = (reward) => {
     if (!canUseReward(reward)) {
-      showToast("Chưa đủ điểm hoặc đơn hàng chưa đạt giá trị tối thiểu.", "error");
+      showToast(
+        "Chưa đủ điểm hoặc đơn hàng chưa đạt giá trị tối thiểu.",
+        "error",
+      );
       return;
     }
     setSelectedReward(reward);
-    showToast(`Đã chọn mã ${reward.RewardCode}. Chờ BE apply khi thanh toán.`, "success");
+    showToast(
+      `Đã chọn mã ${reward.RewardCode}. Bấm đổi điểm để nhận voucher.`,
+      "success",
+    );
   };
 
-  const handleMockCheckout = () => {
-    if (!selectedReward) {
-      showToast("Bạn chưa chọn reward để đổi điểm.", "error");
+  const handleCheckout = async () => {
+    if (!selectedReward || submitting) {
       return;
     }
-    const payloadForBE = {
-      RewardID: selectedReward.RewardID,
-      RewardCode: selectedReward.RewardCode,
-      RewardPointsUsed: selectedReward.PointsRequired,
-      RewardDiscount: checkoutSummary.discount,
-      OriginalPrice: Number(orderValue || 0),
-      FinalPrice: checkoutSummary.finalPrice,
-    };
-    console.log("Payload FE gửi BE khi payment:", payloadForBE);
-    showToast("Đã tạo payload FE. Mở console để bạn BE mapping API.", "success");
+
+    setSubmitting(true);
+    try {
+      // 1. Tạo payload gửi xuống BE
+      const payloadForBE = {
+        userId: getCustomerId(),
+        bookingId: null,
+        RewardCode: selectedReward.RewardCode,
+        promotionId: selectedReward.RewardID,
+        RewardPointsUsed: selectedReward.PointsRequired,
+      };
+
+      // 2. Gọi API POST xuống Backend của Thắng
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("TOKEN");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const response = await axios.post(
+        `${API_BASE}/loyalty/redeem`,
+        payloadForBE,
+        { headers },
+      );
+
+      // 3. Xử lý khi thành công
+      if (response.data.success) {
+        showToast(response.data.message || "Đổi ưu đãi thành công!", "success");
+        setSelectedReward(null); // Bỏ chọn voucher hiện tại
+        fetchRewardData(); // Load lại điểm số mới nhất trên màn hình
+      }
+    } catch (error) {
+      console.error("Lỗi gọi API Redeem:", error);
+      showToast(
+        error.response?.data?.message || "Đã xảy ra lỗi khi đổi điểm!",
+        "error",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className="portal-layout-container">
       <Sidebar />
-      <main className="portal-main-content reward-main">
-        {toast && <div className={`reward-toast ${toast.type}`}>{toast.message}</div>}
+      <main className="portal-main-content">
+        {toast && (
+          <div className={`reward-toast ${toast.type}`}>{toast.message}</div>
+        )}
 
         <section className="reward-hero">
           <div>
@@ -140,7 +198,9 @@ export default function RewardRedemption() {
           <div className="reward-point-card">
             <span>Điểm hiện có</span>
             <strong>{profile.CurrentPoints}</strong>
-            <small>{profile.FullName} • {profile.TierName}</small>
+            <small>
+              {profile.FullName} • {profile.TierName}
+            </small>
           </div>
         </section>
 
@@ -149,27 +209,33 @@ export default function RewardRedemption() {
             <div className="reward-section-title">
               <div>
                 <h2>Voucher khả dụng</h2>
-                <p>Đổi điểm tích lũy để nhận ưu đãi phù hợp với đơn hàng.</p>
+                <p>Voucher đang hiệu lực từ hệ thống khuyến mãi.</p>
               </div>
-              <input
-                type="number"
-                min="0"
-                value={orderValue}
-                onChange={(e) => setOrderValue(Number(e.target.value))}
-                aria-label="Giá trị đơn hàng"
-              />
+              <div className="reward-mode-box">
+                <span>Chế độ</span>
+                <strong>Đổi điểm nhận voucher</strong>
+              </div>
             </div>
 
             {loading ? (
               <div className="reward-empty">Đang tải dữ liệu...</div>
+            ) : rewards.length === 0 ? (
+              <div className="reward-empty">
+                Hiện chưa có voucher đang hiệu lực từ hệ thống.
+              </div>
             ) : (
               <div className="reward-list">
                 {rewards.map((reward) => {
                   const disabled = !canUseReward(reward);
                   const active = selectedReward?.RewardID === reward.RewardID;
                   return (
-                    <article key={reward.RewardID} className={`reward-item ${active ? "active" : ""} ${disabled ? "disabled" : ""}`}>
-                      <div className="reward-badge"><i className="fa-solid fa-ticket"></i></div>
+                    <article
+                      key={reward.RewardID}
+                      className={`reward-item ${active ? "active" : ""} ${disabled ? "disabled" : ""}`}
+                    >
+                      <div className="reward-badge">
+                        <i className="fa-solid fa-ticket"></i>
+                      </div>
                       <div className="reward-info">
                         <div className="reward-row">
                           <h3>{reward.RewardName}</h3>
@@ -177,12 +243,20 @@ export default function RewardRedemption() {
                         </div>
                         <p>{reward.Description}</p>
                         <div className="reward-meta">
-                          <small><i className="fa-solid fa-coins"></i> {reward.PointsRequired} điểm</small>
-                          <small><i className="fa-solid fa-cart-shopping"></i> Tối thiểu {money(reward.MinOrderValue)}</small>
-                          <small><i className="fa-solid fa-tags"></i> Giảm {money(reward.DiscountAmount)}</small>
+                          <small>
+                            <i className="fa-solid fa-coins"></i>{" "}
+                            {reward.PointsRequired} điểm
+                          </small>
+                          <small>
+                            <i className="fa-solid fa-tags"></i> Giảm {reward.DiscountPercent}%
+                          </small>
                         </div>
                       </div>
-                      <button type="button" onClick={() => handleApplyReward(reward)} disabled={disabled}>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyReward(reward)}
+                        disabled={disabled}
+                      >
                         {active ? "Đã chọn" : disabled ? "Chưa đủ" : "Đổi điểm"}
                       </button>
                     </article>
@@ -193,26 +267,33 @@ export default function RewardRedemption() {
           </div>
 
           <aside className="reward-summary">
-            <h2>Tóm tắt thanh toán</h2>
-            <div className="summary-line"><span>Tạm tính</span><strong>{money(orderValue)}</strong></div>
-            <div className="summary-line discount"><span>Giảm reward</span><strong>-{money(checkoutSummary.discount)}</strong></div>
-            <div className="summary-total"><span>Cần thanh toán</span><strong>{money(checkoutSummary.finalPrice)}</strong></div>
+            <h2>Tóm tắt đổi điểm</h2>
             <div className="summary-code">
               <span>Mã đang chọn</span>
               <b>{selectedReward?.RewardCode || "Chưa chọn"}</b>
             </div>
             <div className="summary-code">
+              <span>Điểm cần dùng</span>
+              <b>{checkoutSummary.pointsUsed}</b>
+            </div>
+            <div className="summary-code">
               <span>Điểm còn lại</span>
               <b>{checkoutSummary.remainingPoints}</b>
             </div>
+            <div className="summary-code">
+              <span>Voucher khả dụng</span>
+              <b>{rewards.filter(canUseReward).length}/{rewards.length}</b>
+            </div>
             <button
               className="summary-btn"
-              onClick={handleMockCheckout}
-              disabled={!selectedReward}
+              onClick={handleCheckout}
+              disabled={!selectedReward || submitting}
             >
-              {selectedReward
-                ? "Áp dụng vào thanh toán"
-                : "Chọn voucher để áp dụng"}
+              {submitting
+                ? "Đang đổi điểm..."
+                : selectedReward
+                ? "Đổi điểm nhận voucher"
+                : "Chọn voucher để đổi"}
             </button>
           </aside>
         </section>
@@ -345,15 +426,28 @@ const rewardRedemptionCss = `
   color:var(--text-secondary);
 }
 
-.reward-section-title input{
-  width:180px;
+.reward-mode-box{
+  min-width:220px;
   border:1px solid var(--border);
   background:var(--bg-primary);
   color:var(--text-primary);
   border-radius:16px;
-  padding:13px 14px;
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.reward-mode-box span{
+  color:var(--text-secondary);
+  font-size:12px;
   font-weight:800;
-  outline:none;
+}
+
+.reward-mode-box strong{
+  color:var(--text-primary);
+  font-size:15px;
+  font-weight:900;
 }
 
 .reward-list{
@@ -532,7 +626,7 @@ const rewardRedemptionCss = `
   .reward-badge{
     display:none;
   }
-  .reward-section-title input{
+  .reward-mode-box{
     width:100%;
   }
 }

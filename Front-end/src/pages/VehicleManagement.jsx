@@ -1,8 +1,7 @@
 
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import MemberHeader from "../components/MemberHeader";
-import Sidebar from "../components/Sidebar"; // Trọng thêm: Import Sidebar cho Admin/Staff
+import Sidebar from "../components/Sidebar";
 import { useTheme } from "../context/ThemeContext";
 
 const API_BASE = "http://localhost:5000";
@@ -20,9 +19,16 @@ const COLOR_MAP = {
   "Vàng":"#eab308","Nâu":"#92400e","Cam":"#f97316",
 };
 
-const EMPTY_FORM = { userId: "", plateNumber: "", brand: "", model: "", color: "" };
+const EMPTY_FORM = { userId: "", plateNumber: "", vehicleType: "", brand: "", model: "", color: "" };
 
 const normalizePlate = (value) => value.toUpperCase().replace(/\s+/g, '');
+
+const isMemberRole = (role) =>
+  ["user", "member"].includes(String(role || "").toLowerCase());
+
+const vehicleTypeLabel = (type) =>
+  type === "MOTORBIKE" ? "Xe máy" : type === "CAR" ? "Ô tô" : "Chưa phân loại";
+
 
 const getLoggedInUser = () => {
   const token = localStorage.getItem("TOKEN") || localStorage.getItem("token");
@@ -39,7 +45,7 @@ const getLoggedInUser = () => {
 };
 
 export default function VehicleManagement() {
-  const { mode } = useTheme(); // Trọng thêm: Đọc giao diện sáng/tối hiện tại
+  const { mode } = useTheme();//giao diện sáng/tối hiện tại
   const [vehicles, setVehicles]           = useState([]);
   const [users, setUsers]                 = useState([]);
   const [formData, setFormData]           = useState(EMPTY_FORM);
@@ -48,7 +54,7 @@ export default function VehicleManagement() {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [filterUserId, setFilterUserId]   = useState(() => {
     const u = getLoggedInUser();
-    return (u && u.role === "user") ? String(u.userId) : "all";
+    return (u && isMemberRole(u.role)) ? String(u.userId) : "all";
   });
   const [searchQuery, setSearchQuery]     = useState("");
   const [loading, setLoading]             = useState(false);
@@ -81,7 +87,7 @@ export default function VehicleManagement() {
   // API này đặt trong vehicle router: GET /api/vehicles/users
   // để không sửa file user.js của thành viên khác.
   const fetchVehicleUsers = useCallback(async () => {
-    if (currentUser && currentUser.role === "user") return;
+    if (currentUser && isMemberRole(currentUser.role)) return;
     try {
       const res = await fetch(`${API_BASE}/api/vehicles/users`, {
         headers: { "Authorization": `Bearer ${token}` }
@@ -101,7 +107,7 @@ export default function VehicleManagement() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      const effectiveFilterUserId = (currentUser && currentUser.role === "user")
+      const effectiveFilterUserId = (currentUser && isMemberRole(currentUser.role))
         ? String(currentUser.userId)
         : filterUserId;
 
@@ -136,6 +142,7 @@ export default function VehicleManagement() {
         // So sánh các trường chính để tránh kích hoạt lại setSelectedVehicle thừa
         const isDifferent =
           updated.plateNumber !== selectedVehicle.plateNumber ||
+          updated.vehicleType !== selectedVehicle.vehicleType ||
           updated.brand !== selectedVehicle.brand ||
           updated.model !== selectedVehicle.model ||
           updated.color !== selectedVehicle.color ||
@@ -153,12 +160,13 @@ export default function VehicleManagement() {
 
   // ── Submit form (Add / Edit) ───────────────────────────────
   const handleSubmit = async () => {
-    const userId = (currentUser && currentUser.role === "user") ? currentUser.userId : formData.userId;
+    const userId = (currentUser && isMemberRole(currentUser.role)) ? currentUser.userId : formData.userId;
     const plateNumber = normalizePlate(formData.plateNumber);
+    const vehicleType = formData.vehicleType;
     const brand = formData.brand.trim();
     const model = formData.model.trim();
     const color = formData.color;
-    if (!userId || !plateNumber || !brand || !model || !color) {
+    if (!userId || !plateNumber || !vehicleType || !brand || !model || !color) {
       showToast("Vui lòng điền đầy đủ thông tin!", "error");
       return;
     }
@@ -172,7 +180,7 @@ export default function VehicleManagement() {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
           },
-          body: JSON.stringify({ plateNumber, brand, model, color }),
+          body: JSON.stringify({ plateNumber, vehicleType, brand, model, color }),
         });
         const data = await res.json();
         if (!res.ok) { showToast(data.message || "Lỗi cập nhật xe!", "error"); return; }
@@ -187,7 +195,7 @@ export default function VehicleManagement() {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
           },
-          body: JSON.stringify({ userId: parseInt(userId), plateNumber, brand, model, color }),
+          body: JSON.stringify({ userId: parseInt(userId), plateNumber, vehicleType, brand, model, color }),
         });
         const data = await res.json();
         if (!res.ok) { showToast(data.message || "Lỗi thêm xe!", "error"); return; }
@@ -195,8 +203,9 @@ export default function VehicleManagement() {
         showToast("Thêm xe thành công!");
       }
       setFormData({
-        userId: (currentUser && currentUser.role === "user") ? String(currentUser.userId) : "",
+        userId: (currentUser && isMemberRole(currentUser.role)) ? String(currentUser.userId) : "",
         plateNumber: "",
+        vehicleType: "",
         brand: "",
         model: "",
         color: ""
@@ -233,6 +242,7 @@ export default function VehicleManagement() {
     setFormData({
       userId:      String(v.userId),
       plateNumber: v.plateNumber,
+      vehicleType: v.vehicleType || "",
       brand:       v.brand,
       model:       v.model,
       color:       v.color,
@@ -245,6 +255,7 @@ export default function VehicleManagement() {
     const q = searchQuery.toLowerCase();
     return (
       v.plateNumber.toLowerCase().includes(q) ||
+      vehicleTypeLabel(v.vehicleType).toLowerCase().includes(q) ||
       v.brand.toLowerCase().includes(q) ||
       v.model.toLowerCase().includes(q) ||
       (v.ownerName || "").toLowerCase().includes(q)
@@ -256,6 +267,8 @@ export default function VehicleManagement() {
     total:   vehicles.length,
     owners:  [...new Set(vehicles.map(v => v.userId))].length,
     brands:  [...new Set(vehicles.map(v => v.brand))].length,
+    cars: vehicles.filter(v => v.vehicleType === "CAR").length,
+    motorbikes: vehicles.filter(v => v.vehicleType === "MOTORBIKE").length,
   };
 
   const handleLogout = () => {
@@ -264,8 +277,6 @@ export default function VehicleManagement() {
     localStorage.removeItem("LOGIN_USER");
     window.location.href = "/login";
   };
-
-  const isMember = !currentUser || (currentUser.role !== "admin" && currentUser.role !== "staff"); // kept for other logic
 
   return (
     <div className="portal-layout-container" style={{ ...s.root, padding: 0, minHeight: "100vh" }}>
@@ -334,8 +345,8 @@ export default function VehicleManagement() {
         <div style={s.statsRow}>
           {[
             { icon: "🚘", label: "Tổng xe",   val: stats.total },
-            { icon: "👤", label: "Chủ xe",    val: stats.owners },
-            { icon: "🏷️", label: "Hãng xe",  val: stats.brands },
+            { icon: "🚗", label: "Ô tô",      val: stats.cars },
+            { icon: "🏍️", label: "Xe máy",   val: stats.motorbikes },
             { icon: "📋", label: "Hiển thị", val: filtered.length },
           ].map((st, i) => (
             <div key={i} style={s.statCard}>
@@ -352,7 +363,7 @@ export default function VehicleManagement() {
             <h2 style={s.formTitle}>{editingId ? "✏️ Chỉnh sửa xe" : "➕ Thêm xe mới"}</h2>
             <div style={s.formGrid}>
               {/* Chủ xe — ẩn khi đang edit hoặc role là user */}
-              {!editingId && (!currentUser || currentUser.role !== "user") && (
+              {!editingId && (!currentUser || !isMemberRole(currentUser.role)) && (
                 <div style={s.field}>
                   <label style={s.label}>Chủ sở hữu *</label>
                   <select style={s.input} value={formData.userId}
@@ -369,6 +380,15 @@ export default function VehicleManagement() {
                 <input style={s.input} placeholder="VD: 59A-12345"
                   value={formData.plateNumber}
                   onChange={e => setFormData({ ...formData, plateNumber: normalizePlate(e.target.value) })} />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Loại xe *</label>
+                <select style={s.input} value={formData.vehicleType}
+                  onChange={e => setFormData({ ...formData, vehicleType: e.target.value })}>
+                  <option value="">-- Chọn loại xe --</option>
+                  <option value="MOTORBIKE">Xe máy</option>
+                  <option value="CAR">Ô tô</option>
+                </select>
               </div>
               <div style={s.field}>
                 <label style={s.label}>Hãng xe *</label>
@@ -399,7 +419,7 @@ export default function VehicleManagement() {
               </button>
               <button style={{ ...s.submitBtn, opacity: submitting ? 0.7 : 1 }}
                 onClick={handleSubmit} 
-                disabled={submitting || (!editingId && (!currentUser || currentUser.role !== "user") && users.length === 0)}>
+                disabled={submitting || (!editingId && (!currentUser || !isMemberRole(currentUser.role)) && users.length === 0)}>
                 {submitting ? "Đang lưu..." : editingId ? "Cập nhật xe" : "Thêm xe"}
               </button>
             </div>
@@ -415,7 +435,7 @@ export default function VehicleManagement() {
                 placeholder="🔍 Tìm biển số, hãng, dòng xe, chủ xe..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)} />
-              {(!currentUser || currentUser.role !== "user") && (
+              {(!currentUser || !isMemberRole(currentUser.role)) && (
                 <select style={s.filterSelect} value={filterUserId}
                   onChange={e => setFilterUserId(e.target.value)}>
                   <option value="all">👤 Tất cả chủ xe</option>
@@ -490,6 +510,7 @@ export default function VehicleManagement() {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                         <span style={s.brandModel}>
                           {v.brand} <span style={{ color: "var(--text-secondary)", fontWeight: 400 }}>{v.model}</span>
+                          <span style={s.typeBadge}>{vehicleTypeLabel(v.vehicleType)}</span>
                         </span>
                         <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)", fontSize: 13 }}>
                           <span style={{ width: 10, height: 10, borderRadius: "50%", background: dotColor,
@@ -530,13 +551,14 @@ export default function VehicleManagement() {
                     {selectedVehicle.plateNumber}
                   </h2>
                   <p style={{ color: "var(--text-secondary)", margin: 0 }}>
-                    {selectedVehicle.brand} · {selectedVehicle.model}
+                    {vehicleTypeLabel(selectedVehicle.vehicleType)} · {selectedVehicle.brand} · {selectedVehicle.model}
                   </p>
                 </div>
 
                 {/* Info grid */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
                   {[
+                    ["Loại xe",    vehicleTypeLabel(selectedVehicle.vehicleType)],
                     ["Hãng xe",    selectedVehicle.brand],
                     ["Dòng xe",    selectedVehicle.model],
                     ["Biển số",    selectedVehicle.plateNumber],
@@ -722,7 +744,8 @@ const s = {
   vehicleCard: { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, cursor: "pointer", transition: "border-color 0.2s" },
   vehicleCardActive: { borderColor: "#3b82f6", background: "#1a2d4a" },
   plate: { color: "var(--text-primary)", fontWeight: 800, fontSize: 16, letterSpacing: 1 },
-  brandModel: { color: "var(--text-primary)", fontSize: 14, fontWeight: 600 },
+  brandModel: { color: "var(--text-primary)", fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  typeBadge: { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "3px 8px", background: "rgba(59,130,246,0.14)", color: "#60a5fa", fontSize: 11, fontWeight: 800 },
   avatar: { width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 },
   editBtnSm: { background: "#1e3a1e", border: "1px solid #166534", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 13 },
   deleteBtnSm: { background: "#3a1e1e", border: "1px solid #991b1b", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 13 },

@@ -699,7 +699,7 @@ const s = {
   root: { minHeight: "100vh", width: "100%", boxSizing: "border-box", background: "var(--bg-primary)", fontFamily: "'Be Vietnam Pro','Segoe UI',sans-serif", position: "relative", padding: "40px 20px" },
   bg: { position: "fixed", inset: 0, background: "radial-gradient(ellipse 80% 60% at 30% 0%,#1a3a2a44 0%,transparent 60%)", pointerEvents: "none" },
   bgGrid: { position: "fixed", inset: 0, backgroundImage: "linear-gradient(rgba(148,163,184,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,0.03) 1px,transparent 1px)", backgroundSize: "40px 40px", pointerEvents: "none" },
-  wrapper: { maxWidth: "1280px", margin: "0", boxSizing: "border-box", position: "relative", zIndex: 1 },
+  wrapper: { width: "100%", maxWidth: "100%", margin: "0", boxSizing: "border-box", position: "relative", zIndex: 1 },
   navbar: {
     maxWidth: "1280px",
     margin: "0 auto 25px auto",

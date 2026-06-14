@@ -214,4 +214,51 @@ router.patch("/:id/expire", async (req, res) => {
   }
 });
 
+
+// DELETE /api/promotions/:id
+router.delete("/:id", async (req, res) => {
+  const promotionId = Number(req.params.id);
+  if (!promotionId) {
+    return res.status(400).json({ message: "PromotionID không hợp lệ" });
+  }
+
+  const transaction = new sql.Transaction(await poolPromise);
+
+  try {
+    await transaction.begin();
+
+    const request = new sql.Request(transaction);
+    request.input("promotionId", sql.Int, promotionId);
+
+    const checkResult = await request.query(`
+      SELECT PromotionID
+      FROM PROMOTION
+      WHERE PromotionID = @promotionId
+    `);
+
+    if (!checkResult.recordset.length) {
+      await transaction.rollback();
+      return res.status(404).json({ message: "Không tìm thấy khuyến mãi" });
+    }
+
+    await request.query(`
+      DELETE FROM MEMBER_PROMOTION
+      WHERE PromotionID = @promotionId
+    `);
+
+    await request.query(`
+      DELETE FROM PROMOTION
+      WHERE PromotionID = @promotionId
+    `);
+
+    await transaction.commit();
+
+    res.json({ message: "Xóa khuyến mãi thành công" });
+  } catch (err) {
+    await transaction.rollback();
+    console.error("DELETE /api/promotions/:id error:", err);
+    res.status(500).json({ message: "Lỗi khi xóa khuyến mãi" });
+  }
+});
+
 module.exports = router;

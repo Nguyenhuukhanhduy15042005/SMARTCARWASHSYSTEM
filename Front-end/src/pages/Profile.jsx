@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
+import Sidebar from "../components/Sidebar"; // Trọng thêm: Import Sidebar cho Admin/Staff
 
 const API = "http://localhost:5000/api/users";
 
@@ -45,7 +45,8 @@ export default function Profile({ setUser }) {
         if (!res.ok) throw new Error("Không thể lấy thông tin!");
         const data = await res.json();
         setLocalUser(data);
-        setForm({ fullName: data.FullName || "", phone: data.PhoneNumber || "", email: data.Email || "", oldPassword: "", newPassword: "", confirmPassword: "" });
+        const phoneVal = (data.PhoneNumber && !data.PhoneNumber.startsWith("G-")) ? data.PhoneNumber : "";
+        setForm({ fullName: data.FullName || "", phone: phoneVal, email: data.Email || "", newPassword: "" });
       } catch (err) {
         setMsg({ text: err.message, type: "error" });
       } finally {
@@ -58,44 +59,20 @@ export default function Profile({ setUser }) {
   const handleSave = async () => {
     setMsg({ text: "", type: "" });
 
-    // ✅ Validate đổi mật khẩu (chỉ khi người dùng có nhập mật khẩu mới)
-    if (form.newPassword || form.oldPassword || form.confirmPassword) {
-      if (!form.oldPassword) {
-        setMsg({ text: "Vui lòng nhập mật khẩu cũ.", type: "error" });
-        return;
-      }
-      if (!form.newPassword) {
-        setMsg({ text: "Vui lòng nhập mật khẩu mới.", type: "error" });
-        return;
-      }
-      const strengthErrors = validatePasswordStrength(form.newPassword);
-      if (strengthErrors.length > 0) {
-        setMsg({ text: `Mật khẩu mới chưa đủ mạnh, cần có: ${strengthErrors.join(", ")}.`, type: "error" });
-        return;
-      }
-      if (form.newPassword === form.oldPassword) {
-        setMsg({ text: "Mật khẩu mới không được giống mật khẩu cũ.", type: "error" });
-        return;
-      }
-      if (form.newPassword !== form.confirmPassword) {
-        setMsg({ text: "Mật khẩu xác nhận không khớp với mật khẩu mới.", type: "error" });
-        return;
-      }
+    // Xác thực số điện thoại Việt Nam
+    if (!form.phone) {
+      setMsg({ text: "❌ Vui lòng nhập số điện thoại liên hệ!", type: "error" });
+      setSaving(false);
+      return;
+    }
+    const phoneRegex = /^(0[35789])[0-9]{8}$/;
+    if (!phoneRegex.test(form.phone)) {
+      setMsg({ text: "❌ Số điện thoại không hợp lệ! Định dạng đúng gồm 10 chữ số di động Việt Nam (ví dụ: 0912345678).", type: "error" });
+      setSaving(false);
+      return;
     }
 
-    setSaving(true);
     try {
-      // Chỉ gửi oldPassword/newPassword khi người dùng thực sự muốn đổi mật khẩu
-      const payload = {
-        fullName: form.fullName,
-        phone: form.phone,
-        email: form.email,
-      };
-      if (form.newPassword) {
-        payload.oldPassword = form.oldPassword;
-        payload.newPassword = form.newPassword;
-      }
-
       const res = await fetch(`${API}/me`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -131,18 +108,16 @@ export default function Profile({ setUser }) {
     );
   }
 
-  const isMember = !user || (user.RoleID !== 1 && user.RoleID !== 2); // kept for role badge display only
-
   return (
-    <div className="portal-layout-container" style={{ minHeight: "100vh" }}>
+    <div className="portal-layout-container">
       <Sidebar />
-      <main
-        className="portal-main-content"
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: "40px 20px",
+      <main 
+        className="portal-main-content" 
+        style={{ 
+          display: "flex", 
+          justifyContent: "center", 
+          alignItems: "center", 
+          padding: "40px 20px" 
         }}
       >
         <div className="auth-card" style={{ maxWidth: 520, width: "100%", textAlign: "left" }}>
@@ -191,7 +166,13 @@ export default function Profile({ setUser }) {
             <label>Số điện thoại</label>
             {editing
               ? <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#1e293b" }}>{user?.PhoneNumber}</div>}
+              : <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 14, border: "1px solid #e2e8f0", color: "#1e293b" }}>
+                  {!user?.PhoneNumber || user.PhoneNumber.startsWith("G-") ? (
+                    <span style={{ color: "#ef4444", fontWeight: 500 }}>Chưa cập nhật (Cần cập nhật để liên hệ)</span>
+                  ) : (
+                    user.PhoneNumber
+                  )}
+                </div>}
           </div>
           <div className="input-group" style={{ gridColumn: "1 / -1" }}>
             <label>Email</label>
