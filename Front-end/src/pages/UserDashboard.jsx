@@ -11,6 +11,7 @@ export default function UserDashboard() {
   const navigate = useNavigate(); // Trọng thêm
   const [bookings, setBookings] = useState([]);
   const [paidBookingIds, setPaidBookingIds] = useState(new Set());
+  const [paidBookingMethods, setPaidBookingMethods] = useState(new Map());
   const [profile, setProfile] = useState({ 
     UserID: 12, 
     FullName: "Khách hàng", 
@@ -123,8 +124,11 @@ export default function UserDashboard() {
       // Lấy danh sách BookingID đã thanh toán
       try {
         const paymentsRes = await axios.get(`${API_BASE}/payments/history?limit=100`, { headers });
-        const paidIds = new Set((paymentsRes.data?.data || []).map(p => p.BookingID));
+        const paymentsData = paymentsRes.data?.data || [];
+        const paidIds = new Set(paymentsData.map(p => p.BookingID));
+        const methodMap = new Map(paymentsData.map(p => [p.BookingID, p.Method]));
         setPaidBookingIds(paidIds);
+        setPaidBookingMethods(methodMap);
       } catch (e) {
         // Không chặn luồng chính nếu lấy payment history lỗi
       }
@@ -227,10 +231,13 @@ export default function UserDashboard() {
 
   const getStatusPill = (status, bookingId) => {
     if (status === 2 && paidBookingIds.has(bookingId)) {
+      if (paidBookingMethods.get(bookingId) === "cash") {
+        return <span className="status-pill status-deposit" style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)" }}><i className="fa-solid fa-coins"></i> Đã đặt cọc</span>;
+      }
       return <span className="status-pill status-paid" style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}><i className="fa-solid fa-circle-check"></i> Đã thanh toán</span>;
     }
     switch (status) {
-      case 1: return <span className="status-pill status-pending"><i className="fa-regular fa-clock"></i> Chờ duyệt</span>;
+      case 1:
       case 2: return <span className="status-pill status-confirmed"><i className="fa-solid fa-check"></i> Đã xác nhận</span>;
       case 3: return <span className="status-pill status-inservice"><i className="fa-solid fa-arrows-spin fa-spin"></i> Đang rửa</span>;
       case 4: return <span className="status-pill status-completed"><i className="fa-regular fa-circle-check"></i> Hoàn thành</span>;
@@ -549,21 +556,17 @@ export default function UserDashboard() {
             <div className="admin-modal-body">
               {/* Progress Flow */}
               <div className="modal-timeline">
-                <div className={`timeline-step ${selectedBooking.status >= 1 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 1 ? "active" : ""}`}>
+                <div className={`timeline-step ${selectedBooking.status >= 2 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${(selectedBooking.status === 1 || selectedBooking.status === 2) ? "active" : ""}`}>
                   <div className="timeline-node">1</div>
-                  <div className="timeline-label">Chờ duyệt</div>
-                </div>
-                <div className={`timeline-step ${selectedBooking.status >= 2 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 2 ? "active" : ""}`}>
-                  <div className="timeline-node">2</div>
                   <div className="timeline-label">Xác nhận</div>
                 </div>
                 <div className={`timeline-step ${selectedBooking.status >= 3 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 3 ? "active" : ""}`}>
-                  <div className="timeline-node">3</div>
+                  <div className="timeline-node">2</div>
                   <div className="timeline-label">Đang rửa</div>
                 </div>
                 <div className={`timeline-step ${selectedBooking.status === 4 ? "completed active" : ""} ${selectedBooking.status === 5 ? "active" : ""}`}>
                   <div className="timeline-node" style={{ backgroundColor: selectedBooking.status === 5 ? "var(--color-danger)" : "" }}>
-                    {selectedBooking.status === 5 ? <i className="fa-solid fa-xmark"></i> : "4"}
+                    {selectedBooking.status === 5 ? <i className="fa-solid fa-xmark"></i> : "3"}
                   </div>
                   <div className="timeline-label">{selectedBooking.status === 5 ? "Đã hủy" : "Hoàn thành"}</div>
                 </div>

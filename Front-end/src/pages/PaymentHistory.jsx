@@ -153,7 +153,11 @@ export default function PaymentHistory() {
                 </div>
                 <div className="ph-item-right">
                   <p className="ph-item-amount">{formatPrice(p.Amount)}</p>
-                  <span className="ph-status status-paid">✓ Đã thanh toán</span>
+                  {p.Method === "cash" ? (
+                    <span className="ph-status status-deposit">💰 Đã đặt cọc</span>
+                  ) : (
+                    <span className="ph-status status-paid">✓ Đã xác nhận</span>
+                  )}
                   <button className="ph-refund-btn"
                     onClick={() => { setRefundModal({ payment: p }); setRefundReason(""); }}>
                     Hoàn tiền
