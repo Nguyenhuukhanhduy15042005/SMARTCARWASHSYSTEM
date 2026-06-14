@@ -8,6 +8,18 @@ function getInitials(name = "") {
   return name.split(" ").slice(-2).map((w) => w[0]).join("").toUpperCase();
 }
 
+// Quy tắc mật khẩu mạnh: tối thiểu 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt
+function validatePasswordStrength(password) {
+  const errors = [];
+  if (password.length < 8) errors.push("ít nhất 8 ký tự");
+  if (!/[A-Z]/.test(password)) errors.push("ít nhất 1 chữ in hoa");
+  if (!/[a-z]/.test(password)) errors.push("ít nhất 1 chữ thường");
+  if (!/[0-9]/.test(password)) errors.push("ít nhất 1 chữ số");
+  if (!/[^A-Za-z0-9]/.test(password)) errors.push("ít nhất 1 ký tự đặc biệt (!@#$%...)");
+  if (/\s/.test(password)) errors.push("không chứa khoảng trắng");
+  return errors;
+}
+
 export default function Profile({ setUser }) {
   const navigate = useNavigate();
   const [user, setLocalUser] = useState(null);
@@ -15,7 +27,7 @@ export default function Profile({ setUser }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "" });
-  const [form, setForm] = useState({ fullName: "", phone: "", email: "", newPassword: "" });
+  const [form, setForm] = useState({ fullName: "", phone: "", email: "", oldPassword: "", newPassword: "", confirmPassword: "" });
 
   // ✅ Dùng "TOKEN" (viết hoa) — khớp với Login.jsx
   const token = localStorage.getItem("TOKEN");
@@ -45,7 +57,6 @@ export default function Profile({ setUser }) {
   }, [token]);
 
   const handleSave = async () => {
-    setSaving(true);
     setMsg({ text: "", type: "" });
 
     // Xác thực số điện thoại Việt Nam
@@ -65,7 +76,7 @@ export default function Profile({ setUser }) {
       const res = await fetch(`${API}/me`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -80,6 +91,7 @@ export default function Profile({ setUser }) {
       if (setUser) setUser(updatedUser);
 
       setMsg({ text: "✅ Cập nhật thành công!", type: "success" });
+      setForm((prev) => ({ ...prev, oldPassword: "", newPassword: "", confirmPassword: "" }));
       setEditing(false);
     } catch (err) {
       setMsg({ text: err.message, type: "error" });
@@ -175,15 +187,38 @@ export default function Profile({ setUser }) {
             </div>
           </div>
           {editing && (
-            <div className="input-group" style={{ gridColumn: "1 / -1" }}>
-              <label>Mật khẩu mới (để trống nếu không đổi)</label>
-              <input
-                type="password"
-                placeholder="Nhập mật khẩu mới..."
-                value={form.newPassword}
-                onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
-              />
-            </div>
+            <>
+              <div className="input-group" style={{ gridColumn: "1 / -1" }}>
+                <label>Mật khẩu cũ</label>
+                <input
+                  type="password"
+                  placeholder="Nhập mật khẩu hiện tại..."
+                  value={form.oldPassword}
+                  onChange={(e) => setForm({ ...form, oldPassword: e.target.value })}
+                />
+              </div>
+              <div className="input-group">
+                <label>Mật khẩu mới (để trống nếu không đổi)</label>
+                <input
+                  type="password"
+                  placeholder="Nhập mật khẩu mới..."
+                  value={form.newPassword}
+                  onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+                />
+              </div>
+              <div className="input-group">
+                <label>Nhập lại mật khẩu mới</label>
+                <input
+                  type="password"
+                  placeholder="Nhập lại mật khẩu mới..."
+                  value={form.confirmPassword}
+                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "#94a3b8", marginTop: -6 }}>
+                Mật khẩu mới cần tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
+              </div>
+            </>
           )}
         </div>
 
@@ -191,7 +226,11 @@ export default function Profile({ setUser }) {
         {editing && (
           <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}>
             <button
-              onClick={() => { setEditing(false); setMsg({ text: "", type: "" }); }}
+              onClick={() => {
+                setEditing(false);
+                setMsg({ text: "", type: "" });
+                setForm((prev) => ({ ...prev, oldPassword: "", newPassword: "", confirmPassword: "" }));
+              }}
               style={{ padding: "10px 20px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 14, color: "#475569", fontWeight: 600 }}
             >
               Hủy

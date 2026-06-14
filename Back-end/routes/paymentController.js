@@ -51,4 +51,11 @@ const refundPayment = async (req, res) => {
   } catch (err) { res.status(400).json({ message: err.message }); }
 };
  
-module.exports = { createPayment, vnpayReturn, getPaymentHistory, refundPayment, getUserTier };
+const confirmCashDeposit = async (req, res) => {
+  try {
+    const result = await service.confirmCashDeposit(Number(req.params.id));
+    res.json(result);
+  } catch (err) { res.status(400).json({ message: err.message }); }
+};
+ 
+module.exports = { createPayment, vnpayReturn, getPaymentHistory, refundPayment, getUserTier, confirmCashDeposit };

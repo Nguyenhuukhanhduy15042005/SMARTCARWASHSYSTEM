@@ -1,7 +1,7 @@
 const { sql, poolPromise } = require('../db');
 const crypto = require('crypto');
 const moment = require('moment');
-const qs = require('qs');
+const querystring = require('qs');
 
 const VNPAY_CONFIG = {
   tmnCode:    process.env.VNPAY_TMN_CODE    || 'I50786JJ',
@@ -28,7 +28,7 @@ const createVNPayUrl = (paymentId, amount, orderInfo, ipAddr) => {
     .replace(/[^a-zA-Z0-9 ]/g, '')
     .substring(0, 255);
 
-  const vnpParams = sortObject({
+  let vnp_Params = sortObject({
     vnp_Version:    '2.1.0',
     vnp_Command:    'pay',
     vnp_TmnCode:    VNPAY_CONFIG.tmnCode,
@@ -43,29 +43,20 @@ const createVNPayUrl = (paymentId, amount, orderInfo, ipAddr) => {
     vnp_CreateDate: date,
   });
 
-  // ✅ Ký trên giá trị có + thay space — khớp với URL gửi đi
-  const signData = Object.keys(vnpParams)
-    .map(k => `${k}=${String(vnpParams[k]).split(' ').join('+')}`)
-    .join('&');
-
-  console.log('=== VNPAY SIGN DATA ===');
-  console.log(signData);
-
+  // Ký với space→+ vì frontend dùng form GET (browser tự encode space thành +)
+  const signData = querystring.stringify(vnp_Params, { encode: false }).replace(/ /g, '+');
   const hmac = crypto.createHmac('sha512', VNPAY_CONFIG.hashSecret);
   const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 
-  console.log('=== VNPAY HASH ===');
-  console.log(signed);
+  vnp_Params['vnp_SecureHash'] = signed;
 
-  // ✅ Build URL — encode space thành + trong value, không encode ký tự khác
-  const urlQuery = Object.keys(vnpParams)
-    .map(k => `${k}=${String(vnpParams[k]).split(' ').join('+')}`)
-    .concat(`vnp_SecureHash=${signed}`)
-    .join('&');
+  // URL dùng encode: false (space giữ nguyên, form submit sẽ tự encode)
+  const paymentUrl = VNPAY_CONFIG.url + '?' + querystring.stringify(vnp_Params, { encode: false });
 
-  const finalUrl = `${VNPAY_CONFIG.url}?${urlQuery}`;
+  console.log('SignData:', signData.substring(0, 100) + '...');
+  console.log('PaymentURL:', paymentUrl.substring(0, 120) + '...');
 
-  return finalUrl;
+  return paymentUrl;
 };
 
 const verifyVNPayReturn = (query) => {
@@ -75,20 +66,10 @@ const verifyVNPayReturn = (query) => {
   delete params['vnp_SecureHashType'];
 
   const sortedParams = sortObject(params);
-
-  // ✅ Verify trên raw values (Express đã decode)
-  const signData = Object.keys(sortedParams)
-    .map(k => `${k}=${sortedParams[k]}`)
-    .join('&');
-
+  // VNPay gửi về đã decode, ký với encode: false
+  const signData = querystring.stringify(sortedParams, { encode: false }).replace(/ /g, '+');
   const hmac = crypto.createHmac('sha512', VNPAY_CONFIG.hashSecret);
   const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
-
-  console.log('=== VNPAY VERIFY ===');
-  console.log('Expected:', signed);
-  console.log('Received:', secureHash);
-  console.log('Match:', signed === secureHash);
-
   return signed === secureHash && query['vnp_ResponseCode'] === '00';
 };
 
@@ -144,16 +125,26 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
 
   const payment = result.recordset[0];
 
-  await pool.request()
-    .input('bookingId', sql.Int, bookingId)
-    .query(`UPDATE BOOKING SET Status = 2 WHERE BookingID = @bookingId`);
+  // Cash Gold/Platinum (amount=0) → xác nhận giữ chỗ luôn (Status = 2)
+  // Cash Bronze/Silver → chờ VNPay callback mới lên Status 2
+  // VNPay/MoMo chọn thẳng → chờ callback
+  if (method === 'cash' && !depositOnly) {
+    await pool.request()
+      .input('bookingId', sql.Int, bookingId)
+      .query(`UPDATE BOOKING SET Status = 2 WHERE BookingID = @bookingId`);
+  }
 
   let paymentUrl = null;
-  if (method === 'vnpay' && paymentAmount > 0) {
+
+  if (method === 'vnpay') {
+    // Thanh toán VNPay thường — toàn bộ giá trị
+    paymentUrl = createVNPayUrl(payment.PaymentID, paymentAmount, `Thanh toan booking ${bookingId}`, ipAddr);
+  } else if (method === 'cash' && depositOnly) {
+    // Cash Bronze/Silver → dùng VNPay để thu 10% đặt cọc
     paymentUrl = createVNPayUrl(
       payment.PaymentID,
-      paymentAmount,
-      `Thanh toan booking ${bookingId}`,
+      paymentAmount, // đã là 10% rồi
+      `Dat coc booking ${bookingId}`,
       ipAddr
     );
   }
@@ -171,12 +162,10 @@ const confirmVNPay = async (query) => {
   const paymentId = Number(query['vnp_TxnRef']);
   if (isValid) {
     const pool = await poolPromise;
-    const pc = await pool.request()
-      .input('paymentId', sql.Int, paymentId)
+    const pc = await pool.request().input('paymentId', sql.Int, paymentId)
       .query(`SELECT BookingID FROM PAYMENT WHERE PaymentID = @paymentId`);
     if (pc.recordset.length) {
-      await pool.request()
-        .input('bookingId', sql.Int, pc.recordset[0].BookingID)
+      await pool.request().input('bookingId', sql.Int, pc.recordset[0].BookingID)
         .query(`UPDATE BOOKING SET Status = 3 WHERE BookingID = @bookingId`);
     }
   }
@@ -187,9 +176,7 @@ const getPaymentHistory = async (userId, { page = 1, limit = 10 } = {}) => {
   const pool = await poolPromise;
   const offset = (page - 1) * limit;
   const result = await pool.request()
-    .input('userId', sql.Int, userId)
-    .input('limit', sql.Int, limit)
-    .input('offset', sql.Int, offset)
+    .input('userId', sql.Int, userId).input('limit', sql.Int, limit).input('offset', sql.Int, offset)
     .query(`
       SELECT p.PaymentID, p.BookingID, p.PaymentMethod AS Method, p.Amount, p.PaidAt,
         b.Status AS BookingStatus, b.VehicleType, b.LicensePlate, b.FinalPrice, s.ServiceName
@@ -201,29 +188,34 @@ const getPaymentHistory = async (userId, { page = 1, limit = 10 } = {}) => {
       ORDER BY p.PaidAt DESC
       OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
     `);
-  const countResult = await pool.request()
-    .input('userId', sql.Int, userId)
+  const countResult = await pool.request().input('userId', sql.Int, userId)
     .query(`SELECT COUNT(*) AS total FROM PAYMENT p JOIN BOOKING b ON p.BookingID = b.BookingID WHERE b.CustomerID = @userId`);
-  return {
-    data: result.recordset,
-    total: countResult.recordset[0].total,
-    page: Number(page),
-    limit: Number(limit)
-  };
+  return { data: result.recordset, total: countResult.recordset[0].total, page: Number(page), limit: Number(limit) };
 };
 
 const refundPayment = async (paymentId) => {
   const pool = await poolPromise;
-  const pc = await pool.request()
-    .input('paymentId', sql.Int, paymentId)
-    .query(`SELECT * FROM PAYMENT WHERE PaymentID = @paymentId`);
+  const pc = await pool.request().input('paymentId', sql.Int, paymentId)
+    .query(`
+      SELECT p.*, b.Status AS BookingStatus
+      FROM PAYMENT p
+      JOIN BOOKING b ON p.BookingID = b.BookingID
+      WHERE p.PaymentID = @paymentId
+    `);
   if (!pc.recordset.length) throw new Error('Không tìm thấy payment');
   const payment = pc.recordset[0];
-  await pool.request()
-    .input('bookingId', sql.Int, payment.BookingID)
+
+  // Không cho hoàn tiền nếu xe đã bắt đầu rửa hoặc đã hoàn thành
+  if (payment.BookingStatus === 3) {
+    throw new Error('Xe đang được rửa, không thể hoàn tiền!');
+  }
+  if (payment.BookingStatus === 4) {
+    throw new Error('Đơn đã hoàn thành, không thể hoàn tiền!');
+  }
+
+  await pool.request().input('bookingId', sql.Int, payment.BookingID)
     .query(`UPDATE BOOKING SET Status = 5 WHERE BookingID = @bookingId`);
-  await pool.request()
-    .input('paymentId', sql.Int, paymentId)
+  await pool.request().input('paymentId', sql.Int, paymentId)
     .query(`DELETE FROM PAYMENT WHERE PaymentID = @paymentId`);
   return { paymentId, refunded: true, amount: payment.Amount };
 };

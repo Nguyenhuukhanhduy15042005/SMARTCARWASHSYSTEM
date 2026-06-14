@@ -5,11 +5,12 @@ import { jwtDecode } from "jwt-decode";
 import { Link, useNavigate } from "react-router-dom"; // Trọng thêm
 import Sidebar from "../components/Sidebar";
 
-const API_BASE = "http://127.0.0.1:5000/api";
+const API_BASE = "/api";
 
 export default function UserDashboard() {
   const navigate = useNavigate(); // Trọng thêm
   const [bookings, setBookings] = useState([]);
+  const [paidBookingIds, setPaidBookingIds] = useState(new Set());
   const [profile, setProfile] = useState({ 
     UserID: 12, 
     FullName: "Khách hàng", 
@@ -118,6 +119,15 @@ export default function UserDashboard() {
         };
       });
       setBookings(normalizedBookings);
+
+      // Lấy danh sách BookingID đã thanh toán
+      try {
+        const paymentsRes = await axios.get(`${API_BASE}/payments/history?limit=100`, { headers });
+        const paidIds = new Set((paymentsRes.data?.data || []).map(p => p.BookingID));
+        setPaidBookingIds(paidIds);
+      } catch (e) {
+        // Không chặn luồng chính nếu lấy payment history lỗi
+      }
     } catch (err) {
       console.error("Failed to connect to database API:", err);
       const errMsg = err.response?.data?.message || err.message;
@@ -215,7 +225,10 @@ export default function UserDashboard() {
   }
 };
 
-  const getStatusPill = (status) => {
+  const getStatusPill = (status, bookingId) => {
+    if (status === 2 && paidBookingIds.has(bookingId)) {
+      return <span className="status-pill status-paid" style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}><i className="fa-solid fa-circle-check"></i> Đã thanh toán</span>;
+    }
     switch (status) {
       case 1: return <span className="status-pill status-pending"><i className="fa-regular fa-clock"></i> Chờ duyệt</span>;
       case 2: return <span className="status-pill status-confirmed"><i className="fa-solid fa-check"></i> Đã xác nhận</span>;
@@ -276,6 +289,14 @@ export default function UserDashboard() {
   const completedCount = bookings.filter(b => b.status === 4).length;
   const totalSpend = bookings.filter(b => b.status === 4).reduce((acc, b) => acc + (b.price || 0), 0);
 
+  // Fix: Nếu API trả CurrentPoints/AccumulatedPoints = 0 nhưng có đơn hoàn thành,
+  // tự tính từ bookings (1.000đ = 1 điểm)
+  const computedPoints = bookings
+    .filter(b => b.status === 4)
+    .reduce((sum, b) => sum + Math.floor((b.price || 0) / 1000), 0);
+  const displayCurrentPoints = profile.CurrentPoints > 0 ? profile.CurrentPoints : computedPoints;
+  const displayAccumulatedPoints = profile.AccumulatedPoints > 0 ? profile.AccumulatedPoints : computedPoints;
+
   return (
     <div className="portal-layout-container">
       <Sidebar />
@@ -301,7 +322,7 @@ export default function UserDashboard() {
               <div className="points-display">
                 <span className="points-label">Điểm tích lũy hiện tại</span>
                 <span className="points-value">
-                  {profile.CurrentPoints} <span>PTS</span>
+                  {displayCurrentPoints} <span>PTS</span>
                 </span>
               </div>
             </div>
@@ -340,7 +361,7 @@ export default function UserDashboard() {
               </div>
               <div className="profile-field-row">
                 <span>Tổng tích lũy:</span>
-                <strong>{profile.AccumulatedPoints} PTS</strong>
+                <strong>{displayAccumulatedPoints} PTS</strong>
               </div>
               <div className="profile-field-row">
                 <span>Hạng ưu đãi:</span>
@@ -467,11 +488,11 @@ export default function UserDashboard() {
                       </td>
                       {/* Trọng thêm: Thay đổi color từ white sang var(--text-primary) để tránh mất chữ khi đổi giao diện sáng */}
                       <td style={{ fontWeight: 700, color: "var(--text-primary)" }}>{b.price?.toLocaleString("vi-VN")} đ</td>
-                      <td>{getStatusPill(b.status)}</td>
+                      <td>{getStatusPill(b.status, b.id)}</td>
                       <td>
                         <div className="table-actions">
-                          {/* ✅ Nút thanh toán — chỉ hiện khi status=2 (đã xác nhận) */}
-                          {b.status === 2 && (
+                          {/* ✅ Nút thanh toán — chỉ hiện khi status=2 và chưa thanh toán */}
+                          {b.status === 2 && !paidBookingIds.has(b.id) && (
                             <button className="action-icon-btn" title="Thanh toán"
                               style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)" }}
                               onClick={() => goToPayment(b)}>
@@ -578,7 +599,7 @@ export default function UserDashboard() {
 
               <div style={{ marginTop: "30px", display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                 {/* ✅ Nút thanh toán trong modal */}
-                {selectedBooking.status === 2 && (
+                {selectedBooking.status === 2 && !paidBookingIds.has(selectedBooking.id) && (
                   <button
                     style={{ background: "#f97316", color: "#fff", border: "none", borderRadius: "8px", padding: "8px 16px", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}
                     onClick={() => { setSelectedBooking(null); goToPayment(selectedBooking); }}>

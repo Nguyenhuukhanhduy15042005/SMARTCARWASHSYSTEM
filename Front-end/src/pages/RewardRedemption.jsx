@@ -13,9 +13,9 @@ export default function RewardRedemption() {
   });
   const [rewards, setRewards] = useState([]);
   const [selectedReward, setSelectedReward] = useState(null);
-  const [orderValue, setOrderValue] = useState(120000);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const font = document.createElement("link");
@@ -71,9 +71,7 @@ export default function RewardRedemption() {
       RewardName: promotion.PromoName || `Khuyến mãi PR-${promotion.PromotionID}`,
       PointsRequired: Math.max(1, Math.round(discountPercent * 10)),
       DiscountPercent: discountPercent,
-      DiscountAmount: Math.round((Number(orderValue || 0) * discountPercent) / 100),
-      MinOrderValue: 0,
-      Description: `Ưu đãi giảm ${discountPercent}% do hệ thống khuyến mãi cung cấp.`,
+      Description: `Voucher giảm ${discountPercent}% khi thanh toán booking.`,
       RawPromotion: promotion,
     };
   };
@@ -110,40 +108,19 @@ export default function RewardRedemption() {
     }
   };
 
-  const money = (value) =>
-    new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(Number(value || 0));
 
   const canUseReward = (reward) => {
-    return (
-      profile.CurrentPoints >= Number(reward.PointsRequired || 0) &&
-      orderValue >= Number(reward.MinOrderValue || 0)
-    );
+    return profile.CurrentPoints >= Number(reward.PointsRequired || 0);
   };
 
   const checkoutSummary = useMemo(() => {
-    const discount = selectedReward
-      ? selectedReward.DiscountPercent !== undefined
-        ? Math.min(
-            Math.round((Number(orderValue || 0) * Number(selectedReward.DiscountPercent || 0)) / 100),
-            Number(orderValue || 0),
-          )
-        : Math.min(
-            Number(selectedReward.DiscountAmount || 0),
-            Number(orderValue || 0),
-          )
-      : 0;
-
     return {
-      discount,
-      finalPrice: Math.max(Number(orderValue || 0) - discount, 0),
+      pointsUsed: selectedReward ? Number(selectedReward.PointsRequired || 0) : 0,
       remainingPoints: selectedReward
         ? profile.CurrentPoints - Number(selectedReward.PointsRequired || 0)
         : profile.CurrentPoints,
     };
-  }, [orderValue, profile.CurrentPoints, selectedReward]);
+  }, [profile.CurrentPoints, selectedReward]);
 
   const handleApplyReward = (reward) => {
     if (!canUseReward(reward)) {
@@ -155,17 +132,17 @@ export default function RewardRedemption() {
     }
     setSelectedReward(reward);
     showToast(
-      `Đã chọn mã ${reward.RewardCode}. Chờ BE apply khi thanh toán.`,
+      `Đã chọn mã ${reward.RewardCode}. Bấm đổi điểm để nhận voucher.`,
       "success",
     );
   };
 
   const handleCheckout = async () => {
-    if (!selectedReward) {
-      showToast("Bạn chưa chọn reward để đổi điểm.", "error");
+    if (!selectedReward || submitting) {
       return;
     }
 
+    setSubmitting(true);
     try {
       // 1. Tạo payload gửi xuống BE
       const payloadForBE = {
@@ -199,6 +176,8 @@ export default function RewardRedemption() {
         error.response?.data?.message || "Đã xảy ra lỗi khi đổi điểm!",
         "error",
       );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -232,13 +211,10 @@ export default function RewardRedemption() {
                 <h2>Voucher khả dụng</h2>
                 <p>Voucher đang hiệu lực từ hệ thống khuyến mãi.</p>
               </div>
-              <input
-                type="number"
-                min="0"
-                value={orderValue}
-                onChange={(e) => setOrderValue(Number(e.target.value))}
-                aria-label="Giá trị đơn hàng"
-              />
+              <div className="reward-mode-box">
+                <span>Chế độ</span>
+                <strong>Đổi điểm nhận voucher</strong>
+              </div>
             </div>
 
             {loading ? (
@@ -272,14 +248,7 @@ export default function RewardRedemption() {
                             {reward.PointsRequired} điểm
                           </small>
                           <small>
-                            <i className="fa-solid fa-cart-shopping"></i> Tối
-                            thiểu {money(reward.MinOrderValue)}
-                          </small>
-                          <small>
-                            <i className="fa-solid fa-tags"></i> Giảm{" "}
-                            {reward.DiscountPercent !== undefined
-                              ? `${reward.DiscountPercent}%`
-                              : money(reward.DiscountAmount)}
+                            <i className="fa-solid fa-tags"></i> Giảm {reward.DiscountPercent}%
                           </small>
                         </div>
                       </div>
@@ -298,22 +267,14 @@ export default function RewardRedemption() {
           </div>
 
           <aside className="reward-summary">
-            <h2>Tóm tắt thanh toán</h2>
-            <div className="summary-line">
-              <span>Tạm tính</span>
-              <strong>{money(orderValue)}</strong>
-            </div>
-            <div className="summary-line discount">
-              <span>Giảm reward</span>
-              <strong>-{money(checkoutSummary.discount)}</strong>
-            </div>
-            <div className="summary-total">
-              <span>Cần thanh toán</span>
-              <strong>{money(checkoutSummary.finalPrice)}</strong>
-            </div>
+            <h2>Tóm tắt đổi điểm</h2>
             <div className="summary-code">
               <span>Mã đang chọn</span>
               <b>{selectedReward?.RewardCode || "Chưa chọn"}</b>
+            </div>
+            <div className="summary-code">
+              <span>Điểm cần dùng</span>
+              <b>{checkoutSummary.pointsUsed}</b>
             </div>
             <div className="summary-code">
               <span>Điểm còn lại</span>
@@ -326,17 +287,13 @@ export default function RewardRedemption() {
             <button
               className="summary-btn"
               onClick={handleCheckout}
-              disabled={!selectedReward}
+              disabled={!selectedReward || submitting}
             >
-              {selectedReward
-                ? "Áp dụng vào thanh toán"
-                : "Chọn voucher để áp dụng"}
-            </button>
-            <button
-              className="reward-back-btn"
-              onClick={() => window.history.back()}
-            >
-              Quay lại
+              {submitting
+                ? "Đang đổi điểm..."
+                : selectedReward
+                ? "Đổi điểm nhận voucher"
+                : "Chọn voucher để đổi"}
             </button>
           </aside>
         </section>
@@ -469,15 +426,28 @@ const rewardRedemptionCss = `
   color:var(--text-secondary);
 }
 
-.reward-section-title input{
-  width:180px;
+.reward-mode-box{
+  min-width:220px;
   border:1px solid var(--border);
   background:var(--bg-primary);
   color:var(--text-primary);
   border-radius:16px;
-  padding:13px 14px;
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.reward-mode-box span{
+  color:var(--text-secondary);
+  font-size:12px;
   font-weight:800;
-  outline:none;
+}
+
+.reward-mode-box strong{
+  color:var(--text-primary);
+  font-size:15px;
+  font-weight:900;
 }
 
 .reward-list{
@@ -656,25 +626,8 @@ const rewardRedemptionCss = `
   .reward-badge{
     display:none;
   }
-  .reward-section-title input{
+  .reward-mode-box{
     width:100%;
   }
 }
-  .reward-back-btn{
-  width:100%;
-  margin-top:12px;
-  padding:15px 18px;
-  border:0;
-  border-radius:18px;
-  background:#e2e8f0;
-  color:#334155;
-  font-weight:800;
-  cursor:pointer;
-  transition:.2s;
-}
-
-.reward-back-btn:hover{
-  background:#cbd5e1;
-}
-  
 `;

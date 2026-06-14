@@ -338,15 +338,25 @@ export default function Booking() {
     setIsSubmitting(true); // KHÓA NÚT
 
     try {
-      await axios.post("http://127.0.0.1:5000/api/bookings", body, { headers });
-      showToast(
-        "Đặt lịch rửa xe thành công! Đang chuyển đến Trang cá nhân...",
-        "success",
-      );
+      const res = await axios.post("http://127.0.0.1:5000/api/bookings", body, { headers });
+      const newBooking = res.data;
+
+      showToast("Đặt lịch thành công! Đang chuyển đến thanh toán...", "success");
 
       setTimeout(() => {
-        navigate("/dashboard");
-      }, 2000);
+        navigate("/payments", {
+          state: {
+            booking: {
+              BookingID:    newBooking.BookingID || newBooking.bookingId || newBooking.id,
+              ServiceName:  selectedService?.serviceName || selectedService?.ServiceName || "Dịch vụ rửa xe",
+              Date:         date,
+              Time:         time,
+              TotalPrice:   finalPrice || basePrice,
+              LicensePlate: licensePlate.trim().toUpperCase(),
+            }
+          }
+        });
+      }, 1500);
     } catch (err) {
       console.error("Lỗi khi gửi yêu cầu đặt lịch:", err);
       const errMsg = err.response?.data?.message || err.message;
