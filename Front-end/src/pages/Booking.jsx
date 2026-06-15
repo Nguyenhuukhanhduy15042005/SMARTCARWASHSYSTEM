@@ -36,6 +36,7 @@ export default function Booking() {
   // State quản lý dữ liệu form
   const [vehicleType, setVehicleType] = useState("CAR");
   const [licensePlate, setLicensePlate] = useState("");
+  const [userVehicles, setUserVehicles] = useState([]);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
@@ -110,7 +111,49 @@ export default function Booking() {
     document.head.appendChild(linkIcons);
 
     fetchUserProfile();
+    fetchUserVehicles();
   }, []);
+
+  // Fetch danh sách xe của người dùng để đề xuất gợi ý
+  const fetchUserVehicles = async () => {
+    const userId = getCustomerId();
+    const token =
+      localStorage.getItem("TOKEN") ||
+      localStorage.getItem("token") ||
+      "mock-token";
+    const headers = { Authorization: `Bearer ${token}` };
+    try {
+      const res = await axios.get(
+        `http://127.0.0.1:5000/api/vehicles?userId=${userId}`,
+        { headers },
+      );
+      if (Array.isArray(res.data)) {
+        setUserVehicles(res.data);
+      }
+    } catch (err) {
+      console.error("Lỗi fetch danh sách xe gợi ý:", err);
+    }
+  };
+
+  const handleLicensePlateChange = (val) => {
+    setLicensePlate(val);
+    const matched = userVehicles.find(
+      (v) => v.plateNumber?.toUpperCase() === val.trim().toUpperCase(),
+    );
+    if (matched) {
+      const type = matched.vehicleType?.toLowerCase();
+      if (
+        type === "xe máy" ||
+        type === "motorcycle" ||
+        type === "bike" ||
+        type === "xe may"
+      ) {
+        setVehicleType("BIKE");
+      } else {
+        setVehicleType("CAR");
+      }
+    }
+  };
 
   // Đóng dropdown khi click ngoài
   useEffect(() => {
@@ -303,13 +346,22 @@ export default function Booking() {
       return showToast("Vui lòng nhập biển số xe!", "error");
 
     const cleanPlate = licensePlate.trim().toUpperCase();
-    const plateRegex =
-      /^[0-9]{2}[- ]?([A-Z]{1,2}|[A-Z][0-9])[- ]?[0-9]{3,5}(\.[0-9]{2})?$/i;
-    if (!plateRegex.test(cleanPlate)) {
-      return showToast(
-        "Biển số xe không hợp lệ! Định dạng đúng VD: 59A-123.45 hoặc 59G1-123.45",
-        "error",
-      );
+    if (vehicleType === "BIKE") {
+      const bikeRegex = /^[0-9]{2}[- ]?[A-Z][0-9][- ]?[0-9]{3,5}(\.[0-9]{1,2})?$/i;
+      if (!bikeRegex.test(cleanPlate)) {
+        return showToast(
+          "Biển số xe máy không hợp lệ! Định dạng đúng VD: 59G1-123.45",
+          "error",
+        );
+      }
+    } else {
+      const carRegex = /^[0-9]{2}[- ]?[A-Z]{1,2}[- ]?[0-9]{3,5}(\.[0-9]{1,2})?$/i;
+      if (!carRegex.test(cleanPlate)) {
+        return showToast(
+          "Biển số xe ô tô không hợp lệ! Định dạng đúng VD: 59A-123.45",
+          "error",
+        );
+      }
     }
 
     if (!selectedService)
@@ -435,12 +487,27 @@ export default function Booking() {
                       id="licensePlate"
                       type="text"
                       value={licensePlate}
-                      onChange={(e) => setLicensePlate(e.target.value)}
-                      placeholder="VD: 59A-123.45"
+                      onChange={(e) => handleLicensePlateChange(e.target.value)}
+                      placeholder={vehicleType === "BIKE" ? "VD: 59G1-123.45" : "VD: 59A-123.45"}
                       required
                       className="form-input"
                       style={{ height: "54px" }}
+                      list="userVehicles"
+                      autoComplete="off"
                     />
+                    <datalist id="userVehicles">
+                      {userVehicles
+                        .filter((v) => {
+                           const type = v.vehicleType?.toLowerCase();
+                           const isBike = type === "xe máy" || type === "motorcycle" || type === "bike" || type === "xe may" || type === "motorbike";
+                           return vehicleType === "BIKE" ? isBike : !isBike;
+                         })
+                         .map((v) => (
+                          <option key={v.id} value={v.plateNumber}>
+                            {v.brand} {v.model}
+                          </option>
+                        ))}
+                    </datalist>
                     <small
                       style={{
                         color: "#64748b",
@@ -448,7 +515,9 @@ export default function Booking() {
                         display: "block",
                       }}
                     >
-                      Nhập đúng biển số xe để nhân viên kiểm tra chính xác.
+                      {vehicleType === "BIKE"
+                        ? "Nhập đúng biển số xe máy để nhân viên kiểm tra chính xác."
+                        : "Nhập đúng biển số xe ô tô để nhân viên kiểm tra chính xác."}
                     </small>
                   </div>
                 </div>

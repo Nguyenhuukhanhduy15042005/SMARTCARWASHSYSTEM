@@ -11,6 +11,7 @@ export default function StaffDashboard() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showTodayOnly, setShowTodayOnly] = useState(false);
   const [stats, setStats] = useState({ total: 0, pending: 0, active: 0, completed: 0 });
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem("LOGIN_USER");
@@ -18,6 +19,22 @@ export default function StaffDashboard() {
   });
 
   const API_URL = "http://localhost:5000/api/bookings";
+
+  const isFutureDate = (dateInput) => {
+    if (!dateInput) return false;
+    let d;
+    if (typeof dateInput === "string" && dateInput.includes("-") && dateInput.length === 10) {
+      const [year, month, day] = dateInput.split("-").map(Number);
+      d = new Date(year, month - 1, day);
+    } else {
+      d = new Date(dateInput);
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const compareDate = new Date(d);
+    compareDate.setHours(0, 0, 0, 0);
+    return compareDate.getTime() > today.getTime();
+  };
 
   // Dynamic import of premium Google Fonts & FontAwesome icons
   useEffect(() => {
@@ -74,12 +91,23 @@ export default function StaffDashboard() {
 
   // Status Filter
   useEffect(() => {
-    if (selectedStatus === "All") {
-      setFilteredBookings(bookings);
-    } else {
-      setFilteredBookings(bookings.filter(b => String(b.Status) === selectedStatus));
+    let list = bookings;
+    if (selectedStatus !== "All") {
+      list = list.filter(b => String(b.Status) === selectedStatus);
     }
-  }, [selectedStatus, bookings]);
+    if (showTodayOnly) {
+      const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local format
+      list = list.filter(b => {
+        if (!b.BookingDate) return false;
+        const d = new Date(b.BookingDate);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}` === todayStr;
+      });
+    }
+    setFilteredBookings(list);
+  }, [selectedStatus, bookings, showTodayOnly]);
 
   // Transition Handler
   const handleTransition = async (bookingId, nextStatus) => {
@@ -110,7 +138,7 @@ export default function StaffDashboard() {
     const statusStr = String(status);
     switch (statusStr) {
       case "1":
-        return { bg: "rgba(245, 158, 11, 0.1)", text: "Chờ duyệt", dotBg: "#f59e0b", shadow: "0 0 12px rgba(245, 158, 11, 0.3)" };
+        return { bg: "rgba(245, 158, 11, 0.1)", text: "Chờ cọc/thanh toán", dotBg: "#f59e0b", shadow: "0 0 12px rgba(245, 158, 11, 0.3)" };
       case "2":
         return { bg: "rgba(59, 130, 246, 0.1)", text: "Đã nhận", dotBg: "#3b82f6", shadow: "0 0 12px rgba(59, 130, 246, 0.3)" };
       case "3":
@@ -140,9 +168,20 @@ export default function StaffDashboard() {
             <h1 style={styles.title}>Lịch Đặt Xe & Điều Phối</h1>
             <p style={styles.subtitle}>Không gian làm việc quản lý dịch vụ dành cho Nhân viên (Staff)</p>
           </div>
-          <button style={styles.refreshBtn} onClick={fetchBookings}>
-            <i className="fa-solid fa-arrows-rotate"></i> Làm mới dữ liệu
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", fontWeight: "600", cursor: "pointer", color: "var(--text-secondary)" }}>
+              <input
+                type="checkbox"
+                checked={showTodayOnly}
+                onChange={(e) => setShowTodayOnly(e.target.checked)}
+                style={{ width: "16px", height: "16px", cursor: "pointer" }}
+              />
+              Lịch hẹn hôm nay
+            </label>
+            <button style={styles.refreshBtn} onClick={fetchBookings}>
+              <i className="fa-solid fa-arrows-rotate"></i> Làm mới dữ liệu
+            </button>
+          </div>
         </header>
 
         {/* Dashboard KPI cards */}
@@ -190,7 +229,7 @@ export default function StaffDashboard() {
                 onClick={() => setSelectedStatus(status)}
               >
                 {status === "All" && "Tất cả"}
-                {status === "1" && "Chờ duyệt"}
+                {status === "1" && "Chờ cọc/thanh toán"}
                 {status === "2" && "Đã nhận"}
                 {status === "3" && "Đang rửa"}
                 {status === "4" && "Hoàn tất"}
@@ -281,7 +320,12 @@ export default function StaffDashboard() {
                             </button>
                           )}
                           {String(booking.Status) === "2" && (
-                            <button style={styles.btnStart} onClick={() => handleTransition(booking.BookingID, 3)}>
+                            <button 
+                              style={isFutureDate(booking.BookingDate) ? { ...styles.btnStart, opacity: 0.4, cursor: "not-allowed", backgroundColor: "#6b7280" } : styles.btnStart} 
+                              onClick={() => !isFutureDate(booking.BookingDate) && handleTransition(booking.BookingID, 3)}
+                              disabled={isFutureDate(booking.BookingDate)}
+                              title={isFutureDate(booking.BookingDate) ? "Chưa tới ngày hẹn rửa xe" : "Bắt đầu rửa"}
+                            >
                               <i className="fa-solid fa-play"></i> Bắt đầu rửa
                             </button>
                           )}

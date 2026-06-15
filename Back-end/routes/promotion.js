@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { sql, poolPromise } = require("../db");
+const verifyToken = require("../middleware/verifyToken");
 
 function normalizeText(value, maxLength = 255) {
   return String(value || "").trim().slice(0, maxLength);
@@ -75,6 +76,34 @@ router.get("/", async (req, res) => {
   } catch (err) {
     console.error("GET /api/promotions error:", err);
     res.status(500).json({ message: "Lỗi khi lấy danh sách khuyến mãi" });
+  }
+});
+
+// GET /api/promotions/my-vouchers
+router.get("/my-vouchers", verifyToken, async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input("userId", sql.Int, req.user.userId)
+      .query(`
+        SELECT 
+          mp.MemberPromoID,
+          mp.PromotionID,
+          p.PromoName,
+          p.DiscountPercent,
+          p.EndDate
+        FROM MEMBER_PROMOTION mp
+        INNER JOIN PROMOTION p ON mp.PromotionID = p.PromotionID
+        WHERE mp.UserID = @userId 
+          AND mp.IsUsed = 0
+          AND (p.EndDate IS NULL OR p.EndDate >= GETDATE())
+        ORDER BY mp.MemberPromoID DESC
+      `);
+
+    res.json(result.recordset);
+  } catch (err) {
+    console.error("GET /api/promotions/my-vouchers error:", err);
+    res.status(500).json({ message: "Lỗi khi lấy danh sách voucher của bạn" });
   }
 });
 

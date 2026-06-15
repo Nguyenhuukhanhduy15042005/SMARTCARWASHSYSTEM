@@ -78,6 +78,17 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
     }
   }
 
+  // 3.5. Hoàn lại voucher nếu huỷ booking (status = 5)
+  if (statusInt === 5) {
+    await pool.request()
+      .input("bookingId", sql.Int, bookingId)
+      .query(`
+        UPDATE MEMBER_PROMOTION 
+        SET IsUsed = 0 
+        WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId)
+      `);
+  }
+
   // 4. Booking Completion Flow (statusInt === 4)
   if (statusInt === 4) {
     const finalPrice = Number(booking.FinalPrice || booking.TotalPrice || 0);
@@ -99,7 +110,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
       const paymentCheck = await pool
         .request()
         .input("bookingId", sql.Int, bookingId)
-        .query("SELECT PaymentID FROM PAYMENT WHERE BookingID = @bookingId");
+        .query("SELECT PaymentID, PaymentMethod FROM PAYMENT WHERE BookingID = @bookingId");
 
       if (paymentCheck.recordset.length === 0) {
         await pool
@@ -108,9 +119,21 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
           .input("amount", sql.Decimal, finalPrice)
           .query(`INSERT INTO PAYMENT (BookingID, PaymentMethod, Amount, PaidAt)
                   VALUES (@bookingId, N'Tiền mặt', @amount, GETDATE())`);
+      } else {
+        // Nếu đã có thanh toán cọc (Method = 'cash'), cập nhật thành thanh toán đầy đủ khi hoàn thành
+        const payment = paymentCheck.recordset[0];
+        if (payment.PaymentMethod === 'cash') {
+          await pool
+            .request()
+            .input("bookingId", sql.Int, bookingId)
+            .input("amount", sql.Decimal, finalPrice)
+            .query(`UPDATE PAYMENT 
+                    SET Amount = @amount, PaymentMethod = N'Tiền mặt' 
+                    WHERE BookingID = @bookingId`);
+        }
       }
     } catch (err) {
-      console.error("❌ Lỗi tạo Payment:", err.message);
+      console.error("❌ Lỗi tạo/cập nhật Payment:", err.message);
     }
   }
 };
@@ -374,6 +397,118 @@ router.get("/customer/:customerId", async (req, res) => {
     res.json(result.recordset);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// 5.5. Áp dụng voucher/khuyến mãi cho Booking
+router.post("/:id/apply-voucher", async (req, res) => {
+  const bookingId = Number(req.params.id);
+  const { memberPromoId } = req.body; // memberPromoId: null hoặc id voucher
+
+  if (!bookingId) {
+    return res.status(400).json({ message: "Mã đặt lịch không hợp lệ" });
+  }
+
+  // Lấy User từ token nếu có
+  const token = req.headers.authorization?.split(" ")[1];
+  let userId = null;
+  if (token && token !== "mock-token" && token !== "null" && token !== "undefined") {
+    try {
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || "secretkey_placeholder"
+      );
+      userId = decoded.userId;
+    } catch (err) {
+      console.error("Token verification failed:", err.message);
+    }
+  }
+
+  try {
+    const pool = await poolPromise;
+
+    // 1. Lấy thông tin booking
+    const bookingRes = await pool.request()
+      .input("bookingId", sql.Int, bookingId)
+      .query("SELECT CustomerID, TotalPrice, FinalPrice, MemberPromoID FROM BOOKING WHERE BookingID = @bookingId");
+
+    if (bookingRes.recordset.length === 0) {
+      return res.status(404).json({ message: "Không tìm thấy thông tin đặt lịch" });
+    }
+
+    const booking = bookingRes.recordset[0];
+
+    // Kiểm tra quyền sở hữu đơn đặt lịch (nếu có userId từ token)
+    if (userId && booking.CustomerID !== userId) {
+      return res.status(403).json({ message: "Bạn không có quyền thay đổi thông tin đặt lịch này" });
+    }
+
+    // 2. Nếu gỡ bỏ voucher (memberPromoId là null)
+    if (!memberPromoId) {
+      await pool.request()
+        .input("bookingId", sql.Int, bookingId)
+        .query("UPDATE BOOKING SET MemberPromoID = NULL, FinalPrice = TotalPrice WHERE BookingID = @bookingId");
+
+      return res.json({
+        message: "Đã gỡ bỏ voucher thành công",
+        FinalPrice: booking.TotalPrice,
+        MemberPromoID: null
+      });
+    }
+
+    // 3. Áp dụng voucher
+    const voucherRes = await pool.request()
+      .input("memberPromoId", sql.Int, memberPromoId)
+      .input("userId", sql.Int, booking.CustomerID)
+      .query(`
+        SELECT mp.MemberPromoID, mp.PromotionID, mp.IsUsed, 
+               p.DiscountPercent, p.EndDate
+        FROM MEMBER_PROMOTION mp
+        INNER JOIN PROMOTION p ON mp.PromotionID = p.PromotionID
+        WHERE mp.MemberPromoID = @memberPromoId AND mp.UserID = @userId
+      `);
+
+    if (voucherRes.recordset.length === 0) {
+      return res.status(400).json({ message: "Voucher không tồn tại hoặc không thuộc sở hữu của bạn" });
+    }
+
+    const voucher = voucherRes.recordset[0];
+
+    if (voucher.IsUsed) {
+      return res.status(400).json({ message: "Voucher này đã được sử dụng" });
+    }
+
+    if (voucher.EndDate && new Date(voucher.EndDate) < new Date()) {
+      return res.status(400).json({ message: "Voucher này đã hết hạn" });
+    }
+
+    // Tính tiền giảm giá
+    const discountPercent = Number(voucher.DiscountPercent || 0);
+    const discount = (Number(booking.TotalPrice) * discountPercent) / 100;
+    let finalPrice = Number(booking.TotalPrice) - discount;
+    if (finalPrice < 0) finalPrice = 0;
+
+    // Cập nhật booking
+    await pool.request()
+      .input("bookingId", sql.Int, bookingId)
+      .input("memberPromoId", sql.Int, memberPromoId)
+      .input("finalPrice", sql.Decimal(18, 2), finalPrice)
+      .query(`
+        UPDATE BOOKING 
+        SET MemberPromoID = @memberPromoId, FinalPrice = @finalPrice 
+        WHERE BookingID = @bookingId
+      `);
+
+    return res.json({
+      message: "Áp dụng voucher thành công",
+      FinalPrice: finalPrice,
+      DiscountAmount: discount,
+      MemberPromoID: memberPromoId
+    });
+
+  } catch (err) {
+    console.error("Apply voucher error:", err);
+    return res.status(500).json({ message: "Lỗi server khi áp dụng voucher: " + err.message });
   }
 });
 

@@ -18,10 +18,27 @@ export default function AdminDashboard() {
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [toast, setToast] = useState(null);
+  const [showTodayOnly, setShowTodayOnly] = useState(false);
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem("LOGIN_USER");
     return saved ? JSON.parse(saved) : null;
   });
+
+  const isFutureDate = (dateInput) => {
+    if (!dateInput) return false;
+    let d;
+    if (typeof dateInput === "string" && dateInput.includes("-") && dateInput.length === 10) {
+      const [year, month, day] = dateInput.split("-").map(Number);
+      d = new Date(year, month - 1, day);
+    } else {
+      d = new Date(dateInput);
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const compareDate = new Date(d);
+    compareDate.setHours(0, 0, 0, 0);
+    return compareDate.getTime() > today.getTime();
+  };
 
   // Load Google Fonts & FontAwesome icons dynamically
   useEffect(() => {
@@ -103,7 +120,7 @@ export default function AdminDashboard() {
     const headers = { Authorization: `Bearer ${token}` };
 
     const statusMap = {
-      1: "Chờ duyệt",
+      1: "Chờ cọc/thanh toán",
       2: "Đã xác nhận",
       3: "Đang làm dịch vụ",
       4: "Hoàn thành",
@@ -170,7 +187,7 @@ export default function AdminDashboard() {
       case 1:
         return (
           <span className="status-pill status-pending">
-            <i className="fa-regular fa-clock"></i> Chờ duyệt
+            <i className="fa-regular fa-clock"></i> Chờ cọc/thanh toán
           </span>
         );
       case 2:
@@ -223,7 +240,17 @@ export default function AdminDashboard() {
     const matchesStatus =
       selectedStatus === "All" || b.status.toString() === selectedStatus;
 
-    return matchesSearch && matchesStatus;
+    let matchesToday = true;
+    if (showTodayOnly) {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+      matchesToday = b.date === todayStr;
+    }
+
+    return matchesSearch && matchesStatus && matchesToday;
   });
 
   return (
@@ -336,7 +363,7 @@ export default function AdminDashboard() {
               className={`admin-tab ${selectedStatus === "1" ? "active" : ""}`}
               onClick={() => setSelectedStatus("1")}
             >
-              Chờ duyệt
+              Chờ cọc/thanh toán
             </button>
             <button
               className={`admin-tab ${selectedStatus === "2" ? "active" : ""}`}
@@ -369,9 +396,20 @@ export default function AdminDashboard() {
         <section className="admin-table-card">
           <div className="admin-table-header">
             <h2>Danh Sách Lịch Đặt Xe</h2>
-            <button className="refresh-btn" title="Làm mới" onClick={fetchData}>
-              <i className="fa-solid fa-rotate-right"></i>
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", fontWeight: "600", cursor: "pointer", color: "var(--color-accent)" }}>
+                <input
+                  type="checkbox"
+                  checked={showTodayOnly}
+                  onChange={(e) => setShowTodayOnly(e.target.checked)}
+                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                />
+                Lịch hẹn hôm nay
+              </label>
+              <button className="refresh-btn" title="Làm mới" onClick={fetchData}>
+                <i className="fa-solid fa-rotate-right"></i>
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -484,9 +522,10 @@ export default function AdminDashboard() {
                           {b.status === 2 && (
                             <>
                               <button
-                                className="action-icon-btn btn-wash"
-                                title="Bắt đầu rửa"
-                                onClick={() => handleStatusUpdate(b.id, 3)}
+                                className={`action-icon-btn btn-wash ${isFutureDate(b.date) ? "disabled" : ""}`}
+                                title={isFutureDate(b.date) ? "Chưa tới ngày hẹn rửa xe" : "Bắt đầu rửa"}
+                                onClick={() => !isFutureDate(b.date) && handleStatusUpdate(b.id, 3)}
+                                disabled={isFutureDate(b.date)}
                               >
                                 <i className="fa-solid fa-soap"></i>
                               </button>
@@ -558,7 +597,7 @@ export default function AdminDashboard() {
                   className={`timeline-step ${selectedBooking.status >= 1 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 1 ? "active" : ""}`}
                 >
                   <div className="timeline-node">1</div>
-                  <div className="timeline-label">Chờ duyệt</div>
+                  <div className="timeline-label">Chờ cọc/thanh toán</div>
                 </div>
                 <div
                   className={`timeline-step ${selectedBooking.status >= 2 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 2 ? "active" : ""}`}
@@ -681,14 +720,16 @@ export default function AdminDashboard() {
                   )}
                   {selectedBooking.status === 2 && (
                     <button
-                      className="action-icon-btn btn-wash"
+                      className={`action-icon-btn btn-wash ${isFutureDate(selectedBooking.date) ? "disabled" : ""}`}
                       style={{
                         width: "auto",
                         padding: "8px 16px",
                         borderRadius: "8px",
                         fontSize: "14px",
                       }}
-                      onClick={() => handleStatusUpdate(selectedBooking.id, 3)}
+                      onClick={() => !isFutureDate(selectedBooking.date) && handleStatusUpdate(selectedBooking.id, 3)}
+                      disabled={isFutureDate(selectedBooking.date)}
+                      title={isFutureDate(selectedBooking.date) ? "Chưa tới ngày hẹn rửa xe" : ""}
                     >
                       <i
                         className="fa-solid fa-soap"

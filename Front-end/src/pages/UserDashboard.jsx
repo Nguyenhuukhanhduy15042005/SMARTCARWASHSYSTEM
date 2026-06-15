@@ -237,7 +237,7 @@ export default function UserDashboard() {
       return <span className="status-pill status-paid" style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}><i className="fa-solid fa-circle-check"></i> Đã thanh toán</span>;
     }
     switch (status) {
-      case 1:
+      case 1: return <span className="status-pill status-pending" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}><i className="fa-regular fa-clock"></i> Chờ cọc/thanh toán</span>;
       case 2: return <span className="status-pill status-confirmed"><i className="fa-solid fa-check"></i> Đã xác nhận</span>;
       case 3: return <span className="status-pill status-inservice"><i className="fa-solid fa-arrows-spin fa-spin"></i> Đang rửa</span>;
       case 4: return <span className="status-pill status-completed"><i className="fa-regular fa-circle-check"></i> Hoàn thành</span>;
@@ -435,9 +435,14 @@ export default function UserDashboard() {
               Đã hủy ({bookings.filter(b => b.status === 5).length})
             </button>
           </div>
-          <a href="/booking" className="btn-book-nav">
-            <i className="fa-solid fa-calendar-plus"></i> Đặt lịch rửa xe mới
-          </a>
+          <div style={{ display: "flex", gap: "12px" }}>
+            <button className="btn-book-nav" style={{ background: "rgba(99, 102, 241, 0.15)", color: "#818cf8", border: "1px solid rgba(99, 102, 241, 0.3)" }} onClick={() => navigate("/payments/history")}>
+              <i className="fa-solid fa-receipt"></i> Lịch sử thanh toán
+            </button>
+            <a href="/booking" className="btn-book-nav">
+              <i className="fa-solid fa-calendar-plus"></i> Đặt lịch rửa xe mới
+            </a>
+          </div>
         </section>
 
         {/* Bookings Table list */}
@@ -498,16 +503,16 @@ export default function UserDashboard() {
                       <td>{getStatusPill(b.status, b.id)}</td>
                       <td>
                         <div className="table-actions">
-                          {/* ✅ Nút thanh toán — chỉ hiện khi status=2 và chưa thanh toán */}
-                          {b.status === 2 && !paidBookingIds.has(b.id) && (
+                          {/* ✅ Nút thanh toán — chỉ hiện khi status=1 */}
+                          {b.status === 1 && (
                             <button className="action-icon-btn" title="Thanh toán"
                               style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)" }}
                               onClick={() => goToPayment(b)}>
                               <i className="fa-solid fa-credit-card"></i>
                             </button>
                           )}
-                          {/* ✅ Nút xem lịch sử thanh toán — khi đã hoàn thành */}
-                          {b.status === 4 && (
+                          {/* ✅ Nút xem lịch sử thanh toán — khi đã thanh toán hoặc hoàn thành */}
+                          {(b.status === 2 || b.status === 4) && (
                             <button className="action-icon-btn" title="Lịch sử thanh toán"
                               style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)" }}
                               onClick={() => navigate("/payments/history")}>
@@ -602,7 +607,7 @@ export default function UserDashboard() {
 
               <div style={{ marginTop: "30px", display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                 {/* ✅ Nút thanh toán trong modal */}
-                {selectedBooking.status === 2 && !paidBookingIds.has(selectedBooking.id) && (
+                {selectedBooking.status === 1 && (
                   <button
                     style={{ background: "#f97316", color: "#fff", border: "none", borderRadius: "8px", padding: "8px 16px", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}
                     onClick={() => { setSelectedBooking(null); goToPayment(selectedBooking); }}>
