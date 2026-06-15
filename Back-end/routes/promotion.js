@@ -1,8 +1,6 @@
-//======
 const express = require("express");
-const router  = express.Router();
+const router = express.Router();
 const { sql, poolPromise } = require("../db");
-const verifyToken = require("../middleware/verifyToken");
 
 function normalizeText(value, maxLength = 255) {
   return String(value || "").trim().slice(0, maxLength);
@@ -24,13 +22,13 @@ function mapPromotion(row) {
   const endDate = row.EndDate ? new Date(row.EndDate) : null;
   const isActive = endDate ? endDate >= new Date() : true;
   return {
-    PromotionID:     row.PromotionID,
-    PromoName:       row.PromoName,
+    PromotionID: row.PromotionID,
+    PromoName: row.PromoName,
     DiscountPercent: Number(row.DiscountPercent || 0),
-    EndDate:         row.EndDate,
-    Status:          isActive ? "Active" : "Expired",
-    UsedCount:       Number(row.UsedCount   || 0),
-    WalletCount:     Number(row.WalletCount || 0),
+    EndDate: row.EndDate,
+    Status: isActive ? "Active" : "Expired",
+    UsedCount: Number(row.UsedCount || 0),
+    WalletCount: Number(row.WalletCount || 0),
   };
 }
 
@@ -40,22 +38,32 @@ router.get("/", async (req, res) => {
     const search = normalizeText(req.query.search, 255);
     const status = String(req.query.status || "all").toLowerCase();
 
-    const pool    = await poolPromise;
+    const pool = await poolPromise;
     const request = pool.request();
+
     let where = "WHERE 1 = 1";
 
     if (search) {
       request.input("search", sql.NVarChar(255), `%${search}%`);
       where += " AND p.PromoName LIKE @search";
     }
-    if (status === "active")  where += " AND (p.EndDate IS NULL OR p.EndDate >= GETDATE())";
-    if (status === "expired") where += " AND p.EndDate IS NOT NULL AND p.EndDate < GETDATE()";
+
+    if (status === "active") {
+      where += " AND (p.EndDate IS NULL OR p.EndDate >= GETDATE())";
+    }
+
+    if (status === "expired") {
+      where += " AND p.EndDate IS NOT NULL AND p.EndDate < GETDATE()";
+    }
 
     const result = await request.query(`
       SELECT
-        p.PromotionID, p.PromoName, p.DiscountPercent, p.EndDate,
-        COUNT(mp.MemberPromoID)                              AS WalletCount,
-        SUM(CASE WHEN mp.IsUsed = 1 THEN 1 ELSE 0 END)      AS UsedCount
+        p.PromotionID,
+        p.PromoName,
+        p.DiscountPercent,
+        p.EndDate,
+        COUNT(mp.MemberPromoID) AS WalletCount,
+        SUM(CASE WHEN mp.IsUsed = 1 THEN 1 ELSE 0 END) AS UsedCount
       FROM PROMOTION p
       LEFT JOIN MEMBER_PROMOTION mp ON p.PromotionID = mp.PromotionID
       ${where}
@@ -70,55 +78,33 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /api/promotions/my-vouchers
-router.get("/my-vouchers", verifyToken, async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input("userId", sql.Int, req.user.userId)
-      .query(`
-        SELECT 
-          mp.MemberPromoID,
-          mp.PromotionID,
-          p.PromoName,
-          p.DiscountPercent,
-          p.EndDate
-        FROM MEMBER_PROMOTION mp
-        INNER JOIN PROMOTION p ON mp.PromotionID = p.PromotionID
-        WHERE mp.UserID = @userId 
-          AND mp.IsUsed = 0
-          AND (p.EndDate IS NULL OR p.EndDate >= GETDATE())
-        ORDER BY mp.MemberPromoID DESC
-      `);
-
-    res.json(result.recordset);
-  } catch (err) {
-    console.error("GET /api/promotions/my-vouchers error:", err);
-    res.status(500).json({ message: "Lỗi khi lấy danh sách voucher của bạn" });
-  }
-});
-
 // GET /api/promotions/:id
 router.get("/:id", async (req, res) => {
   const promotionId = Number(req.params.id);
   if (!promotionId) return res.status(400).json({ message: "PromotionID không hợp lệ" });
 
   try {
-    const pool   = await poolPromise;
+    const pool = await poolPromise;
     const result = await pool.request()
       .input("promotionId", sql.Int, promotionId)
       .query(`
         SELECT
-          p.PromotionID, p.PromoName, p.DiscountPercent, p.EndDate,
-          COUNT(mp.MemberPromoID)                              AS WalletCount,
-          SUM(CASE WHEN mp.IsUsed = 1 THEN 1 ELSE 0 END)      AS UsedCount
+          p.PromotionID,
+          p.PromoName,
+          p.DiscountPercent,
+          p.EndDate,
+          COUNT(mp.MemberPromoID) AS WalletCount,
+          SUM(CASE WHEN mp.IsUsed = 1 THEN 1 ELSE 0 END) AS UsedCount
         FROM PROMOTION p
         LEFT JOIN MEMBER_PROMOTION mp ON p.PromotionID = mp.PromotionID
         WHERE p.PromotionID = @promotionId
         GROUP BY p.PromotionID, p.PromoName, p.DiscountPercent, p.EndDate
       `);
 
-    if (!result.recordset.length) return res.status(404).json({ message: "Không tìm thấy khuyến mãi" });
+    if (!result.recordset.length) {
+      return res.status(404).json({ message: "Không tìm thấy khuyến mãi" });
+    }
+
     res.json(mapPromotion(result.recordset[0]));
   } catch (err) {
     console.error("GET /api/promotions/:id error:", err);
@@ -128,19 +114,19 @@ router.get("/:id", async (req, res) => {
 
 // POST /api/promotions
 router.post("/", async (req, res) => {
-  const promoName       = normalizeText(req.body.PromoName || req.body.promoName, 255);
+  const promoName = normalizeText(req.body.PromoName || req.body.promoName, 255);
   const discountPercent = normalizeDiscount(req.body.DiscountPercent ?? req.body.discountPercent);
-  const endDate         = normalizeEndDate(req.body.EndDate || req.body.endDate);
+  const endDate = normalizeEndDate(req.body.EndDate || req.body.endDate);
 
-  if (!promoName)            return res.status(400).json({ message: "Tên khuyến mãi không được để trống" });
+  if (!promoName) return res.status(400).json({ message: "Tên khuyến mãi không được để trống" });
   if (discountPercent === null) return res.status(400).json({ message: "Phần trăm giảm phải từ 0 đến 100" });
 
   try {
-    const pool   = await poolPromise;
+    const pool = await poolPromise;
     const result = await pool.request()
-      .input("promoName",       sql.NVarChar(255), promoName)
-      .input("discountPercent", sql.Decimal(5, 2),  discountPercent)
-      .input("endDate",         sql.DateTime,        endDate)
+      .input("promoName", sql.NVarChar(255), promoName)
+      .input("discountPercent", sql.Decimal(5, 2), discountPercent)
+      .input("endDate", sql.DateTime, endDate)
       .query(`
         INSERT INTO PROMOTION (PromoName, DiscountPercent, EndDate)
         OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.EndDate
@@ -159,30 +145,35 @@ router.post("/", async (req, res) => {
 
 // PUT /api/promotions/:id
 router.put("/:id", async (req, res) => {
-  const promotionId     = Number(req.params.id);
-  const promoName       = normalizeText(req.body.PromoName || req.body.promoName, 255);
+  const promotionId = Number(req.params.id);
+  const promoName = normalizeText(req.body.PromoName || req.body.promoName, 255);
   const discountPercent = normalizeDiscount(req.body.DiscountPercent ?? req.body.discountPercent);
-  const endDate         = normalizeEndDate(req.body.EndDate || req.body.endDate);
+  const endDate = normalizeEndDate(req.body.EndDate || req.body.endDate);
 
-  if (!promotionId)          return res.status(400).json({ message: "PromotionID không hợp lệ" });
-  if (!promoName)            return res.status(400).json({ message: "Tên khuyến mãi không được để trống" });
+  if (!promotionId) return res.status(400).json({ message: "PromotionID không hợp lệ" });
+  if (!promoName) return res.status(400).json({ message: "Tên khuyến mãi không được để trống" });
   if (discountPercent === null) return res.status(400).json({ message: "Phần trăm giảm phải từ 0 đến 100" });
 
   try {
-    const pool   = await poolPromise;
+    const pool = await poolPromise;
     const result = await pool.request()
-      .input("promotionId",     sql.Int,           promotionId)
-      .input("promoName",       sql.NVarChar(255), promoName)
-      .input("discountPercent", sql.Decimal(5, 2),  discountPercent)
-      .input("endDate",         sql.DateTime,        endDate)
+      .input("promotionId", sql.Int, promotionId)
+      .input("promoName", sql.NVarChar(255), promoName)
+      .input("discountPercent", sql.Decimal(5, 2), discountPercent)
+      .input("endDate", sql.DateTime, endDate)
       .query(`
         UPDATE PROMOTION
-        SET PromoName = @promoName, DiscountPercent = @discountPercent, EndDate = @endDate
+        SET PromoName = @promoName,
+            DiscountPercent = @discountPercent,
+            EndDate = @endDate
         OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.EndDate
         WHERE PromotionID = @promotionId
       `);
 
-    if (!result.recordset.length) return res.status(404).json({ message: "Không tìm thấy khuyến mãi" });
+    if (!result.recordset.length) {
+      return res.status(404).json({ message: "Không tìm thấy khuyến mãi để cập nhật" });
+    }
+
     res.json({
       message: "Cập nhật khuyến mãi thành công",
       data: mapPromotion({ ...result.recordset[0], WalletCount: 0, UsedCount: 0 }),
@@ -193,23 +184,26 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// PATCH /api/promotions/:id/expire — Chuyển sang hết hạn (đặt EndDate = hôm qua)
+// PATCH /api/promotions/:id/expire
 router.patch("/:id/expire", async (req, res) => {
   const promotionId = Number(req.params.id);
   if (!promotionId) return res.status(400).json({ message: "PromotionID không hợp lệ" });
 
   try {
-    const pool   = await poolPromise;
+    const pool = await poolPromise;
     const result = await pool.request()
       .input("promotionId", sql.Int, promotionId)
       .query(`
         UPDATE PROMOTION
-        SET EndDate = DATEADD(DAY, -1, CAST(GETDATE() AS DATE))
+        SET EndDate = DATEADD(DAY, -1, GETDATE())
         OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.EndDate
         WHERE PromotionID = @promotionId
       `);
 
-    if (!result.recordset.length) return res.status(404).json({ message: "Không tìm thấy khuyến mãi" });
+    if (!result.recordset.length) {
+      return res.status(404).json({ message: "Không tìm thấy khuyến mãi" });
+    }
+
     res.json({
       message: "Đã chuyển khuyến mãi sang hết hạn",
       data: mapPromotion({ ...result.recordset[0], WalletCount: 0, UsedCount: 0 }),
@@ -220,66 +214,66 @@ router.patch("/:id/expire", async (req, res) => {
   }
 });
 
-// ─── MỚI: PATCH /api/promotions/:id/activate ─────────────────────────────────
-// Kích hoạt lại khuyến mãi đã hết hạn (đặt EndDate = 30 ngày tới)
-// Chỉ Admin mới được gọi endpoint này
-router.patch("/:id/activate", async (req, res) => {
-  const promotionId = Number(req.params.id);
-  if (!promotionId) return res.status(400).json({ message: "PromotionID không hợp lệ" });
-
-  // Cho phép truyền endDate tùy chỉnh, mặc định 30 ngày tới
-  const customEndDate = req.body.endDate ? normalizeEndDate(req.body.endDate) : null;
-
-  try {
-    const pool   = await poolPromise;
-    const result = await pool.request()
-      .input("promotionId", sql.Int,     promotionId)
-      .input("newEndDate",  sql.DateTime, customEndDate)
-      .query(`
-        UPDATE PROMOTION
-        SET EndDate = CASE
-          WHEN @newEndDate IS NOT NULL THEN @newEndDate
-          ELSE DATEADD(DAY, 30, GETDATE())   -- mặc định gia hạn 30 ngày
-        END
-        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.EndDate
-        WHERE PromotionID = @promotionId
-      `);
-
-    if (!result.recordset.length) return res.status(404).json({ message: "Không tìm thấy khuyến mãi" });
-    res.json({
-      message: "Đã kích hoạt lại khuyến mãi",
-      data: mapPromotion({ ...result.recordset[0], WalletCount: 0, UsedCount: 0 }),
-    });
-  } catch (err) {
-    console.error("PATCH /api/promotions/:id/activate error:", err);
-    res.status(500).json({ message: "Lỗi khi kích hoạt khuyến mãi" });
-  }
-});
 
 // DELETE /api/promotions/:id
+// Hard delete dùng cho dữ liệu demo/test:
+// xóa các bản ghi liên quan trong MEMBER_PROMOTION trước rồi mới xóa PROMOTION.
 router.delete("/:id", async (req, res) => {
   const promotionId = Number(req.params.id);
   if (!promotionId) return res.status(400).json({ message: "PromotionID không hợp lệ" });
 
-  const transaction = new sql.Transaction(await poolPromise);
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
+
   try {
     await transaction.begin();
-    const request = new sql.Request(transaction);
-    request.input("promotionId", sql.Int, promotionId);
 
-    const checkResult = await request.query(`SELECT PromotionID FROM PROMOTION WHERE PromotionID = @promotionId`);
+    const checkRequest = new sql.Request(transaction);
+    const checkResult = await checkRequest
+      .input("promotionId", sql.Int, promotionId)
+      .query(`
+        SELECT PromotionID, PromoName
+        FROM PROMOTION
+        WHERE PromotionID = @promotionId
+      `);
+
     if (!checkResult.recordset.length) {
       await transaction.rollback();
       return res.status(404).json({ message: "Không tìm thấy khuyến mãi" });
     }
 
-    await request.query(`DELETE FROM MEMBER_PROMOTION WHERE PromotionID = @promotionId`);
-    await request.query(`DELETE FROM PROMOTION WHERE PromotionID = @promotionId`);
+    const walletRequest = new sql.Request(transaction);
+    const walletDeleteResult = await walletRequest
+      .input("promotionId", sql.Int, promotionId)
+      .query(`
+        DELETE FROM MEMBER_PROMOTION
+        WHERE PromotionID = @promotionId
+      `);
+
+    const promotionRequest = new sql.Request(transaction);
+    await promotionRequest
+      .input("promotionId", sql.Int, promotionId)
+      .query(`
+        DELETE FROM PROMOTION
+        WHERE PromotionID = @promotionId
+      `);
+
     await transaction.commit();
 
-    res.json({ message: "Xóa khuyến mãi thành công" });
+    const walletDeleted =
+      walletDeleteResult.rowsAffected && walletDeleteResult.rowsAffected.length
+        ? walletDeleteResult.rowsAffected[0]
+        : 0;
+
+    res.json({
+      message: "Xóa khuyến mãi thành công",
+      deletedMemberPromotions: walletDeleted,
+    });
   } catch (err) {
-    await transaction.rollback();
+    try {
+      await transaction.rollback();
+    } catch (_) {}
+
     console.error("DELETE /api/promotions/:id error:", err);
     res.status(500).json({ message: "Lỗi khi xóa khuyến mãi" });
   }
