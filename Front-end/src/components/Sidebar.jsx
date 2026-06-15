@@ -80,22 +80,30 @@ export default function Sidebar() {
         icon: "fa-solid fa-chart-line",
       },
       {
-        path: "/timeslots",
+        path: "/staff/timeslots",
         label: "Bàn làm việc",
         icon: "fa-solid fa-car-side",
       },
       {
-        path: "/admin/members",
+        path: "/staff/members",
         label: "Khách hàng",
         icon: "fa-solid fa-users",
       },
-      { path: "/admin/machines", label: "Máy móc", icon: "fa-solid fa-gears" }, // <-- THÊM MỚI Ở ĐÂY
       {
-        path: "/admin/promotions",
+        path: "/staff/machines",
+        label: "Máy móc",
+        icon: "fa-solid fa-gears",
+      },
+      {
+        path: "/staff/promotions",
         label: "Khuyến mãi",
         icon: "fa-solid fa-tags",
       },
-      { path: "/admin/feedbacks", label: "Đánh giá", icon: "fa-solid fa-star" },
+      {
+        path: "/staff/feedbacks",
+        label: "Đánh giá",
+        icon: "fa-solid fa-star",
+      },
     );
   } else {
     // Member / Normal User

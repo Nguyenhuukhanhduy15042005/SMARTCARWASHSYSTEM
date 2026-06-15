@@ -26,6 +26,33 @@ import RewardRedemption from "./pages/RewardRedemption";
 import LoyaltyHistory from "./pages/LoyaltyHistory";
 import MachineDashboard from "./pages/MachineDashboard"; // Đã thêm import Machine Dashboard
 
+const getStoredRole = () => {
+  try {
+    const savedUser = JSON.parse(localStorage.getItem("LOGIN_USER") || "null");
+    const role =
+      savedUser?.role ||
+      savedUser?.RoleName ||
+      savedUser?.roleName ||
+      savedUser?.user?.role ||
+      savedUser?.user?.RoleName ||
+      "";
+
+    return String(role).toLowerCase();
+  } catch (_) {
+    return "";
+  }
+};
+
+function AdminSharedRoute({ children, staffPath }) {
+  const role = getStoredRole();
+
+  if (role === "staff" && window.location.pathname.startsWith("/admin/")) {
+    return <Navigate to={staffPath} replace />;
+  }
+
+  return children;
+}
+
 function App() {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem("LOGIN_USER");
@@ -104,6 +131,24 @@ function App() {
         />
 
         <Route
+          path="/admin/timeslots"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <TimeslotValidation />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/staff/timeslots"
+          element={
+            <ProtectedRoute requiredRole="staff">
+              <TimeslotValidation />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/staff/dashboard"
           element={
             <ProtectedRoute requiredRole="staff">
@@ -125,6 +170,17 @@ function App() {
           path="/admin/members"
           element={
             <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <AdminSharedRoute staffPath="/staff/members">
+                <MemberManagement />
+              </AdminSharedRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/staff/members"
+          element={
+            <ProtectedRoute requiredRole="staff">
               <MemberManagement />
             </ProtectedRoute>
           }
@@ -144,6 +200,17 @@ function App() {
           path="/admin/promotions"
           element={
             <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <AdminSharedRoute staffPath="/staff/promotions">
+                <PromotionManagement />
+              </AdminSharedRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/staff/promotions"
+          element={
+            <ProtectedRoute requiredRole="staff">
               <PromotionManagement />
             </ProtectedRoute>
           }
@@ -153,6 +220,17 @@ function App() {
           path="/admin/feedbacks"
           element={
             <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <AdminSharedRoute staffPath="/staff/feedbacks">
+                <FeedbackManagement />
+              </AdminSharedRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/staff/feedbacks"
+          element={
+            <ProtectedRoute requiredRole="staff">
               <FeedbackManagement />
             </ProtectedRoute>
           }
@@ -163,12 +241,21 @@ function App() {
           path="/admin/machines"
           element={
             <ProtectedRoute requiredRole={["admin", "staff"]}>
-              <MachineDashboard />
+              <AdminSharedRoute staffPath="/staff/machines">
+                <MachineDashboard />
+              </AdminSharedRoute>
             </ProtectedRoute>
           }
         />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route
+          path="/staff/machines"
+          element={
+            <ProtectedRoute requiredRole="staff">
+              <MachineDashboard />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/payments"
@@ -196,6 +283,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
