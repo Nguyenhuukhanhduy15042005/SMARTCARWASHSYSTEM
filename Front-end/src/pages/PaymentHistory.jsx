@@ -7,7 +7,7 @@ import Sidebar from "../components/Sidebar";
 
 const API_BASE = "/api";
 
-const METHOD_LABEL = { cash: "💵 Tiền mặt", vnpay: "🏦 VNPay" };
+const METHOD_LABEL = { cash: "💰 Đặt cọc", vnpay: "🏦 VNPay", "Tiền mặt": "💵 Tiền mặt" };
 
 export default function PaymentHistory() {
   const navigate = useNavigate();
@@ -85,6 +85,10 @@ export default function PaymentHistory() {
 
   const filtered = filter === "all"
     ? history
+    : filter === "deposit"
+    ? history.filter((h) => h.Method === "cash")
+    : filter === "cash"
+    ? history.filter((h) => h.Method === "Tiền mặt")
     : history.filter((h) => h.Method === filter);
 
   return (
@@ -108,9 +112,10 @@ export default function PaymentHistory() {
         {/* Filter tabs */}
         <div className="ph-filter-tabs">
           {[
-            { key: "all",   label: "Tất cả"    },
-            { key: "cash",  label: "💵 Tiền mặt" },
-            { key: "vnpay", label: "🏦 VNPay"   },
+            { key: "all",      label: "Tất cả"       },
+            { key: "deposit",  label: "💰 Đặt cọc"    },
+            { key: "vnpay",    label: "🏦 VNPay"     },
+            { key: "cash",     label: "💵 Tiền mặt"  },
           ].map((f) => (
             <button key={f.key}
               className={`ph-tab ${filter === f.key ? "active" : ""}`}
@@ -140,7 +145,7 @@ export default function PaymentHistory() {
               <div key={p.PaymentID} className="ph-item">
                 <div className="ph-item-left">
                   <div className="ph-item-icon">
-                    {p.Method === "cash" ? "💵" : "🏦"}
+                    {p.Method === "cash" ? "💰" : p.Method === "vnpay" ? "🏦" : "💵"}
                   </div>
                   <div className="ph-item-info">
                     <p className="ph-item-service">
@@ -153,11 +158,23 @@ export default function PaymentHistory() {
                 </div>
                 <div className="ph-item-right">
                   <p className="ph-item-amount">{formatPrice(p.Amount)}</p>
-                  <span className="ph-status status-paid">✓ Đã thanh toán</span>
-                  <button className="ph-refund-btn"
-                    onClick={() => { setRefundModal({ payment: p }); setRefundReason(""); }}>
-                    Hoàn tiền
-                  </button>
+                  {p.BookingStatus === 4 ? (
+                    <span className="ph-status status-paid" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>✓ Hoàn thành</span>
+                  ) : p.BookingStatus === 3 ? (
+                    <span className="ph-status status-pending" style={{ background: "rgba(6, 182, 212, 0.15)", color: "#06b6d4" }}>🚿 Đang rửa</span>
+                  ) : p.BookingStatus === 5 ? (
+                    <span className="ph-status status-failed">❌ Đã hủy</span>
+                  ) : p.Method === "cash" ? (
+                    <span className="ph-status status-deposit">💰 Đã đặt cọc</span>
+                  ) : (
+                    <span className="ph-status status-paid">✓ Đã xác nhận</span>
+                  )}
+                  {(p.BookingStatus === 1 || p.BookingStatus === 2) && (
+                    <button className="ph-refund-btn"
+                      onClick={() => { setRefundModal({ payment: p }); setRefundReason(""); }}>
+                      Hoàn tiền
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

@@ -4,7 +4,6 @@ import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
-
 export default function RewardRedemption() {
   const [profile, setProfile] = useState({
     FullName: "Khách hàng",
@@ -16,6 +15,8 @@ export default function RewardRedemption() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [myVouchers, setMyVouchers] = useState([]);
+  const [walletLoading, setWalletLoading] = useState(false);
 
   useEffect(() => {
     const font = document.createElement("link");
@@ -58,7 +59,8 @@ export default function RewardRedemption() {
   };
 
   const getHeaders = () => {
-    const token = localStorage.getItem("token") || localStorage.getItem("TOKEN");
+    const token =
+      localStorage.getItem("token") || localStorage.getItem("TOKEN");
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
@@ -68,11 +70,68 @@ export default function RewardRedemption() {
     return {
       RewardID: promotion.PromotionID,
       RewardCode: `PR-${promotion.PromotionID}`,
-      RewardName: promotion.PromoName || `Khuyến mãi PR-${promotion.PromotionID}`,
+      RewardName:
+        promotion.PromoName || `Khuyến mãi PR-${promotion.PromotionID}`,
       PointsRequired: Math.max(1, Math.round(discountPercent * 10)),
       DiscountPercent: discountPercent,
       Description: `Voucher giảm ${discountPercent}% khi thanh toán booking.`,
       RawPromotion: promotion,
+    };
+  };
+
+  const normalizeMyVoucher = (voucher) => {
+    const promotionId =
+      voucher.PromotionID ??
+      voucher.PromotionId ??
+      voucher.promotionID ??
+      voucher.promotionId ??
+      voucher.promotion_id;
+
+    const memberPromoId =
+      voucher.MemberPromoID ??
+      voucher.MemberPromoId ??
+      voucher.memberPromoID ??
+      voucher.memberPromoId ??
+      voucher.member_promo_id;
+
+    const promoName =
+      voucher.PromoName ??
+      voucher.promoName ??
+      voucher.RewardName ??
+      voucher.rewardName ??
+      voucher.Name ??
+      voucher.name;
+
+    const discountPercent =
+      voucher.DiscountPercent ??
+      voucher.discountPercent ??
+      voucher.Discount ??
+      voucher.discount ??
+      0;
+
+    return {
+      MemberPromoID: memberPromoId,
+      PromotionID: promotionId,
+      RewardCode:
+        voucher.RewardCode ||
+        voucher.rewardCode ||
+        voucher.PromoCode ||
+        voucher.promoCode ||
+        (promotionId ? `PR-${promotionId}` : "PR-N/A"),
+      RewardName:
+        promoName || (promotionId ? `Khuyến mãi PR-${promotionId}` : "Khuyến mãi"),
+      DiscountPercent: Number(discountPercent || 0),
+      IsUsed: Boolean(voucher.IsUsed ?? voucher.isUsed ?? false),
+      AcquiredDate:
+        voucher.AcquiredDate ||
+        voucher.acquiredDate ||
+        voucher.CreatedAt ||
+        voucher.createdAt,
+      EndDate:
+        voucher.EndDate ||
+        voucher.endDate ||
+        voucher.ExpiredAt ||
+        voucher.expiredAt,
     };
   };
 
@@ -81,33 +140,77 @@ export default function RewardRedemption() {
     setTimeout(() => setToast(null), 3500);
   };
 
+  const fetchMyVouchers = async () => {
+    const userId = getCustomerId();
+    const headers = getHeaders();
+    setWalletLoading(true);
+
+    try {
+      const walletRes = await axios.get(
+        `${API_BASE}/loyalty/my-vouchers?userId=${userId}`,
+        { headers },
+      );
+
+      const data = Array.isArray(walletRes.data)
+        ? walletRes.data
+        : walletRes.data?.vouchers || [];
+
+      setMyVouchers(data.map(normalizeMyVoucher));
+    } catch (err) {
+      console.error("Lỗi lấy ví voucher:", err);
+      setMyVouchers([]);
+    } finally {
+      setWalletLoading(false);
+    }
+  };
+
   const fetchRewardData = async () => {
     setLoading(true);
     const userId = getCustomerId();
     const headers = getHeaders();
 
+    // 1. TẢI ĐIỂM ĐỘC LẬP (Sử dụng lại API /users/profile đang chạy cực tốt bên LoyaltyHistory)
     try {
-      const [profileRes, promotionRes] = await Promise.all([
-        axios.get(`${API_BASE}/loyalty/profile?userId=${userId}`, { headers }),
-        axios.get(`${API_BASE}/promotions?status=active`, { headers }),
-      ]);
+      const profileRes = await axios.get(
+        `${API_BASE}/users/profile?userId=${userId}`,
+        { headers },
+      );
+      if (profileRes.data) {
+        setProfile({
+          FullName:
+            profileRes.data.FullName ||
+            profileRes.data.fullName ||
+            "Khách hàng",
+          CurrentPoints: Number(
+            profileRes.data.CurrentPoints ?? profileRes.data.currentPoints ?? 0,
+          ),
+          TierName:
+            profileRes.data.TierName || profileRes.data.tierName || "Standard",
+        });
+      }
+    } catch (err) {
+      console.error("Lỗi lấy thông tin Profile:", err);
+    }
 
-      setProfile(profileRes.data);
-
+    // 2. TẢI VOUCHER ĐỘC LẬP
+    try {
+      const promotionRes = await axios.get(
+        `${API_BASE}/promotions?status=active`,
+        { headers },
+      );
       const mappedRewards = Array.isArray(promotionRes.data)
         ? promotionRes.data.map(normalizePromotionToReward)
         : [];
-
       setRewards(mappedRewards);
     } catch (err) {
-      console.error(err);
+      console.error("Lỗi lấy danh sách Voucher:", err);
       showToast("Không tải được dữ liệu voucher.", "error");
       setRewards([]);
     } finally {
       setLoading(false);
+      fetchMyVouchers();
     }
   };
-
 
   const canUseReward = (reward) => {
     return profile.CurrentPoints >= Number(reward.PointsRequired || 0);
@@ -115,7 +218,9 @@ export default function RewardRedemption() {
 
   const checkoutSummary = useMemo(() => {
     return {
-      pointsUsed: selectedReward ? Number(selectedReward.PointsRequired || 0) : 0,
+      pointsUsed: selectedReward
+        ? Number(selectedReward.PointsRequired || 0)
+        : 0,
       remainingPoints: selectedReward
         ? profile.CurrentPoints - Number(selectedReward.PointsRequired || 0)
         : profile.CurrentPoints,
@@ -168,7 +273,7 @@ export default function RewardRedemption() {
       if (response.data.success) {
         showToast(response.data.message || "Đổi ưu đãi thành công!", "success");
         setSelectedReward(null); // Bỏ chọn voucher hiện tại
-        fetchRewardData(); // Load lại điểm số mới nhất trên màn hình
+        fetchRewardData(); // Load lại điểm số mới nhất và ví voucher
       }
     } catch (error) {
       console.error("Lỗi gọi API Redeem:", error);
@@ -179,6 +284,23 @@ export default function RewardRedemption() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const walletStats = useMemo(() => {
+    const unused = myVouchers.filter((v) => !v.IsUsed).length;
+    const used = myVouchers.filter((v) => v.IsUsed).length;
+    return {
+      total: myVouchers.length,
+      unused,
+      used,
+    };
+  }, [myVouchers]);
+
+  const formatDate = (value) => {
+    if (!value) return "Không giới hạn";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Không giới hạn";
+    return date.toLocaleDateString("vi-VN");
   };
 
   return (
@@ -248,7 +370,8 @@ export default function RewardRedemption() {
                             {reward.PointsRequired} điểm
                           </small>
                           <small>
-                            <i className="fa-solid fa-tags"></i> Giảm {reward.DiscountPercent}%
+                            <i className="fa-solid fa-tags"></i> Giảm{" "}
+                            {reward.DiscountPercent}%
                           </small>
                         </div>
                       </div>
@@ -282,7 +405,9 @@ export default function RewardRedemption() {
             </div>
             <div className="summary-code">
               <span>Voucher khả dụng</span>
-              <b>{rewards.filter(canUseReward).length}/{rewards.length}</b>
+              <b>
+                {rewards.filter(canUseReward).length}/{rewards.length}
+              </b>
             </div>
             <button
               className="summary-btn"
@@ -292,10 +417,74 @@ export default function RewardRedemption() {
               {submitting
                 ? "Đang đổi điểm..."
                 : selectedReward
-                ? "Đổi điểm nhận voucher"
-                : "Chọn voucher để đổi"}
+                  ? "Đổi điểm nhận voucher"
+                  : "Chọn voucher để đổi"}
             </button>
           </aside>
+        </section>
+
+        <section className="wallet-card">
+          <div className="wallet-header">
+            <div>
+              <h2>Ví voucher của tôi</h2>
+              <p>Danh sách voucher đã đổi bằng điểm và trạng thái sử dụng.</p>
+            </div>
+            <div className="wallet-stats">
+              <div>
+                <strong>{walletStats.total}</strong>
+                <span>Tổng voucher</span>
+              </div>
+              <div>
+                <strong>{walletStats.unused}</strong>
+                <span>Chưa dùng</span>
+              </div>
+              <div>
+                <strong>{walletStats.used}</strong>
+                <span>Đã dùng</span>
+              </div>
+            </div>
+          </div>
+
+          {walletLoading ? (
+            <div className="wallet-empty">Đang tải ví voucher...</div>
+          ) : myVouchers.length === 0 ? (
+            <div className="wallet-empty">
+              Bạn chưa có voucher nào trong ví. Hãy đổi điểm để nhận voucher.
+            </div>
+          ) : (
+            <div className="wallet-list">
+              {myVouchers.map((voucher) => (
+                <article
+                  key={voucher.MemberPromoID || `${voucher.PromotionID || "promo"}-${voucher.RewardCode}`}
+                  className={`wallet-item ${voucher.IsUsed ? "used" : ""}`}
+                >
+                  <div className="wallet-icon">
+                    <i className="fa-solid fa-ticket"></i>
+                  </div>
+                  <div className="wallet-info">
+                    <div className="wallet-row">
+                      <h3>{voucher.RewardName}</h3>
+                      <span>{voucher.RewardCode || "PR-N/A"}</span>
+                    </div>
+                    <p>Giảm {voucher.DiscountPercent}% khi thanh toán booking.</p>
+                    <div className="wallet-meta">
+                      <small>
+                        <i className="fa-solid fa-calendar-plus"></i>{" "}
+                        Nhận: {formatDate(voucher.AcquiredDate)}
+                      </small>
+                      <small>
+                        <i className="fa-solid fa-calendar-xmark"></i>{" "}
+                        HSD: {formatDate(voucher.EndDate)}
+                      </small>
+                    </div>
+                  </div>
+                  <div className={`wallet-status ${voucher.IsUsed ? "used" : "available"}`}>
+                    {voucher.IsUsed ? "Đã dùng" : "Chưa dùng"}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       </main>
     </div>
@@ -608,6 +797,164 @@ const rewardRedemptionCss = `
   opacity:.8;
 }
 
+.wallet-card{
+  margin-top:24px;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:26px;
+  padding:24px;
+  box-shadow:0 18px 50px rgba(16,24,40,.04);
+}
+
+.wallet-header{
+  display:flex;
+  justify-content:space-between;
+  gap:18px;
+  align-items:flex-start;
+  margin-bottom:18px;
+}
+
+.wallet-header h2{
+  margin:0;
+  font-size:22px;
+  color:var(--text-primary);
+}
+
+.wallet-header p{
+  margin:6px 0 0;
+  color:var(--text-secondary);
+}
+
+.wallet-stats{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.wallet-stats div{
+  min-width:94px;
+  padding:10px 12px;
+  border-radius:16px;
+  background:var(--bg-primary);
+  border:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+.wallet-stats strong{
+  color:var(--text-primary);
+  font-size:20px;
+  font-weight:900;
+}
+
+.wallet-stats span{
+  color:var(--text-secondary);
+  font-size:11px;
+  font-weight:800;
+}
+
+.wallet-empty{
+  padding:36px;
+  border:1px dashed var(--border);
+  border-radius:18px;
+  color:var(--text-secondary);
+  text-align:center;
+  font-weight:700;
+}
+
+.wallet-list{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+
+.wallet-item{
+  display:grid;
+  grid-template-columns:54px 1fr auto;
+  gap:14px;
+  align-items:center;
+  padding:16px;
+  border:1px solid var(--border);
+  border-radius:20px;
+  background:var(--bg-card);
+}
+
+.wallet-item.used{
+  opacity:.58;
+}
+
+.wallet-icon{
+  width:54px;
+  height:54px;
+  border-radius:18px;
+  background:var(--bg-primary);
+  color:#0b8f6b;
+  display:grid;
+  place-items:center;
+  font-size:22px;
+}
+
+.wallet-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.wallet-row h3{
+  margin:0;
+  color:var(--text-primary);
+  font-size:16px;
+  font-weight:900;
+}
+
+.wallet-row span{
+  padding:5px 9px;
+  border-radius:999px;
+  background:rgba(245,158,11,.15);
+  color:#e5a500;
+  font-size:12px;
+  font-weight:900;
+}
+
+.wallet-info p{
+  margin:7px 0;
+  color:var(--text-secondary);
+}
+
+.wallet-meta{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.wallet-meta small{
+  padding:6px 9px;
+  border-radius:999px;
+  background:var(--bg-primary);
+  color:var(--text-secondary);
+  font-weight:700;
+}
+
+.wallet-status{
+  white-space:nowrap;
+  padding:8px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:900;
+}
+
+.wallet-status.available{
+  background:rgba(16,185,129,.14);
+  color:#10b981;
+}
+
+.wallet-status.used{
+  background:rgba(148,163,184,.18);
+  color:var(--text-secondary);
+}
+
 @media(max-width:1000px){
   .reward-main{
     margin-left:0;
@@ -628,6 +975,24 @@ const rewardRedemptionCss = `
   }
   .reward-mode-box{
     width:100%;
+  }
+  .wallet-header{
+    flex-direction:column;
+  }
+  .wallet-stats{
+    width:100%;
+  }
+  .wallet-stats div{
+    flex:1;
+  }
+  .wallet-list{
+    grid-template-columns:1fr;
+  }
+  .wallet-item{
+    grid-template-columns:1fr;
+  }
+  .wallet-icon{
+    display:none;
   }
 }
 `;

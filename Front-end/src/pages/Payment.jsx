@@ -27,12 +27,16 @@ export default function Payment() {
     Date: "", Time: "", TotalPrice: 0, LicensePlate: "",
   };
 
+  const [bookingData, setBookingData] = useState(booking);
   const [method, setMethod]     = useState("cash");
   const [loading, setLoading]   = useState(false);
   const [tierID, setTierID]     = useState(null);
   const [loadingTier, setLoadingTier] = useState(true);
   const [toast, setToast]       = useState(null);
   const [qrModal, setQrModal]   = useState(null);
+
+  const [vouchers, setVouchers] = useState([]);
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
 
   const getToken = () => localStorage.getItem("token") || localStorage.getItem("TOKEN");
 
@@ -44,7 +48,7 @@ export default function Payment() {
   const formatPrice = (price) =>
     new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price || 0);
 
-  // Lấy tier của user khi load trang
+  // Lấy thông tin khi load trang
   useEffect(() => {
     const fetchTier = async () => {
       try {
@@ -59,12 +63,42 @@ export default function Payment() {
       }
     };
     fetchTier();
+
+    const fetchBookingAndVouchers = async () => {
+      const bId = bookingData?.BookingID || booking?.BookingID;
+      if (!bId) return;
+
+      try {
+        const bookingRes = await axios.get(`${API_BASE}/bookings/${bId}`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        setBookingData(bookingRes.data);
+      } catch (err) {
+        console.error("Lỗi khi tải thông tin đặt lịch:", err);
+      }
+
+      try {
+        const vouchersRes = await axios.get(`${API_BASE}/promotions/my-vouchers`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        setVouchers(vouchersRes.data);
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách voucher của bạn:", err);
+      }
+    };
+    fetchBookingAndVouchers();
   }, []);
+
+  const activeVoucher = vouchers.find(v => v.MemberPromoID === bookingData?.MemberPromoID) || null;
+
+  const currentTotalPrice = bookingData?.TotalPrice || booking.TotalPrice || 0;
+  const currentFinalPrice = bookingData?.FinalPrice ?? currentTotalPrice;
+  const discountAmount = currentTotalPrice - currentFinalPrice;
 
   // Tính số tiền hiển thị theo method + tier
   const tier = TIER_INFO[tierID] || TIER_INFO[1];
-  const depositAmount  = Math.round(booking.TotalPrice * 0.1);
-  const remainingAmount = booking.TotalPrice - depositAmount;
+  const depositAmount  = Math.round(currentFinalPrice * 0.1);
+  const remainingAmount = currentFinalPrice - depositAmount;
 
   const getPaymentNote = () => {
     if (method !== "cash") return null;
@@ -84,7 +118,7 @@ export default function Payment() {
         <span>⭐</span>
         <div>
           <p>Hạng <strong style={{ color: tier.color }}>{tier.name}</strong> — <strong style={{ color: "#10b981" }}>Miễn phí giữ chỗ!</strong></p>
-          <p style={{ marginTop: 4, fontSize: 12, color: "#94a3b8" }}>Staff sẽ thu toàn bộ <strong>{formatPrice(booking.TotalPrice)}</strong> khi check-in.</p>
+          <p style={{ marginTop: 4, fontSize: 12, color: "#94a3b8" }}>Staff sẽ thu toàn bộ <strong>{formatPrice(currentFinalPrice)}</strong> khi check-in.</p>
         </div>
       </div>
     );
@@ -96,24 +130,55 @@ export default function Payment() {
     return "✓ Xác nhận giữ chỗ (Miễn phí)";
   };
 
+  const handleApplyVoucher = async (memberPromoId) => {
+    const bId = bookingData?.BookingID || booking?.BookingID;
+    if (!bId) return;
+
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API_BASE}/bookings/${bId}/apply-voucher`, {
+        memberPromoId
+      }, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
+
+      setBookingData(prev => ({
+        ...prev,
+        FinalPrice: res.data.FinalPrice,
+        MemberPromoID: res.data.MemberPromoID
+      }));
+
+      if (memberPromoId) {
+        showToast("Áp dụng mã giảm giá thành công!", "success");
+      } else {
+        showToast("Đã gỡ bỏ mã giảm giá!", "success");
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message;
+      showToast(errMsg || "Không thể áp dụng voucher", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!booking.BookingID) {
+    const bId = bookingData?.BookingID || booking?.BookingID;
+    if (!bId) {
       showToast("Không tìm thấy thông tin booking!", "error");
       return;
     }
     setLoading(true);
     try {
       const res = await axios.post(`${API_BASE}/payments`, {
-        bookingId: booking.BookingID,
+        bookingId: bId,
         method,
-        amount: booking.TotalPrice,
+        amount: currentFinalPrice,
       }, { headers: { Authorization: `Bearer ${getToken()}` } });
 
       if (res.data.paymentUrl) {
         showToast("Đang chuyển hướng đến cổng thanh toán...", "success");
         setTimeout(() => window.location.href = res.data.paymentUrl, 1200);
       } else if (res.data.qrData) {
-        // Cash + Bronze/Silver → hiện modal QR đặt cọc
         setQrModal({
           qrData: res.data.qrData,
           depositAmount: res.data.depositAmount,
@@ -135,17 +200,19 @@ export default function Payment() {
 
   // Tính số tiền hiển thị trong summary
   const displayAmount = () => {
-    if (method !== "cash") return booking.TotalPrice;
+    if (method !== "cash") return currentFinalPrice;
     if (tier.needDeposit) return depositAmount;
     return 0;
   };
 
   return (
     <div className="payment-page-container">
+      <div className="payment-top-bar" style={{ maxWidth: "900px", margin: "0 auto 20px" }}>
+        <button className="payment-back-btn" onClick={() => navigate(-1)}>← Quay lại</button>
+      </div>
       <div className="payment-wrapper">
         {/* LEFT */}
         <div className="payment-left">
-          <button className="payment-back-btn" onClick={() => navigate(-1)}>← Quay lại</button>
           <h1 className="payment-title">Thanh toán</h1>
           <p className="payment-subtitle">Chọn phương thức thanh toán phù hợp</p>
 
@@ -163,7 +230,7 @@ export default function Payment() {
             <div className="pbi-divider" />
             <div className="pbi-row">
               <span className="pbi-label">Tổng tiền dịch vụ</span>
-              <span className="pbi-total">{formatPrice(booking.TotalPrice)}</span>
+              <span className="pbi-total">{formatPrice(currentTotalPrice)}</span>
             </div>
           </div>
 
@@ -182,6 +249,59 @@ export default function Payment() {
                 <span className={`pmo-radio ${method === m.id ? "checked" : ""}`} />
               </button>
             ))}
+          </div>
+
+          {/* Voucher / Khuyến mãi */}
+          <div className="voucher-section-container">
+            <p className="payment-section-label">Ưu đãi / Khuyến mãi</p>
+            {activeVoucher ? (
+              <div className="applied-voucher-card">
+                <div className="avc-left">
+                  <span className="avc-icon">🎟️</span>
+                  <div className="avc-details">
+                    <p className="avc-name">{activeVoucher.PromoName}</p>
+                    <p className="avc-discount">Giảm {Math.round(activeVoucher.DiscountPercent)}% dịch vụ</p>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  className="btn-remove-voucher"
+                  onClick={() => handleApplyVoucher(null)}
+                  disabled={loading}
+                >
+                  Gỡ bỏ
+                </button>
+              </div>
+            ) : bookingData?.MemberPromoID ? (
+              <div className="applied-voucher-card">
+                <div className="avc-left">
+                  <span className="avc-icon">🎟️</span>
+                  <div className="avc-details">
+                    <p className="avc-name">Voucher đã áp dụng</p>
+                    <p className="avc-discount">Ưu đãi giảm giá từ voucher</p>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  className="btn-remove-voucher"
+                  onClick={() => handleApplyVoucher(null)}
+                  disabled={loading}
+                >
+                  Gỡ bỏ
+                </button>
+              </div>
+            ) : (
+              <button 
+                type="button" 
+                className="btn-apply-voucher-trigger"
+                onClick={() => setShowVoucherModal(true)}
+                disabled={loading}
+              >
+                <span className="voucher-trigger-icon">🎟️</span>
+                <span className="voucher-trigger-text">Áp dụng voucher / mã giảm giá</span>
+                <span className="voucher-trigger-arrow">→</span>
+              </button>
+            )}
           </div>
 
           {/* Ghi chú theo tier/method */}
@@ -213,7 +333,13 @@ export default function Payment() {
             </div>
 
             <div className="ps-rows">
-              <div className="ps-row"><span>Giá dịch vụ</span><span>{formatPrice(booking.TotalPrice)}</span></div>
+              <div className="ps-row"><span>Giá dịch vụ</span><span>{formatPrice(currentTotalPrice)}</span></div>
+              {discountAmount > 0 && (
+                <div className="ps-row discount-row">
+                  <span>Giảm giá (Voucher)</span>
+                  <span style={{ color: "#10b981", fontWeight: 700 }}>-{formatPrice(discountAmount)}</span>
+                </div>
+              )}
               {method === "cash" && !loadingTier && tier.needDeposit && (
                 <>
                   <div className="ps-row">
@@ -255,6 +381,58 @@ export default function Payment() {
           </div>
         </div>
       </div>
+
+      {/* Modal chọn Voucher */}
+      {showVoucherModal && (
+        <div className="voucher-modal-overlay" onClick={() => setShowVoucherModal(false)}>
+          <div className="voucher-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="vmc-header">
+              <h3>Voucher / Khuyến mãi của bạn</h3>
+              <button className="vmc-close-btn" onClick={() => setShowVoucherModal(false)}>×</button>
+            </div>
+            <div className="vmc-body">
+              {vouchers.length === 0 ? (
+                <div className="no-vouchers-message">
+                  <span className="empty-icon">🎟️</span>
+                  <p>Bạn chưa có voucher nào trong ví.</p>
+                  <p className="sub-msg">Đổi điểm tích luỹ lấy voucher tại mục Thành viên!</p>
+                </div>
+              ) : (
+                <div className="vouchers-list">
+                  {vouchers.map((v) => {
+                    const isExpired = v.EndDate && new Date(v.EndDate) < new Date();
+                    return (
+                      <div 
+                        key={v.MemberPromoID} 
+                        className={`voucher-item-card ${isExpired ? "expired" : ""}`}
+                        onClick={() => {
+                          if (!isExpired) {
+                            handleApplyVoucher(v.MemberPromoID);
+                            setShowVoucherModal(false);
+                          }
+                        }}
+                      >
+                        <div className="vic-discount-badge">
+                          <span className="vic-percent">-{Math.round(v.DiscountPercent)}%</span>
+                        </div>
+                        <div className="vic-details">
+                          <h4 className="vic-name">{v.PromoName}</h4>
+                          {v.EndDate && (
+                            <p className="vic-expiry">Hạn dùng: {new Date(v.EndDate).toLocaleDateString("vi-VN")}</p>
+                          )}
+                        </div>
+                        <button className="btn-select-voucher" disabled={isExpired}>
+                          Áp dụng
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className={`booking-toast ${toast.type === "error" ? "booking-toast-error" : "booking-toast-success"}`}>

@@ -116,6 +116,7 @@ export default function Booking() {
     document.head.appendChild(linkIcons);
 
     fetchUserProfile();
+    fetchUserVehicles();
   }, []);
 
   useEffect(() => {

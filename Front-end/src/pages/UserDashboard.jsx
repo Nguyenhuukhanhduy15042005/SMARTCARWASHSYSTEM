@@ -11,6 +11,7 @@ export default function UserDashboard() {
   const navigate = useNavigate(); // Trọng thêm
   const [bookings, setBookings] = useState([]);
   const [paidBookingIds, setPaidBookingIds] = useState(new Set());
+  const [paidBookingMethods, setPaidBookingMethods] = useState(new Map());
   const [profile, setProfile] = useState({ 
     UserID: 12, 
     FullName: "Khách hàng", 
@@ -123,8 +124,11 @@ export default function UserDashboard() {
       // Lấy danh sách BookingID đã thanh toán
       try {
         const paymentsRes = await axios.get(`${API_BASE}/payments/history?limit=100`, { headers });
-        const paidIds = new Set((paymentsRes.data?.data || []).map(p => p.BookingID));
+        const paymentsData = paymentsRes.data?.data || [];
+        const paidIds = new Set(paymentsData.map(p => p.BookingID));
+        const methodMap = new Map(paymentsData.map(p => [p.BookingID, p.Method]));
         setPaidBookingIds(paidIds);
+        setPaidBookingMethods(methodMap);
       } catch (e) {
         // Không chặn luồng chính nếu lấy payment history lỗi
       }
@@ -227,10 +231,13 @@ export default function UserDashboard() {
 
   const getStatusPill = (status, bookingId) => {
     if (status === 2 && paidBookingIds.has(bookingId)) {
+      if (paidBookingMethods.get(bookingId) === "cash") {
+        return <span className="status-pill status-deposit" style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)" }}><i className="fa-solid fa-coins"></i> Đã đặt cọc</span>;
+      }
       return <span className="status-pill status-paid" style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}><i className="fa-solid fa-circle-check"></i> Đã thanh toán</span>;
     }
     switch (status) {
-      case 1: return <span className="status-pill status-pending"><i className="fa-regular fa-clock"></i> Chờ duyệt</span>;
+      case 1: return <span className="status-pill status-pending" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}><i className="fa-regular fa-clock"></i> Chờ cọc/thanh toán</span>;
       case 2: return <span className="status-pill status-confirmed"><i className="fa-solid fa-check"></i> Đã xác nhận</span>;
       case 3: return <span className="status-pill status-inservice"><i className="fa-solid fa-arrows-spin fa-spin"></i> Đang rửa</span>;
       case 4: return <span className="status-pill status-completed"><i className="fa-regular fa-circle-check"></i> Hoàn thành</span>;
@@ -428,9 +435,14 @@ export default function UserDashboard() {
               Đã hủy ({bookings.filter(b => b.status === 5).length})
             </button>
           </div>
-          <a href="/booking" className="btn-book-nav">
-            <i className="fa-solid fa-calendar-plus"></i> Đặt lịch rửa xe mới
-          </a>
+          <div style={{ display: "flex", gap: "12px" }}>
+            <button className="btn-book-nav" style={{ background: "rgba(99, 102, 241, 0.15)", color: "#818cf8", border: "1px solid rgba(99, 102, 241, 0.3)" }} onClick={() => navigate("/payments/history")}>
+              <i className="fa-solid fa-receipt"></i> Lịch sử thanh toán
+            </button>
+            <a href="/booking" className="btn-book-nav">
+              <i className="fa-solid fa-calendar-plus"></i> Đặt lịch rửa xe mới
+            </a>
+          </div>
         </section>
 
         {/* Bookings Table list */}
@@ -491,16 +503,16 @@ export default function UserDashboard() {
                       <td>{getStatusPill(b.status, b.id)}</td>
                       <td>
                         <div className="table-actions">
-                          {/* ✅ Nút thanh toán — chỉ hiện khi status=2 và chưa thanh toán */}
-                          {b.status === 2 && !paidBookingIds.has(b.id) && (
+                          {/* ✅ Nút thanh toán — chỉ hiện khi status=1 */}
+                          {b.status === 1 && (
                             <button className="action-icon-btn" title="Thanh toán"
                               style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)" }}
                               onClick={() => goToPayment(b)}>
                               <i className="fa-solid fa-credit-card"></i>
                             </button>
                           )}
-                          {/* ✅ Nút xem lịch sử thanh toán — khi đã hoàn thành */}
-                          {b.status === 4 && (
+                          {/* ✅ Nút xem lịch sử thanh toán — khi đã thanh toán hoặc hoàn thành */}
+                          {(b.status === 2 || b.status === 4) && (
                             <button className="action-icon-btn" title="Lịch sử thanh toán"
                               style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)" }}
                               onClick={() => navigate("/payments/history")}>
@@ -549,21 +561,17 @@ export default function UserDashboard() {
             <div className="admin-modal-body">
               {/* Progress Flow */}
               <div className="modal-timeline">
-                <div className={`timeline-step ${selectedBooking.status >= 1 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 1 ? "active" : ""}`}>
+                <div className={`timeline-step ${selectedBooking.status >= 2 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${(selectedBooking.status === 1 || selectedBooking.status === 2) ? "active" : ""}`}>
                   <div className="timeline-node">1</div>
-                  <div className="timeline-label">Chờ duyệt</div>
-                </div>
-                <div className={`timeline-step ${selectedBooking.status >= 2 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 2 ? "active" : ""}`}>
-                  <div className="timeline-node">2</div>
                   <div className="timeline-label">Xác nhận</div>
                 </div>
                 <div className={`timeline-step ${selectedBooking.status >= 3 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 3 ? "active" : ""}`}>
-                  <div className="timeline-node">3</div>
+                  <div className="timeline-node">2</div>
                   <div className="timeline-label">Đang rửa</div>
                 </div>
                 <div className={`timeline-step ${selectedBooking.status === 4 ? "completed active" : ""} ${selectedBooking.status === 5 ? "active" : ""}`}>
                   <div className="timeline-node" style={{ backgroundColor: selectedBooking.status === 5 ? "var(--color-danger)" : "" }}>
-                    {selectedBooking.status === 5 ? <i className="fa-solid fa-xmark"></i> : "4"}
+                    {selectedBooking.status === 5 ? <i className="fa-solid fa-xmark"></i> : "3"}
                   </div>
                   <div className="timeline-label">{selectedBooking.status === 5 ? "Đã hủy" : "Hoàn thành"}</div>
                 </div>
@@ -599,7 +607,7 @@ export default function UserDashboard() {
 
               <div style={{ marginTop: "30px", display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                 {/* ✅ Nút thanh toán trong modal */}
-                {selectedBooking.status === 2 && !paidBookingIds.has(selectedBooking.id) && (
+                {selectedBooking.status === 1 && (
                   <button
                     style={{ background: "#f97316", color: "#fff", border: "none", borderRadius: "8px", padding: "8px 16px", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}
                     onClick={() => { setSelectedBooking(null); goToPayment(selectedBooking); }}>

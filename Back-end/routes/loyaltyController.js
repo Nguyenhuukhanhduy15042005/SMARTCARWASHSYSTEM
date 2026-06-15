@@ -2,7 +2,7 @@ const sql = require("mssql");
 const { poolPromise } = require("../db");
 
 // Đường dẫn cùng thư mục routes
-const { redeemRewardPoints } = require("./rewardService");
+const { redeemRewardPoints, getMemberVouchers } = require("./rewardService");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API 1: GET /api/loyalty/profile?userId=...
@@ -110,7 +110,9 @@ const getLoyaltyTransactions = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const handleRedeem = async (req, res) => {
   try {
-    const { userId, bookingId, RewardCode, RewardPointsUsed } = req.body;
+    // 1. ĐÃ BỔ SUNG promotionId Ở ĐÂY
+    const { userId, bookingId, RewardCode, RewardPointsUsed, promotionId } =
+      req.body;
 
     if (!userId || !RewardCode || !RewardPointsUsed) {
       return res
@@ -118,12 +120,13 @@ const handleRedeem = async (req, res) => {
         .json({ success: false, message: "Thiếu thông tin đổi quà bắt buộc." });
     }
 
-    // Gọi hàm xử lý nghiệp vụ từ rewardService
+    // 2. ĐÃ TRUYỀN THÊM promotionId VÀO HÀM Ở ĐÂY
     const result = await redeemRewardPoints(
       userId,
       bookingId,
       RewardCode,
       RewardPointsUsed,
+      promotionId,
     );
 
     if (result.success) {
@@ -140,19 +143,24 @@ const handleRedeem = async (req, res) => {
   }
 };
 
-// API mới: Lấy danh sách voucher khách đã đổi
+// API mới: Lấy danh sách voucher khách đã đổi từ MEMBER_PROMOTION
 const getMyVouchers = async (req, res) => {
   try {
-    const userId = req.query.userId || 12;
-    const pool = await poolPromise;
-    const result = await pool.request().input("userId", sql.Int, userId).query(`
-        SELECT Points, CreatedDate, 'Đổi điểm ' + CAST(Points AS VARCHAR) + ' PTS' AS Description 
-        FROM LOYALTY_TRANSACTION 
-        WHERE UserID = @userId AND TransactionType = 'Redeem'
-        ORDER BY CreatedDate DESC`);
-    res.status(200).json(result.recordset);
+    const userId = Number(req.query.userId || 12);
+
+    if (!userId) {
+      return res.status(400).json({
+        message: "Thiếu userId hoặc userId không hợp lệ.",
+      });
+    }
+
+    const vouchers = await getMemberVouchers(userId);
+    return res.status(200).json(vouchers);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("[getMyVouchers]", error);
+    return res.status(500).json({
+      message: "Không tải được ví voucher: " + error.message,
+    });
   }
 };
 

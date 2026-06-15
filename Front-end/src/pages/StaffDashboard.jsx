@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
-import { useTheme } from "../context/ThemeContext"; // Trọng thêm
 
 export default function StaffDashboard() {
-  const { mode } = useTheme(); // Trọng thêm
-  const styles = getStyles(mode); // Trọng thêm
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState("All");
@@ -83,19 +80,54 @@ export default function StaffDashboard() {
 
   // Transition Handler
   const handleTransition = async (bookingId, nextStatus) => {
-    const token = localStorage.getItem("TOKEN") || localStorage.getItem("token") || "";
+    // When completing (status 4), fetch fresh data from server to get accurate payment info
+    if (Number(nextStatus) === 4) {
+      try {
+        const freshRes = await fetch(`${API_URL}/${bookingId}`);
+        if (freshRes.ok) {
+          const freshBooking = await freshRes.json();
+          const paid = Number(freshBooking.PaidAmount || freshBooking.paidAmount || 0);
+          const price = Number(freshBooking.FinalPrice || freshBooking.TotalPrice || freshBooking.price || 0);
+          const remaining = price - paid;
+
+          if (remaining > 0) {
+            const confirmMsg = `ĐƠN HÀNG CHƯA THANH TOÁN ĐỦ!\n\n` +
+              `- Tổng chi phí: ${price.toLocaleString("vi-VN")} đ\n` +
+              `- Đã cọc trước: ${paid.toLocaleString("vi-VN")} đ\n` +
+              `👉 CẦN THU THÊM TIỀN MẶT: ${remaining.toLocaleString("vi-VN")} đ\n\n` +
+              `Vui lòng thu đủ ${remaining.toLocaleString("vi-VN")} đ từ khách hàng trước khi bấm xác nhận.\n` +
+              `Bạn xác nhận ĐÃ THU ĐỦ và muốn HOÀN THÀNH đơn hàng này?`;
+            if (!window.confirm(confirmMsg)) {
+              return;
+            }
+          } else {
+            if (!window.confirm("Đơn hàng đã thanh toán đủ online. Xác nhận hoàn tất đơn hàng?")) {
+              return;
+            }
+          }
+        } else {
+          if (!window.confirm("Không thể kiểm tra thông tin thanh toán. Vẫn muốn hoàn thành đơn hàng?")) {
+            return;
+          }
+        }
+      } catch (fetchErr) {
+        console.error("Failed to fetch fresh booking data:", fetchErr);
+        if (!window.confirm("Không thể kiểm tra thông tin thanh toán. Vẫn muốn hoàn thành đơn hàng?")) {
+          return;
+        }
+      }
+    }
+
     try {
       const res = await fetch(`${API_URL}/${bookingId}/transition`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({ nextStatus }),
       });
 
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Cập nhật trạng thái thất bại.");
+      if (!res.ok) throw new Error("Cập nhật trạng thái thất bại.");
 
       fetchBookings();
       if (selectedBooking && selectedBooking.BookingID === bookingId) {
@@ -221,6 +253,7 @@ export default function StaffDashboard() {
                   <th style={styles.th}>Khách hàng / SĐT</th>
                   <th style={styles.th}>Thông tin xe</th>
                   <th style={styles.th}>Thời gian đặt</th>
+                  <th style={styles.th}>Thanh toán</th>
                   <th style={styles.th}>Trạng thái</th>
                   <th style={{ ...styles.th, textAlign: "right" }}>Thao tác điều phối</th>
                 </tr>
@@ -255,6 +288,33 @@ export default function StaffDashboard() {
                           <i className="fa-regular fa-clock" style={{ fontSize: "10px", marginRight: "4px" }}></i>
                           {new Date(booking.BookingDate).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}
                         </div>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={{ fontWeight: 700, color: "#fff" }}>
+                          {(booking.FinalPrice || booking.TotalPrice || 0).toLocaleString("vi-VN")} đ
+                        </div>
+                        {(() => {
+                          const paid = booking.PaidAmount !== undefined ? booking.PaidAmount : (booking.paidAmount || 0);
+                          const price = booking.FinalPrice || booking.TotalPrice || 0;
+                          const status = Number(booking.Status);
+                          if (status === 4) {
+                            return <div style={{ fontSize: "11px", color: "#10b981", marginTop: "4px" }}><i className="fa-solid fa-circle-check"></i> Đã thu đủ</div>;
+                          }
+                          if (status === 5) return null;
+                          if (paid > 0) {
+                            if (paid >= price) {
+                              return <div style={{ fontSize: "11px", color: "#10b981", marginTop: "4px" }}><i className="fa-solid fa-credit-card"></i> Đã trả đủ (Online)</div>;
+                            } else {
+                              return (
+                                <div style={{ fontSize: "11px", color: "#f59e0b", marginTop: "4px", lineHeight: "1.3" }}>
+                                  <span style={{ display: "block", fontSize: "10px", color: "#9ca3af" }}>Đã cọc: {paid.toLocaleString("vi-VN")}đ</span>
+                                  <span style={{ display: "block", fontWeight: "bold" }}>Còn lại: {(price - paid).toLocaleString("vi-VN")}đ</span>
+                                </div>
+                              );
+                            }
+                          }
+                          return <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "4px" }}>Thu sau tại quầy</div>;
+                        })()}
                       </td>
                       <td style={styles.td}>
                         <span style={{
@@ -303,7 +363,7 @@ export default function StaffDashboard() {
                 {filteredBookings.length === 0 && (
                   <tr>
                     <td colSpan="6" style={styles.noData}>
-                      <i className="fa-regular fa-folder-open" style={{ fontSize: "40px", color: "var(--text-secondary)", marginBottom: "15px", display: "block" }}></i> {/* Trọng thêm */}
+                      <i className="fa-regular fa-folder-open" style={{ fontSize: "40px", color: "#4b5563", marginBottom: "15px", display: "block" }}></i>
                       Không tìm thấy lịch đặt xe nào ở trạng thái này.
                     </td>
                   </tr>
@@ -321,7 +381,7 @@ export default function StaffDashboard() {
             <div style={styles.modalHeader}>
               <div>
                 <span style={styles.idBadge}>#{selectedBooking.BookingID}</span>
-                <h2 style={{ margin: "5px 0 0 0", color: "var(--text-primary)", fontSize: "20px" }}>Thông Tin Đặt Lịch Chi Tiết</h2> {/* Trọng thêm */}
+                <h2 style={{ margin: "5px 0 0 0", color: "#fff", fontSize: "20px" }}>Thông Tin Đặt Lịch Chi Tiết</h2>
               </div>
               <button style={styles.closeBtn} onClick={() => setSelectedBooking(null)}>✕</button>
             </div>
@@ -337,7 +397,7 @@ export default function StaffDashboard() {
                 </div>
                 <div style={styles.modalField}>
                   <label style={styles.modalLabel}>Biển số xe</label>
-                  <div style={{ ...styles.modalValue, color: "var(--accent-light)", fontWeight: "700" }}>{selectedBooking.LicensePlate || "N/A"}</div> {/* Trọng thêm */}
+                  <div style={{ ...styles.modalValue, color: "#3b82f6", fontWeight: "700" }}>{selectedBooking.LicensePlate || "N/A"}</div>
                 </div>
                 <div style={styles.modalField}>
                   <label style={styles.modalLabel}>Dòng xe / Loại xe</label>
@@ -371,10 +431,36 @@ export default function StaffDashboard() {
                   <span>Giá dịch vụ gốc:</span>
                   <span>{(selectedBooking.TotalPrice || 0).toLocaleString("vi-VN")} đ</span>
                 </div>
-                <div style={{ ...styles.priceRow, color: "#10b981", fontWeight: "600", fontSize: "18px", borderTop: "1px solid var(--border)", paddingTop: "10px", marginTop: "10px" }}> {/* Trọng thêm */}
+                <div style={{ ...styles.priceRow, borderTop: "1px solid #2d2d34", paddingTop: "10px", marginTop: "10px" }}>
                   <span>Tổng thanh toán:</span>
                   <span>{(selectedBooking.FinalPrice || selectedBooking.TotalPrice || 0).toLocaleString("vi-VN")} đ</span>
                 </div>
+                {(() => {
+                  const paid = selectedBooking.PaidAmount !== undefined ? selectedBooking.PaidAmount : (selectedBooking.paidAmount || 0);
+                  const price = selectedBooking.FinalPrice || selectedBooking.TotalPrice || 0;
+                  const status = Number(selectedBooking.Status);
+                  if (paid > 0) {
+                    return (
+                      <>
+                        <div style={{ ...styles.priceRow, color: "#f59e0b", marginTop: "8px" }}>
+                          <span>Đã cọc trước ({selectedBooking.PaymentMethod || selectedBooking.paymentMethod || "VNPay"}):</span>
+                          <span>{paid.toLocaleString("vi-VN")} đ</span>
+                        </div>
+                        <div style={{ ...styles.priceRow, color: status === 4 ? "#10b981" : "#ef4444", fontWeight: "700", fontSize: "18px", marginTop: "8px" }}>
+                          <span>Còn lại cần thu:</span>
+                          <span>{status === 4 ? "0 đ (Đã thu đủ)" : `${(price - paid).toLocaleString("vi-VN")} đ`}</span>
+                        </div>
+                      </>
+                    );
+                  } else {
+                    return (
+                      <div style={{ ...styles.priceRow, color: status === 4 ? "#10b981" : "#f59e0b", fontWeight: "700", fontSize: "18px", marginTop: "8px" }}>
+                        <span>Tình trạng thu tiền:</span>
+                        <span>{status === 4 ? "Đã thu đủ 100% tại quầy" : `Thu sau tại quầy: ${price.toLocaleString("vi-VN")} đ`}</span>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
 
               {selectedBooking.Notes && (
@@ -398,11 +484,11 @@ export default function StaffDashboard() {
 // ========================================================
 // PREMIUM UI CSS SYSTEM (Pure Javascript Objects)
 // ========================================================
-const getStyles = (mode) => ({ // Trọng thêm
+const styles = {
   container: {
-    backgroundColor: "var(--bg-primary)", // Trọng thêm
-    backgroundImage: mode === "dark" ? "radial-gradient(at 0% 0%, rgba(17, 24, 39, 0.8) 0, transparent 50%), radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.05) 0, transparent 50%)" : "none", // Trọng thêm
-    color: "var(--text-primary)", // Trọng thêm
+    backgroundColor: "#030712",
+    backgroundImage: "radial-gradient(at 0% 0%, rgba(17, 24, 39, 0.8) 0, transparent 50%), radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.05) 0, transparent 50%)",
+    color: "#f3f4f6",
     minHeight: "100vh",
     padding: "40px 20px",
     fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -410,25 +496,25 @@ const getStyles = (mode) => ({ // Trọng thêm
     overflow: "hidden"
   },
   navbar: {
-    maxWidth: "100%", // Giêu nguyên theo plan cũ (maxWidth: "100%")
+    maxWidth: "100%",
     margin: "0 auto 25px auto",
-    backgroundColor: mode === "dark" ? "rgba(17, 24, 39, 0.6)" : "rgba(255, 255, 255, 0.6)", // Trọng thêm
+    backgroundColor: "rgba(17, 24, 39, 0.6)",
     backdropFilter: "blur(20px)",
     WebkitBackdropFilter: "blur(20px)",
     borderRadius: "16px",
-    border: "1px solid var(--border)", // Trọng thêm
+    border: "1px solid rgba(255, 255, 255, 0.06)",
     padding: "15px 30px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    boxShadow: mode === "dark" ? "0 10px 30px rgba(0, 0, 0, 0.4)" : "0 10px 30px rgba(0, 0, 0, 0.05)", // Trọng thêm
+    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4)",
     zIndex: 2,
     position: "relative"
   },
   navLogo: {
     fontSize: "18px",
     fontWeight: "800",
-    color: "var(--text-primary)", // Trọng thêm
+    color: "#ffffff",
     display: "flex",
     alignItems: "center",
     gap: "8px"
@@ -438,7 +524,7 @@ const getStyles = (mode) => ({ // Trọng thêm
     width: "38px",
     objectFit: "cover",
     borderRadius: "50%",
-    border: "1px solid var(--border)" // Trọng thêm
+    border: "1px solid rgba(255, 255, 255, 0.15)"
   },
   navLinks: {
     display: "flex",
@@ -447,7 +533,7 @@ const getStyles = (mode) => ({ // Trọng thêm
   navLink: {
     backgroundColor: "transparent",
     border: "none",
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#9ca3af",
     padding: "10px 16px",
     borderRadius: "10px",
     cursor: "pointer",
@@ -459,8 +545,8 @@ const getStyles = (mode) => ({ // Trọng thêm
     gap: "6px"
   },
   activeNavLink: {
-    backgroundColor: "var(--accent)", // Trọng thêm
-    color: "#ffffff" // Trọng thêm
+    backgroundColor: "rgba(99, 102, 241, 0.15)",
+    color: "#818cf8"
   },
   navUser: {
     display: "flex",
@@ -471,12 +557,12 @@ const getStyles = (mode) => ({ // Trọng thêm
     width: "36px",
     height: "36px",
     borderRadius: "50%",
-    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)", // Trọng thêm
-    border: "1px solid var(--border)", // Trọng thêm
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    color: "var(--accent-light)" // Trọng thêm
+    color: "#818cf8"
   },
   userInfo: {
     display: "flex",
@@ -485,11 +571,11 @@ const getStyles = (mode) => ({ // Trọng thêm
   userName: {
     fontSize: "13px",
     fontWeight: "700",
-    color: "var(--text-primary)" // Trọng thêm
+    color: "#ffffff"
   },
   userRole: {
     fontSize: "10px",
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#9ca3af",
     marginTop: "2px"
   },
   logoutBtn: {
@@ -504,14 +590,18 @@ const getStyles = (mode) => ({ // Trọng thêm
     display: "flex",
     alignItems: "center",
     gap: "6px",
-    transition: "all 0.2s ease"
+    transition: "all 0.2s ease",
+    ":hover": {
+      backgroundColor: "rgba(239, 68, 68, 0.2)",
+      boxShadow: "0 0 10px rgba(239, 68, 68, 0.2)"
+    }
   },
   glowSphereLeft: {
     position: "absolute",
     width: "400px",
     height: "400px",
     borderRadius: "50%",
-    background: mode === "dark" ? "radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 70%)" : "radial-gradient(circle, rgba(99, 102, 241, 0.04) 0%, rgba(99, 102, 241, 0) 70%)", // Trọng thêm
+    background: "radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 70%)",
     top: "10%",
     left: "-10%",
     zIndex: 0,
@@ -522,23 +612,22 @@ const getStyles = (mode) => ({ // Trọng thêm
     width: "450px",
     height: "450px",
     borderRadius: "50%",
-    background: mode === "dark" ? "radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, rgba(6, 182, 212, 0) 70%)" : "radial-gradient(circle, rgba(6, 182, 212, 0.03) 0%, rgba(6, 182, 212, 0) 70%)", // Trọng thêm
+    background: "radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, rgba(6, 182, 212, 0) 70%)",
     bottom: "10%",
     right: "-10%",
     zIndex: 0,
     pointerEvents: "none"
   },
   dashboardCard: {
-    width: "100%",
-    maxWidth: "100%", // Giêu nguyên theo plan cũ (maxWidth: "100%")
+    maxWidth: "100%",
     margin: "0",
-    backgroundColor: mode === "dark" ? "rgba(17, 24, 39, 0.45)" : "rgba(255, 255, 255, 0.75)", // Trọng thêm
+    backgroundColor: "rgba(17, 24, 39, 0.45)",
     backdropFilter: "blur(20px)",
     WebkitBackdropFilter: "blur(20px)",
     borderRadius: "24px",
-    border: "1px solid var(--border)", // Trọng thêm
+    border: "1px solid rgba(255, 255, 255, 0.06)",
     padding: "40px",
-    boxShadow: mode === "dark" ? "0 25px 50px -12px rgba(0, 0, 0, 0.5)" : "0 15px 35px rgba(0, 0, 0, 0.05)", // Trọng thêm
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
     position: "relative",
     zIndex: 1
   },
@@ -567,17 +656,17 @@ const getStyles = (mode) => ({ // Trọng thêm
   title: {
     fontSize: "32px",
     fontWeight: "800",
-    color: "var(--text-primary)", // Trọng thêm
+    color: "#ffffff",
     margin: 0,
     letterSpacing: "-0.5px"
   },
   subtitle: {
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#9ca3af",
     fontSize: "15px",
     margin: "8px 0 0 0"
   },
   refreshBtn: {
-    backgroundColor: "var(--accent-light)", // Trọng thêm
+    backgroundColor: "#6366f1",
     border: "none",
     color: "#ffffff",
     padding: "12px 20px",
@@ -589,7 +678,11 @@ const getStyles = (mode) => ({ // Trọng thêm
     transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
     display: "flex",
     alignItems: "center",
-    gap: "8px"
+    gap: "8px",
+    ":hover": {
+      backgroundColor: "#4f46e5",
+      boxShadow: "0 6px 20px 0 rgba(99, 102, 241, 0.45)"
+    }
   },
   statsGrid: {
     display: "grid",
@@ -598,41 +691,41 @@ const getStyles = (mode) => ({ // Trọng thêm
     marginBottom: "35px"
   },
   statItem: {
-    backgroundColor: mode === "dark" ? "rgba(31, 41, 55, 0.3)" : "var(--bg-secondary)", // Trọng thêm
-    border: "1px solid var(--border)", // Trọng thêm
+    backgroundColor: "rgba(31, 41, 55, 0.3)",
+    border: "1px solid rgba(255, 255, 255, 0.04)",
     borderRadius: "16px",
     padding: "24px",
     display: "flex",
     alignItems: "center",
     gap: "20px",
-    boxShadow: mode === "dark" ? "inset 0 1px 0 0 rgba(255, 255, 255, 0.05)" : "0 4px 6px -1px rgba(0,0,0,0.02)" // Trọng thêm
+    boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.05)"
   },
   statIconWrapper: {
     width: "50px",
     height: "50px",
     borderRadius: "12px",
-    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)", // Trọng thêm
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     fontSize: "20px",
-    border: "1px solid var(--border)" // Trọng thêm
+    border: "1px solid rgba(255, 255, 255, 0.05)"
   },
   statValue: {
     fontSize: "28px",
     fontWeight: "800",
-    color: "var(--text-primary)", // Trọng thêm
+    color: "#ffffff",
     lineHeight: 1
   },
   statLabel: {
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#9ca3af",
     fontSize: "13px",
     marginTop: "6px",
     fontWeight: "500"
   },
   filterSection: {
     marginBottom: "25px",
-    borderBottom: "1px solid var(--border)", // Trọng thêm
+    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
     paddingBottom: "15px"
   },
   filterBar: {
@@ -643,7 +736,7 @@ const getStyles = (mode) => ({ // Trọng thêm
   filterTab: {
     backgroundColor: "transparent",
     border: "1px solid transparent",
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#9ca3af",
     padding: "10px 20px",
     borderRadius: "12px",
     cursor: "pointer",
@@ -653,15 +746,15 @@ const getStyles = (mode) => ({ // Trọng thêm
     whiteSpace: "nowrap"
   },
   activeFilterTab: {
-    backgroundColor: "rgba(99, 102, 241, 0.15)", // Trọng thêm
-    color: "var(--accent-light)", // Trọng thêm
-    borderColor: "rgba(99, 102, 241, 0.25)" // Trọng thêm
+    backgroundColor: "rgba(99, 102, 241, 0.1)",
+    color: "#818cf8",
+    borderColor: "rgba(99, 102, 241, 0.2)"
   },
   tableWrapper: {
-    backgroundColor: mode === "dark" ? "rgba(17, 24, 39, 0.2)" : "var(--bg-secondary)", // Trọng thêm
+    backgroundColor: "rgba(17, 24, 39, 0.2)",
     borderRadius: "16px",
     overflow: "hidden",
-    border: "1px solid var(--border)" // Trọng thêm
+    border: "1px solid rgba(255, 255, 255, 0.05)"
   },
   table: {
     width: "100%",
@@ -669,19 +762,19 @@ const getStyles = (mode) => ({ // Trọng thêm
     textAlign: "left"
   },
   thRow: {
-    backgroundColor: mode === "dark" ? "rgba(31, 41, 55, 0.4)" : "var(--bg-primary)", // Trọng thêm
-    borderBottom: "1px solid var(--border)" // Trọng thêm
+    backgroundColor: "rgba(31, 41, 55, 0.4)",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.06)"
   },
   th: {
     padding: "18px 24px",
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#9ca3af",
     fontSize: "13px",
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: "1px"
   },
   tr: {
-    borderBottom: "1px solid var(--border)", // Trọng thêm
+    borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
     transition: "background-color 0.2s ease"
   },
   td: {
@@ -691,20 +784,20 @@ const getStyles = (mode) => ({ // Trọng thêm
   },
   idBadge: {
     fontFamily: "monospace",
-    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)", // Trọng thêm
-    color: "var(--text-primary)", // Trọng thêm
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    color: "#ffffff",
     padding: "4px 8px",
     borderRadius: "6px",
     fontWeight: "600",
-    border: "1px solid var(--border)" // Trọng thêm
+    border: "1px solid rgba(255, 255, 255, 0.1)"
   },
   customerName: {
     fontWeight: "600",
-    color: "var(--text-primary)", // Trọng thêm
+    color: "#ffffff",
     fontSize: "15px"
   },
   customerPhone: {
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#9ca3af",
     fontSize: "13px",
     marginTop: "4px",
     display: "flex",
@@ -712,22 +805,22 @@ const getStyles = (mode) => ({ // Trọng thêm
   },
   licensePlate: {
     fontWeight: "700",
-    color: "var(--accent-light)", // Trọng thêm
+    color: "#60a5fa",
     fontSize: "15px"
   },
   vehicleType: {
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#9ca3af",
     fontSize: "13px",
     marginTop: "4px",
     display: "flex",
     alignItems: "center"
   },
   bookingDate: {
-    color: "var(--text-primary)", // Trọng thêm
+    color: "#ffffff",
     fontWeight: "500"
   },
   bookingTime: {
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#9ca3af",
     fontSize: "13px",
     marginTop: "4px",
     display: "flex",
@@ -755,9 +848,9 @@ const getStyles = (mode) => ({ // Trọng thêm
     alignItems: "center"
   },
   viewBtn: {
-    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)", // Trọng thêm
-    border: "1px solid var(--border)", // Trọng thêm
-    color: "var(--text-primary)", // Trọng thêm
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
+    color: "#f3f4f6",
     padding: "8px 14px",
     borderRadius: "8px",
     cursor: "pointer",
@@ -766,7 +859,7 @@ const getStyles = (mode) => ({ // Trọng thêm
     transition: "all 0.2s ease"
   },
   btnConfirm: {
-    backgroundColor: mode === "dark" ? "#2563eb" : "#1d4ed8", // Trọng thêm
+    backgroundColor: "#2563eb",
     border: "none",
     color: "#ffffff",
     padding: "8px 14px",
@@ -777,7 +870,7 @@ const getStyles = (mode) => ({ // Trọng thêm
     transition: "all 0.2s"
   },
   btnStart: {
-    backgroundColor: mode === "dark" ? "#06b6d4" : "#0891b2", // Trọng thêm
+    backgroundColor: "#06b6d4",
     border: "none",
     color: "#ffffff",
     padding: "8px 14px",
@@ -788,7 +881,7 @@ const getStyles = (mode) => ({ // Trọng thêm
     transition: "all 0.2s"
   },
   btnComplete: {
-    backgroundColor: mode === "dark" ? "#10b981" : "#059669", // Trọng thêm
+    backgroundColor: "#10b981",
     border: "none",
     color: "#ffffff",
     padding: "8px 14px",
@@ -799,9 +892,9 @@ const getStyles = (mode) => ({ // Trọng thêm
     transition: "all 0.2s"
   },
   btnCancel: {
-    backgroundColor: mode === "dark" ? "rgba(239, 68, 68, 0.12)" : "rgba(220, 38, 38, 0.08)", // Trọng thêm
-    border: mode === "dark" ? "1px solid rgba(239, 68, 68, 0.25)" : "1px solid rgba(220, 38, 38, 0.15)", // Trọng thêm
-    color: mode === "dark" ? "#f87171" : "#dc2626", // Trọng thêm
+    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    border: "1px solid rgba(239, 68, 68, 0.3)",
+    color: "#f87171",
     padding: "8px 14px",
     borderRadius: "8px",
     cursor: "pointer",
@@ -812,19 +905,19 @@ const getStyles = (mode) => ({ // Trọng thêm
   noData: {
     textAlign: "center",
     padding: "60px 20px",
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#9ca3af",
     fontSize: "15px"
   },
   loader: {
     textAlign: "center",
     padding: "60px",
-    color: "var(--text-secondary)" // Trọng thêm
+    color: "#9ca3af"
   },
   spinner: {
     width: "40px",
     height: "40px",
-    border: mode === "dark" ? "3px solid rgba(255, 255, 255, 0.1)" : "3px solid rgba(0, 0, 0, 0.1)", // Trọng thêm
-    borderTop: "3px solid var(--accent-light)", // Trọng thêm
+    border: "3px solid rgba(99, 102, 241, 0.2)",
+    borderTop: "3px solid #6366f1",
     borderRadius: "50%",
     margin: "0 auto 15px auto",
     animation: "spin 1s linear infinite"
@@ -845,7 +938,7 @@ const getStyles = (mode) => ({ // Trọng thêm
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: mode === "dark" ? "rgba(3, 7, 18, 0.8)" : "rgba(0, 0, 0, 0.4)", // Trọng thêm
+    backgroundColor: "rgba(3, 7, 18, 0.8)",
     backdropFilter: "blur(8px)",
     WebkitBackdropFilter: "blur(8px)",
     display: "flex",
@@ -854,18 +947,18 @@ const getStyles = (mode) => ({ // Trọng thêm
     zIndex: 1000
   },
   modalContent: {
-    backgroundColor: "var(--bg-card)", // Trọng thêm
-    backgroundImage: mode === "dark" ? "radial-gradient(at 0% 0%, rgba(31, 41, 55, 0.5) 0, transparent 60%)" : "none", // Trọng thêm
+    backgroundColor: "#111827",
+    backgroundImage: "radial-gradient(at 0% 0%, rgba(31, 41, 55, 0.5) 0, transparent 60%)",
     borderRadius: "20px",
     width: "550px",
     maxWidth: "95%",
-    border: "1px solid var(--border)", // Trọng thêm
+    border: "1px solid rgba(255, 255, 255, 0.08)",
     overflow: "hidden",
-    boxShadow: mode === "dark" ? "0 25px 50px -12px rgba(0, 0, 0, 0.8)" : "0 15px 35px rgba(0, 0, 0, 0.1)" // Trọng thêm
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.8)"
   },
   modalHeader: {
     padding: "24px",
-    borderBottom: "1px solid var(--border)", // Trọng thêm
+    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center"
@@ -873,7 +966,7 @@ const getStyles = (mode) => ({ // Trọng thêm
   closeBtn: {
     background: "none",
     border: "none",
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#9ca3af",
     fontSize: "20px",
     cursor: "pointer"
   },
@@ -895,27 +988,27 @@ const getStyles = (mode) => ({ // Trọng thêm
   modalLabel: {
     fontSize: "12px",
     fontWeight: "700",
-    color: "var(--text-secondary)", // Trọng thêm
+    color: "#6b7280",
     textTransform: "uppercase",
     letterSpacing: "0.5px"
   },
   modalValue: {
     fontSize: "15px",
-    color: "var(--text-primary)", // Trọng thêm
+    color: "#ffffff",
     fontWeight: "500"
   },
   priceContainer: {
-    backgroundColor: mode === "dark" ? "rgba(255, 255, 255, 0.02)" : "rgba(0, 0, 0, 0.02)", // Trọng thêm
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
     borderRadius: "12px",
     padding: "16px",
     marginTop: "20px",
-    border: "1px solid var(--border)" // Trọng thêm
+    border: "1px solid rgba(255, 255, 255, 0.04)"
   },
   priceRow: {
     display: "flex",
     justifyContent: "space-between",
     fontSize: "14px",
-    color: "var(--text-secondary)" // Trọng thêm
+    color: "#9ca3af"
   },
   notesBox: {
     backgroundColor: "rgba(245, 158, 11, 0.05)",
@@ -929,18 +1022,18 @@ const getStyles = (mode) => ({ // Trọng thêm
   },
   modalFooter: {
     padding: "18px 24px",
-    borderTop: "1px solid var(--border)", // Trọng thêm
+    borderTop: "1px solid rgba(255, 255, 255, 0.06)",
     display: "flex",
     justifyContent: "flex-end"
   },
   modalCloseBtn: {
-    backgroundColor: mode === "dark" ? "#1f2937" : "#e5e7eb", // Trọng thêm
-    border: "1px solid var(--border)", // Trọng thêm
-    color: "var(--text-primary)", // Trọng thêm
+    backgroundColor: "#1f2937",
+    border: "1px solid rgba(255, 255, 255, 0.05)",
+    color: "#ffffff",
     padding: "10px 20px",
     borderRadius: "10px",
     cursor: "pointer",
     fontSize: "14px",
     fontWeight: "600"
   }
-});
+};
