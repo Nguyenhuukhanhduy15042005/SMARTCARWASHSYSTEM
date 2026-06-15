@@ -120,4 +120,29 @@ const redeemRewardPoints = async (
   }
 };
 
-module.exports = { redeemRewardPoints };
+const getMemberVouchers = async (userId) => {
+  const pool = await poolPromise;
+
+  const result = await pool
+    .request()
+    .input("userId", sql.Int, userId)
+    .query(`
+      SELECT
+        mp.MemberPromoID,
+        mp.UserID,
+        mp.PromotionID,
+        mp.IsUsed,
+        mp.AcquiredDate,
+        p.PromoName,
+        p.DiscountPercent,
+        p.EndDate
+      FROM MEMBER_PROMOTION mp
+      INNER JOIN PROMOTION p ON p.PromotionID = mp.PromotionID
+      WHERE mp.UserID = @userId
+      ORDER BY mp.AcquiredDate DESC, mp.MemberPromoID DESC
+    `);
+
+  return result.recordset;
+};
+
+module.exports = { redeemRewardPoints, getMemberVouchers };
