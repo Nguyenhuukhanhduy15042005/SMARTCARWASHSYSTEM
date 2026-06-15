@@ -59,6 +59,7 @@ export default function Booking() {
   const [vehicleType, setVehicleType]   = useState("CAR");
   const [licensePlate, setLicensePlate] = useState("");
   const [plateError, setPlateError]     = useState("");
+  const [userVehicles, setUserVehicles] = useState([]);
   const [date, setDate]                 = useState("");
   const [time, setTime]                 = useState("");
   const [note, setNote]                 = useState("");
@@ -148,6 +149,20 @@ export default function Booking() {
     }
   };
 
+  const fetchUserVehicles = async () => {
+    const userId = getCustomerId();
+    const token = localStorage.getItem("TOKEN") || localStorage.getItem("token") || "mock-token";
+    const headers = { Authorization: `Bearer ${token}` };
+    try {
+      const res = await axios.get(`http://127.0.0.1:5000/api/vehicles?userId=${userId}`, { headers });
+      if (Array.isArray(res.data)) {
+        setUserVehicles(res.data);
+      }
+    } catch (err) {
+      console.error("Lỗi fetch danh sách xe gợi ý:", err);
+    }
+  };
+
   useEffect(() => {
     const fetchServices = async () => {
       setLoading(true);
@@ -164,9 +179,6 @@ export default function Booking() {
       }
     };
     fetchServices();
-    // Reset biển số khi đổi loại xe để tránh biển số sai loại
-    setLicensePlate("");
-    setPlateError("");
   }, [vehicleType]);
 
   const checkIfPast = (slotTime) => {
@@ -232,12 +244,31 @@ export default function Booking() {
     fetchSlotsAvailability();
   }, [date, vehicleType]);
 
-  // Validate biển số realtime khi user nhập
+  const handleVehicleTypeChange = (type) => {
+    setVehicleType(type);
+    setLicensePlate("");
+    setPlateError("");
+  };
+
+  // Validate biển số realtime khi user nhập + gợi ý và tự nhận diện loại xe
   const handlePlateChange = (e) => {
     const val = e.target.value;
     setLicensePlate(val);
+
+    const matched = userVehicles.find(
+      (v) => v.plateNumber?.toUpperCase() === val.trim().toUpperCase()
+    );
+
+    let currentVehicleType = vehicleType;
+    if (matched) {
+      const type = matched.vehicleType?.toLowerCase();
+      const isBike = type === "xe máy" || type === "motorcycle" || type === "bike" || type === "xe may" || type === "motorbike";
+      currentVehicleType = isBike ? "BIKE" : "CAR";
+      setVehicleType(currentVehicleType);
+    }
+
     if (val.trim().length >= 6) {
-      const result = validatePlate(val, vehicleType);
+      const result = validatePlate(val, currentVehicleType);
       setPlateError(result.valid ? "" : result.message);
     } else {
       setPlateError("");
@@ -338,14 +369,14 @@ export default function Booking() {
                     <div className="vehicle-type-grid">
                       <div
                         className={`vehicle-type-option ${vehicleType === "BIKE" ? "active" : ""}`}
-                        onClick={() => setVehicleType("BIKE")}
+                        onClick={() => handleVehicleTypeChange("BIKE")}
                       >
                         <i className="fa-solid fa-motorcycle"></i>
                         <span>Xe máy</span>
                       </div>
                       <div
                         className={`vehicle-type-option ${vehicleType === "CAR" ? "active" : ""}`}
-                        onClick={() => setVehicleType("CAR")}
+                        onClick={() => handleVehicleTypeChange("CAR")}
                       >
                         <i className="fa-solid fa-car"></i>
                         <span>Ô tô</span>
@@ -367,7 +398,17 @@ export default function Booking() {
                     />
                     {/* Gợi ý biển số từ xe đã lưu */}
                     <datalist id="plate-suggestions">
-                      {[].map((p) => <option key={p} value={p} />)}
+                      {userVehicles
+                        .filter((v) => {
+                          const type = v.vehicleType?.toLowerCase();
+                          const isBike = type === "xe máy" || type === "motorcycle" || type === "bike" || type === "xe may" || type === "motorbike";
+                          return vehicleType === "BIKE" ? isBike : !isBike;
+                        })
+                        .map((v) => (
+                          <option key={v.vehicleId || v.id || v.plateNumber} value={v.plateNumber}>
+                            {v.brand} {v.model}
+                          </option>
+                        ))}
                     </datalist>
                     {plateError ? (
                       <small style={{ color: "#ef4444", marginTop: "6px", display: "block" }}>
