@@ -56,8 +56,13 @@ export default function Payment() {
           headers: { Authorization: `Bearer ${getToken()}` },
         });
         setTierID(res.data.tierID);
-      } catch {
-        setTierID(1); // mặc định Bronze nếu lỗi
+      } catch (err) {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          showToast("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại", "error");
+          setTimeout(() => navigate("/login"), 1500);
+          return;
+        }
+        setTierID(1); // mặc định Bronze nếu lỗi khác
       } finally {
         setLoadingTier(false);
       }
@@ -97,7 +102,7 @@ export default function Payment() {
 
   // Tính số tiền hiển thị theo method + tier
   const tier = TIER_INFO[tierID] || TIER_INFO[1];
-  const depositAmount  = Math.round(currentFinalPrice * 0.1);
+  const depositAmount  = Math.max(Math.round(currentFinalPrice * 0.1), 10000);
   const remainingAmount = currentFinalPrice - depositAmount;
 
   const getPaymentNote = () => {
@@ -191,6 +196,11 @@ export default function Payment() {
         setTimeout(() => navigate("/dashboard"), 1500);
       }
     } catch (err) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        showToast("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại", "error");
+        setTimeout(() => navigate("/login"), 1500);
+        return;
+      }
       const errMsg = err.response?.data?.message || err.message;
       showToast(errMsg || "Thanh toán thất bại", "error");
     } finally {

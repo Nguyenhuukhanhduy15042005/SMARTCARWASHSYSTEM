@@ -46,7 +46,7 @@ const getPaymentHistory = async (req, res) => {
  
 const refundPayment = async (req, res) => {
   try {
-    const result = await service.refundPayment(Number(req.params.id));
+    const result = await service.refundPayment(Number(req.params.id), req.body?.reason);
     res.json(result);
   } catch (err) { res.status(400).json({ message: err.message }); }
 };

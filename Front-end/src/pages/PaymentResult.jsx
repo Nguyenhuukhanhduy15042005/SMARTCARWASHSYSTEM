@@ -22,7 +22,7 @@ export default function PaymentResult() {
       if (vnpCode || momoCode) {
         setStatus(vnpCode === "00" || momoCode === "0" ? "success" : "failed");
       } else {
-        setStatus("success"); // mặc định success nếu không có params
+        setStatus("failed"); // mặc định failed nếu không có params hợp lệ
       }
     }
   }, []);

@@ -120,7 +120,8 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
   if (method === 'cash') {
     tierID = await getUserTier(userId || booking.CustomerID);
     if (tierID === 1 || tierID === 2) {
-      paymentAmount = Math.round(finalAmount * 0.1);
+      // Đặt cọc 10%, tối thiểu 10.000đ
+      paymentAmount = Math.max(Math.round(finalAmount * 0.1), 10000);
       depositOnly = true;
     } else {
       paymentAmount = 0;
@@ -219,7 +220,7 @@ const getPaymentHistory = async (userId, { page = 1, limit = 10 } = {}) => {
   return { data: result.recordset, total: countResult.recordset[0].total, page: Number(page), limit: Number(limit) };
 };
 
-const refundPayment = async (paymentId) => {
+const refundPayment = async (paymentId, reason) => {
   const pool = await poolPromise;
   const pc = await pool.request().input('paymentId', sql.Int, paymentId)
     .query(`
@@ -251,4 +252,22 @@ const refundPayment = async (paymentId) => {
   return { paymentId, refunded: true, amount: payment.Amount };
 };
 
-module.exports = { createPayment, confirmVNPay, getPaymentHistory, refundPayment, getUserTier };
+const confirmCashDeposit = async (paymentId) => {
+  const pool = await poolPromise;
+  const pc = await pool.request()
+    .input('paymentId', sql.Int, paymentId)
+    .query(`SELECT BookingID FROM PAYMENT WHERE PaymentID = @paymentId`);
+  if (!pc.recordset.length) throw new Error('Không tìm thấy payment');
+  const { BookingID } = pc.recordset[0];
+  await pool.request()
+    .input('bookingId', sql.Int, BookingID)
+    .query(`
+      UPDATE BOOKING SET Status = 2 WHERE BookingID = @bookingId;
+      UPDATE MEMBER_PROMOTION 
+      SET IsUsed = 1 
+      WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
+    `);
+  return { paymentId, confirmed: true };
+};
+
+module.exports = { createPayment, confirmVNPay, getPaymentHistory, refundPayment, getUserTier, confirmCashDeposit };
