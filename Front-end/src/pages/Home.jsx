@@ -178,7 +178,7 @@ const Home = () => {
                 to="/login"
                 className="px-8 py-3.5 text-lg font-bold text-gray-800 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
               >
-                Login
+                Đăng nhập
               </Link>
               <Link
                 to="/register"
