@@ -446,7 +446,7 @@ router.post('/book', async (req, res) => {
       .query(`
         INSERT INTO BOOKING (CustomerID, MemberPromoID, BookingDate, CheckInTime, VehicleType, LicensePlate, TotalPrice, FinalPrice, Status)
         OUTPUT INSERTED.BookingID
-        VALUES (@customerId, NULL, @bookingDate, NULL, @vehicleType, @licensePlate, @totalPrice, @finalPrice, 1)
+        VALUES (@customerId, NULL, @bookingDate, NULL, @vehicleType, @licensePlate, @totalPrice, @finalPrice, 2)
       `);
 
     const bookingId = bookingResult.recordset[0].BookingID;

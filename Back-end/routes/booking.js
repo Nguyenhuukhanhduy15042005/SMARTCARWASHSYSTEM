@@ -215,7 +215,13 @@ router.get('/', async (req, res) => {
 
         let query = `
             SELECT b.*, u.FullName AS CustomerName, u.PhoneNumber AS Phone,
-                   p.Amount AS PaidAmount, p.PaymentMethod AS PaymentMethod
+                   p.Amount AS PaidAmount, p.PaymentMethod AS PaymentMethod,
+                   (
+                       SELECT TOP 1 s.ServiceName 
+                       FROM BOOKING_DETAIL bd
+                       INNER JOIN SERVICE s ON bd.ServiceID = s.ServiceID
+                       WHERE bd.BookingID = b.BookingID
+                   ) AS servicePackage
             FROM BOOKING b
             LEFT JOIN [USER] u ON b.CustomerID = u.UserID
             LEFT JOIN (
@@ -229,6 +235,9 @@ router.get('/', async (req, res) => {
         if (customerId) {
             query += ` WHERE b.CustomerID = @customerId`;
             request.input('customerId', sql.Int, customerId);
+        } else {
+            // For staff dashboard: filter out Status = 1 (pending/draft bookings)
+            query += ` WHERE b.Status != 1`;
         }
         
         query += ` ORDER BY b.BookingDate DESC`;
@@ -371,7 +380,16 @@ router.get('/customer/:customerId', async (req, res) => {
         const result = await pool.request()
             .input('customerId', sql.Int, customerId)
             .query(`
-                SELECT b.*, u.FullName AS CustomerName, u.PhoneNumber AS Phone
+                SELECT 
+                    b.*, 
+                    u.FullName AS CustomerName, 
+                    u.PhoneNumber AS Phone,
+                    (
+                        SELECT TOP 1 s.ServiceName 
+                        FROM BOOKING_DETAIL bd
+                        INNER JOIN SERVICE s ON bd.ServiceID = s.ServiceID
+                        WHERE bd.BookingID = b.BookingID
+                    ) AS servicePackage
                 FROM BOOKING b
                 LEFT JOIN [USER] u ON b.CustomerID = u.UserID
                 WHERE b.CustomerID = @customerId
@@ -380,6 +398,180 @@ router.get('/customer/:customerId', async (req, res) => {
         res.json(result.recordset);
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+});
+
+// 6. Khách hàng xóa vĩnh viễn lịch đặt xe khỏi lịch sử của mình (Chỉ cho phép khi đã hoàn thành hoặc đã hủy)
+router.delete('/:id', async (req, res) => {
+    try {
+        const bookingId = parseInt(req.params.id, 10);
+        if (isNaN(bookingId)) {
+            return res.status(400).json({ message: 'BookingID không hợp lệ' });
+        }
+
+        const token = req.headers.authorization?.split(' ')[1];
+        let userId = null;
+
+        if (token && token !== 'mock-token' && token !== 'null' && token !== 'undefined') {
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey_placeholder');
+                userId = decoded.userId || decoded.id;
+            } catch (err) {
+                return res.status(403).json({ message: 'Token không hợp lệ hoặc đã hết hạn!' });
+            }
+        }
+
+        const pool = await poolPromise;
+
+        const checkResult = await pool.request()
+            .input('bookingId', sql.Int, bookingId)
+            .query('SELECT CustomerID, Status FROM BOOKING WHERE BookingID = @bookingId');
+
+        if (checkResult.recordset.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy lịch đặt xe' });
+        }
+
+        const booking = checkResult.recordset[0];
+
+        if (userId && booking.CustomerID !== userId) {
+            return res.status(403).json({ message: 'Bạn không có quyền xóa lịch đặt xe này' });
+        }
+
+        if (booking.Status !== 4 && booking.Status !== 5) {
+            return res.status(400).json({ message: 'Chỉ có thể xóa lịch đặt xe đã hoàn thành hoặc đã hủy' });
+        }
+
+        try {
+            await pool.request()
+                .input('id', sql.Int, bookingId)
+                .query("UPDATE BOOKING SET IsHiddenByUser = 1 WHERE BookingID = @id");
+            res.json({ message: 'Xóa lịch đặt khỏi lịch sử thành công' });
+        } catch (innerErr) {
+            throw innerErr;
+        }
+    } catch (err) {
+        console.error("DELETE /api/bookings/:id error:", err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// API: Áp dụng hoặc gỡ bỏ voucher cho booking
+router.post('/:id/apply-voucher', async (req, res) => {
+    try {
+        const bookingId = parseInt(req.params.id, 10);
+        const { memberPromoId } = req.body;
+
+        if (isNaN(bookingId)) {
+            return res.status(400).json({ message: 'BookingID không hợp lệ' });
+        }
+
+        const token = req.headers.authorization?.split(' ')[1];
+        let userId = null;
+
+        if (token && token !== 'mock-token' && token !== 'null' && token !== 'undefined') {
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey_placeholder');
+                userId = decoded.userId || decoded.id;
+            } catch (err) {
+                return res.status(403).json({ message: 'Token không hợp lệ hoặc đã hết hạn!' });
+            }
+        }
+
+        const pool = await poolPromise;
+
+        // 1. Kiểm tra booking
+        const bookingCheck = await pool.request()
+            .input('bookingId', sql.Int, bookingId)
+            .query('SELECT CustomerID, TotalPrice, Status FROM BOOKING WHERE BookingID = @bookingId');
+
+        if (bookingCheck.recordset.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy lịch đặt xe' });
+        }
+
+        const booking = bookingCheck.recordset[0];
+
+        // Xác thực quyền sở hữu
+        if (userId && booking.CustomerID !== userId) {
+            return res.status(403).json({ message: 'Bạn không có quyền thao tác trên lịch đặt xe này' });
+        }
+
+        // Chỉ cho phép áp dụng voucher khi lịch đặt ở trạng thái 1 (Chờ cọc/thanh toán)
+        if (booking.Status !== 1) {
+            return res.status(400).json({ message: 'Chỉ có thể áp dụng voucher cho lịch đặt chưa thanh toán' });
+        }
+
+        // 2. Nếu memberPromoId là null -> thực hiện gỡ voucher
+        if (!memberPromoId) {
+            await pool.request()
+                .input('bookingId', sql.Int, bookingId)
+                .input('totalPrice', sql.Decimal(18, 2), booking.TotalPrice)
+                .query(`
+                    UPDATE BOOKING 
+                    SET MemberPromoID = NULL, FinalPrice = @totalPrice 
+                    WHERE BookingID = @bookingId
+                `);
+            return res.json({ 
+                message: 'Đã gỡ bỏ voucher thành công',
+                FinalPrice: booking.TotalPrice,
+                MemberPromoID: null
+            });
+        }
+
+        // 3. Nếu có memberPromoId -> Áp dụng voucher
+        const memberPromoIdInt = parseInt(memberPromoId, 10);
+        if (isNaN(memberPromoIdInt)) {
+            return res.status(400).json({ message: 'Voucher không hợp lệ' });
+        }
+
+        // Kiểm tra voucher của member
+        const promoCheck = await pool.request()
+            .input('memberPromoId', sql.Int, memberPromoIdInt)
+            .input('customerId', sql.Int, booking.CustomerID)
+            .query(`
+                SELECT mp.MemberPromoID, mp.IsUsed, p.DiscountPercent, p.EndDate
+                FROM MEMBER_PROMOTION mp
+                JOIN PROMOTION p ON mp.PromotionID = p.PromotionID
+                WHERE mp.MemberPromoID = @memberPromoId AND mp.UserID = @customerId
+            `);
+
+        if (promoCheck.recordset.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy voucher trong ví của bạn' });
+        }
+
+        const promo = promoCheck.recordset[0];
+
+        if (promo.IsUsed === true || promo.IsUsed === 1) {
+            return res.status(400).json({ message: 'Voucher này đã được sử dụng' });
+        }
+
+        if (promo.EndDate && new Date(promo.EndDate) < new Date()) {
+            return res.status(400).json({ message: 'Voucher này đã hết hạn' });
+        }
+
+        // Tính toán FinalPrice mới
+        const discountPercent = parseFloat(promo.DiscountPercent || 0);
+        const finalPrice = Math.round(booking.TotalPrice * (1 - discountPercent / 100));
+
+        // Cập nhật booking
+        await pool.request()
+            .input('bookingId', sql.Int, bookingId)
+            .input('memberPromoId', sql.Int, memberPromoIdInt)
+            .input('finalPrice', sql.Decimal(18, 2), finalPrice)
+            .query(`
+                UPDATE BOOKING 
+                SET MemberPromoID = @memberPromoId, FinalPrice = @finalPrice 
+                WHERE BookingID = @bookingId
+            `);
+
+        return res.json({
+            message: 'Áp dụng voucher thành công',
+            FinalPrice: finalPrice,
+            MemberPromoID: memberPromoIdInt
+        });
+
+    } catch (err) {
+        console.error("apply-voucher error:", err);
+        return res.status(500).json({ message: err.message });
     }
 });
 
@@ -418,7 +610,7 @@ router.get('/admin/all', adminAuth, async (req, res) => {
                 FROM PAYMENT
                 GROUP BY BookingID
             ) p ON b.BookingID = p.BookingID
-            WHERE 1=1
+            WHERE b.Status != 1
         `;
 
         const request = pool.request();
@@ -462,6 +654,7 @@ router.get('/admin/all', adminAuth, async (req, res) => {
                     vehicleType: row.VehicleType,
                     licensePlate: row.LicensePlate,
                     price: Number(row.FinalPrice || row.TotalPrice || 0),
+                    totalPrice: Number(row.TotalPrice || 0),
                     status: row.Status,
                     date: format.dateStr,
                     time: format.timeStr,
@@ -529,6 +722,7 @@ router.get('/admin/:id', adminAuth, async (req, res) => {
             vehicleType: first.VehicleType,
             licensePlate: first.LicensePlate,
             price: Number(first.FinalPrice || first.TotalPrice || 0),
+            totalPrice: Number(first.TotalPrice || 0),
             status: first.Status,
             date: format.dateStr,
             time: format.timeStr,
@@ -554,7 +748,7 @@ router.post('/admin/create', adminAuth, async (req, res) => {
             .input('LicensePlate', sql.NVarChar, LicensePlate)
             .input('TotalPrice', sql.Decimal, TotalPrice)
             .input('FinalPrice', sql.Decimal, FinalPrice)
-            .input('Status', sql.TinyInt, Status || 1)
+            .input('Status', sql.TinyInt, Status || 2)
             .query(`
                 INSERT INTO BOOKING (CustomerID, BookingDate, VehicleType, LicensePlate, TotalPrice, FinalPrice, Status)
                 OUTPUT INSERTED.BookingID
@@ -632,8 +826,8 @@ router.get('/admin/dashboard/stats', adminAuth, async (req, res) => {
         const pool = await poolPromise;
         const result = await pool.request().query(`
             SELECT 
-                COUNT(*) AS total,
-                SUM(CASE WHEN Status = 1 THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN Status != 1 THEN 1 ELSE 0 END) AS total,
+                0 AS pending,
                 SUM(CASE WHEN Status = 3 THEN 1 ELSE 0 END) AS active,
                 SUM(CASE WHEN Status = 4 THEN 1 ELSE 0 END) AS completed,
                 COALESCE(SUM(CASE WHEN Status = 4 THEN COALESCE(FinalPrice, TotalPrice, 0) ELSE 0 END), 0) AS revenue

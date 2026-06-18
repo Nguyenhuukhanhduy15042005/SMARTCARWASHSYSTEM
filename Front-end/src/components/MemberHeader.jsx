@@ -1,16 +1,18 @@
 import React from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import "./MemberHeader.css";
+import { useAuth } from "../context/AuthContext";
 
 // Trọng thêm: Thành phần Header dùng chung cho phần Member Portal
 export default function MemberHeader() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const location = useLocation();
   const currentPath = location.pathname;
 
   const handleLogout = () => {
-    localStorage.clear();
-    navigate("/login");
+    logout();
+    navigate("/");
   };
 
   return (

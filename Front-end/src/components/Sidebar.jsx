@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
 import ThemePanel from "./ThemePanel";
+import { useAuth } from "../context/AuthContext";
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const currentPath = location.pathname;
 
   const [currentUser, setCurrentUser] = useState(() => {
@@ -29,10 +31,8 @@ export default function Sidebar() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("TOKEN");
-    localStorage.removeItem("token");
-    localStorage.removeItem("LOGIN_USER");
-    navigate("/login");
+    logout();
+    navigate("/");
   };
 
   const role = currentUser?.role || "user";

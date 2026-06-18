@@ -12,6 +12,18 @@ export default function Login({ setUser }) {
   const location = useLocation();
   const { setUser: setAuthUser, setToken } = useAuth();
 
+  const handleBack = () => {
+    const fromPath = location.state?.from?.pathname || "";
+    // Nếu trang trước đó là trang bảo vệ yêu cầu đăng nhập, quay lại sẽ dẫn thẳng về trang chủ "/" để tránh vòng lặp
+    const isProtected = fromPath && !["/", "/login", "/register", "/unauthorized"].includes(fromPath);
+
+    if (isProtected || location.state?.loggedOut || window.history.length <= 1) {
+      navigate("/");
+    } else {
+      navigate(-1);
+    }
+  };
+
   useEffect(() => {
     if (location.state?.error === "unauthorized") {
       setErrorMsg("Vui lòng đăng nhập để truy cập trang này!");
@@ -154,13 +166,16 @@ export default function Login({ setUser }) {
             marginBottom: "15px",
           }}
         >
-          <Link
-            to="/"
+          <button
+            onClick={handleBack}
             style={{
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              textDecoration: "none",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
               color: "#475569",
               fontSize: "14px",
               fontWeight: "600",
@@ -182,7 +197,7 @@ export default function Login({ setUser }) {
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
             Quay lại
-          </Link>
+          </button>
         </div>
 
         <h2>Đăng Nhập</h2>

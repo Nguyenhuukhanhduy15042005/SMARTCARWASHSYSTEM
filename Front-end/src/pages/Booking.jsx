@@ -277,8 +277,9 @@ export default function Booking() {
 
   const basePrice      = selectedService ? selectedService.basePrice : 0;
   const discountRate   = profile.DiscountRate > 1 ? profile.DiscountRate / 100 : profile.DiscountRate;
-  const discountAmount = basePrice * discountRate;
+  const discountAmount = Math.round(basePrice * discountRate);
   const finalPrice     = Math.max(0, basePrice - discountAmount);
+  const isHighTier     = ["Gold", "Platinum"].includes(profile.TierName);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -591,8 +592,14 @@ export default function Booking() {
                   </div>
                   {discountRate > 0 && (
                     <div className="summary-row" style={{ color: "#10b981" }}>
-                      <span>Ưu đãi ({Math.round(discountRate * 100)}%):</span>
+                      <span>Ưu đãi hạng {profile.TierName} (giảm {Math.round(discountRate * 100)}%):</span>
                       <span>-{discountAmount.toLocaleString("vi-VN")} đ</span>
+                    </div>
+                  )}
+                  {isHighTier && (
+                    <div className="summary-row" style={{ color: "#a78bfa", fontSize: "13px" }}>
+                      <span>🎖️ Miễn phí đặt chỗ</span>
+                      <span>✓</span>
                     </div>
                   )}
                 </div>

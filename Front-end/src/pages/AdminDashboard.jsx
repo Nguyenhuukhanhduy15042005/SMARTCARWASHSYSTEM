@@ -244,16 +244,6 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="admin-metric-card metric-pending">
-            <div className="admin-metric-info">
-              <h3>Đang chờ duyệt</h3>
-              <p className="admin-metric-value">{stats.pending}</p>
-            </div>
-            <div className="admin-metric-icon">
-              <i className="fa-regular fa-clock"></i>
-            </div>
-          </div>
-
           <div className="admin-metric-card metric-active">
             <div className="admin-metric-info">
               <h3>Đang làm dịch vụ</h3>
@@ -299,7 +289,6 @@ export default function AdminDashboard() {
           </div>
           <div className="admin-status-tabs">
             <button className={`admin-tab ${selectedStatus === "All" ? "active" : ""}`} onClick={() => setSelectedStatus("All")}>Tất cả</button>
-            <button className={`admin-tab ${selectedStatus === "1" ? "active" : ""}`} onClick={() => setSelectedStatus("1")}>Chờ duyệt</button>
             <button className={`admin-tab ${selectedStatus === "2" ? "active" : ""}`} onClick={() => setSelectedStatus("2")}>Đã xác nhận</button>
             <button className={`admin-tab ${selectedStatus === "3" ? "active" : ""}`} onClick={() => setSelectedStatus("3")}>Đang làm</button>
             <button className={`admin-tab ${selectedStatus === "4" ? "active" : ""}`} onClick={() => setSelectedStatus("4")}>Hoàn tất</button>
@@ -392,16 +381,6 @@ export default function AdminDashboard() {
                       <td>{getStatusPill(b.status)}</td>
                       <td>
                         <div className="table-actions">
-                          {b.status === 1 && (
-                            <>
-                              <button className="action-icon-btn btn-confirm" title="Xác nhận" onClick={() => handleStatusUpdate(b.id, 2)}>
-                                <i className="fa-solid fa-circle-check"></i>
-                              </button>
-                              <button className="action-icon-btn btn-cancel" title="Hủy bỏ" onClick={() => handleStatusUpdate(b.id, 5)}>
-                                <i className="fa-solid fa-xmark"></i>
-                              </button>
-                            </>
-                          )}
                           {b.status === 2 && (
                             <>
                               <button className="action-icon-btn btn-wash" title="Bắt đầu rửa" onClick={() => handleStatusUpdate(b.id, 3)}>
@@ -449,21 +428,17 @@ export default function AdminDashboard() {
             <div className="admin-modal-body">
               {/* Progress Flow */}
               <div className="modal-timeline">
-                <div className={`timeline-step ${selectedBooking.status >= 1 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 1 ? "active" : ""}`}>
-                  <div className="timeline-node">1</div>
-                  <div className="timeline-label">Chờ duyệt</div>
-                </div>
                 <div className={`timeline-step ${selectedBooking.status >= 2 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 2 ? "active" : ""}`}>
-                  <div className="timeline-node">2</div>
+                  <div className="timeline-node">1</div>
                   <div className="timeline-label">Xác nhận</div>
                 </div>
                 <div className={`timeline-step ${selectedBooking.status >= 3 ? (selectedBooking.status === 5 ? "" : "completed") : ""} ${selectedBooking.status === 3 ? "active" : ""}`}>
-                  <div className="timeline-node">3</div>
+                  <div className="timeline-node">2</div>
                   <div className="timeline-label">Đang rửa</div>
                 </div>
                 <div className={`timeline-step ${selectedBooking.status === 4 ? "completed active" : ""} ${selectedBooking.status === 5 ? "active" : ""}`}>
                   <div className="timeline-node" style={{ backgroundColor: selectedBooking.status === 5 ? "var(--color-danger)" : "" }}>
-                    {selectedBooking.status === 5 ? <i className="fa-solid fa-xmark"></i> : "4"}
+                    {selectedBooking.status === 5 ? <i className="fa-solid fa-xmark"></i> : "3"}
                   </div>
                   <div className="timeline-label">{selectedBooking.status === 5 ? "Đã hủy" : "Hoàn thành"}</div>
                 </div>
@@ -505,8 +480,18 @@ export default function AdminDashboard() {
                     <span>{selectedBooking.time} ({selectedBooking.date})</span>
                   </div>
                   <div className="modal-field">
-                    <label>Tổng chi phí</label>
-                    <span style={{ color: "var(--color-success)" }}>{selectedBooking.price?.toLocaleString("vi-VN")} đ</span>
+                    <label>Giá dịch vụ gốc</label>
+                    <span>{(selectedBooking.totalPrice || selectedBooking.price || 0).toLocaleString("vi-VN")} đ</span>
+                  </div>
+                  {selectedBooking.totalPrice && selectedBooking.price && selectedBooking.totalPrice !== selectedBooking.price && (
+                    <div className="modal-field">
+                      <label>🎖️ Giảm giá hạng thành viên ({Math.round((1 - selectedBooking.price / selectedBooking.totalPrice) * 100)}%)</label>
+                      <span style={{ color: "#10b981" }}>-{(selectedBooking.totalPrice - selectedBooking.price).toLocaleString("vi-VN")} đ</span>
+                    </div>
+                  )}
+                  <div className="modal-field">
+                    <label>Tổng thanh toán</label>
+                    <span style={{ color: "var(--color-success)", fontWeight: "bold" }}>{selectedBooking.price?.toLocaleString("vi-VN")} đ</span>
                   </div>
                   {(() => {
                     const paid = selectedBooking.paidAmount !== undefined ? selectedBooking.paidAmount : (selectedBooking.PaidAmount || 0);
@@ -541,11 +526,6 @@ export default function AdminDashboard() {
 
               {selectedBooking.status !== 4 && selectedBooking.status !== 5 && (
                 <div style={{ marginTop: "30px", display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-                  {selectedBooking.status === 1 && (
-                    <button className="action-icon-btn btn-confirm" style={{ width: "auto", padding: "8px 16px", borderRadius: "8px", fontSize: "14px" }} onClick={() => handleStatusUpdate(selectedBooking.id, 2)}>
-                      <i className="fa-solid fa-circle-check" style={{ marginRight: "6px" }}></i> Xác nhận đặt lịch
-                    </button>
-                  )}
                   {selectedBooking.status === 2 && (
                     <button className="action-icon-btn btn-wash" style={{ width: "auto", padding: "8px 16px", borderRadius: "8px", fontSize: "14px" }} onClick={() => handleStatusUpdate(selectedBooking.id, 3)}>
                       <i className="fa-solid fa-soap" style={{ marginRight: "6px" }}></i> Bắt đầu rửa xe

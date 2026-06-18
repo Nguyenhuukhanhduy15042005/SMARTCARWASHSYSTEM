@@ -46,9 +46,11 @@ export default function StaffDashboard() {
       const res = await fetch(API_URL);
       if (!res.ok) throw new Error("Không thể tải danh sách đặt lịch.");
       const data = await res.json();
-      setBookings(data);
-      setFilteredBookings(data);
-      calculateStats(data);
+      // Bỏ các lịch đặt chưa cọc/thanh toán (Status = 1)
+      const validData = data.filter(b => String(b.Status) !== "1");
+      setBookings(validData);
+      setFilteredBookings(validData);
+      calculateStats(validData);
       setError("");
     } catch (err) {
       setError(err.message);
@@ -186,13 +188,6 @@ export default function StaffDashboard() {
               <div style={styles.statLabel}>Tổng lịch hôm nay</div>
             </div>
           </div>
-          <div style={{ ...styles.statItem, borderLeft: "4px solid #f59e0b" }}>
-            <div style={styles.statIconWrapper}><i className="fa-solid fa-hourglass-half" style={{ color: "#f59e0b" }}></i></div>
-            <div>
-              <div style={styles.statValue}>{stats.pending}</div>
-              <div style={styles.statLabel}>Đang chờ duyệt</div>
-            </div>
-          </div>
           <div style={{ ...styles.statItem, borderLeft: "4px solid #06b6d4" }}>
             <div style={styles.statIconWrapper}><i className="fa-solid fa-screwdriver-wrench" style={{ color: "#06b6d4" }}></i></div>
             <div>
@@ -212,7 +207,7 @@ export default function StaffDashboard() {
         {/* Filters and Search segment */}
         <div style={styles.filterSection}>
           <div style={styles.filterBar}>
-            {["All", "1", "2", "3", "4", "5"].map(status => (
+            {["All", "2", "3", "4", "5"].map(status => (
               <button
                 key={status}
                 style={{
@@ -222,7 +217,6 @@ export default function StaffDashboard() {
                 onClick={() => setSelectedStatus(status)}
               >
                 {status === "All" && "Tất cả"}
-                {status === "1" && "Chờ duyệt"}
                 {status === "2" && "Đã nhận"}
                 {status === "3" && "Đang rửa"}
                 {status === "4" && "Hoàn tất"}
@@ -431,7 +425,13 @@ export default function StaffDashboard() {
                   <span>Giá dịch vụ gốc:</span>
                   <span>{(selectedBooking.TotalPrice || 0).toLocaleString("vi-VN")} đ</span>
                 </div>
-                <div style={{ ...styles.priceRow, borderTop: "1px solid #2d2d34", paddingTop: "10px", marginTop: "10px" }}>
+                {selectedBooking.TotalPrice && selectedBooking.FinalPrice && selectedBooking.TotalPrice !== selectedBooking.FinalPrice && (
+                  <div style={{ ...styles.priceRow, color: "#10b981", marginTop: "4px" }}>
+                    <span>🎖️ Giảm giá hạng thành viên ({Math.round((1 - selectedBooking.FinalPrice / selectedBooking.TotalPrice) * 100)}%):</span>
+                    <span>-{(selectedBooking.TotalPrice - selectedBooking.FinalPrice).toLocaleString("vi-VN")} đ</span>
+                  </div>
+                )}
+                <div style={{ ...styles.priceRow, borderTop: "1px solid #2d2d34", paddingTop: "10px", marginTop: "10px", fontWeight: "700", color: "#fff" }}>
                   <span>Tổng thanh toán:</span>
                   <span>{(selectedBooking.FinalPrice || selectedBooking.TotalPrice || 0).toLocaleString("vi-VN")} đ</span>
                 </div>

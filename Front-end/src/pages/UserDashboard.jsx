@@ -116,7 +116,8 @@ export default function UserDashboard() {
           status: b.status !== undefined ? b.status : b.Status,
           date: dateStr,
           time: timeStr,
-          servicePackage: b.servicePackage || b.ServiceName || "N/A"
+          servicePackage: b.servicePackage || b.ServiceName || "N/A",
+          isHiddenByUser: b.IsHiddenByUser === true || b.IsHiddenByUser === 1 || b.isHiddenByUser === true
         };
       });
       setBookings(normalizedBookings);
@@ -234,7 +235,7 @@ export default function UserDashboard() {
       if (paidBookingMethods.get(bookingId) === "cash") {
         return <span className="status-pill status-deposit" style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)" }}><i className="fa-solid fa-coins"></i> Đã đặt cọc</span>;
       }
-      return <span className="status-pill status-paid" style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}><i className="fa-solid fa-circle-check"></i> Đã thanh toán</span>;
+      return <span className="status-pill status-paid" style={{ background: "rgba(168, 85, 247, 0.15)", color: "#c084fc", border: "1px solid rgba(168, 85, 247, 0.3)" }}><i className="fa-solid fa-circle-check"></i> Đã thanh toán</span>;
     }
     switch (status) {
       case 1: return <span className="status-pill status-pending" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}><i className="fa-regular fa-clock"></i> Chờ cọc/thanh toán</span>;
@@ -284,6 +285,7 @@ export default function UserDashboard() {
 
   // Filter bookings based on active status tab
   const filteredBookings = bookings.filter(b => {
+    if (b.isHiddenByUser) return false;
     if (selectedStatus === "All") return true;
     if (selectedStatus === "Active") return b.status === 1 || b.status === 2 || b.status === 3;
     if (selectedStatus === "Completed") return b.status === 4;
