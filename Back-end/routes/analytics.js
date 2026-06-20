@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
 const { sql, poolPromise } = require("../db");
 
@@ -58,16 +58,16 @@ function toNumber(value) {
 }
 
 const BOOKING_STATUS = {
-  1: "Chờ duyệt",
-  2: "Đã xác nhận",
-  3: "Đang làm dịch vụ",
-  4: "Hoàn thành",
-  5: "Đã hủy",
+  1: "Chß╗¥ duyß╗çt",
+  2: "─É├ú x├íc nhß║¡n",
+  3: "─Éang l├ám dß╗ïch vß╗Ñ",
+  4: "Ho├án th├ánh",
+  5: "─É├ú hß╗ºy",
 };
 
 function mapBookingStatus(status) {
   const statusNumber = Number(status);
-  return BOOKING_STATUS[statusNumber] || "Không xác định";
+  return BOOKING_STATUS[statusNumber] || "Kh├┤ng x├íc ─æß╗ïnh";
 }
 
 async function querySummary(pool, range) {
@@ -307,7 +307,7 @@ async function queryFeedbackStats(pool, range) {
     latest: latestFeedbackResult.recordset.map((row) => ({
       feedbackId: row.FeedbackID,
       bookingId: row.BookingID,
-      fullName: row.FullName || "Khách hàng",
+      fullName: row.FullName || "Kh├ích h├áng",
       rating: toNumber(row.Rating),
       comment: row.Comment || "",
       createdDate: row.CreatedDate,
@@ -363,13 +363,13 @@ router.get("/dashboard", async (req, res) => {
   } catch (err) {
     console.error("GET /api/analytics/dashboard error:", err);
     return res.status(500).json({
-      message: "Lỗi khi tải dữ liệu analytics dashboard",
+      message: "Lß╗ùi khi tß║úi dß╗» liß╗çu analytics dashboard",
       error: err.message,
     });
   }
 });
 
-// Endpoint nhỏ để FE test nhanh tổng quan nếu cần.
+// Endpoint nhß╗Å ─æß╗â FE test nhanh tß╗òng quan nß║┐u cß║ºn.
 // GET /api/analytics/summary?range=30d
 router.get("/summary", async (req, res) => {
   try {
@@ -387,7 +387,7 @@ router.get("/summary", async (req, res) => {
   } catch (err) {
     console.error("GET /api/analytics/summary error:", err);
     return res.status(500).json({
-      message: "Lỗi khi tải tổng quan analytics",
+      message: "Lß╗ùi khi tß║úi tß╗òng quan analytics",
       error: err.message,
     });
   }
