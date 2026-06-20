@@ -24,6 +24,7 @@ import FeedbackManagement from "./pages/FeedbackManagement";
 import RewardRedemption from "./pages/RewardRedemption";
 import LoyaltyHistory from "./pages/LoyaltyHistory";
 import MachineDashboard from "./pages/MachineDashboard";
+import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 
 const getStoredRole = () => {
   try {
@@ -110,6 +111,10 @@ function App() {
 
         <Route path="/admin/dashboard" element={
           <ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>
+        } />
+
+        <Route path="/admin/analytics" element={
+          <ProtectedRoute requiredRole="admin"><AnalyticsDashboard /></ProtectedRoute>
         } />
 
         <Route path="/admin/members" element={
