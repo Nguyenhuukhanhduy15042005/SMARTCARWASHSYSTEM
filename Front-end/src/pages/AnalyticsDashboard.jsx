@@ -1,17 +1,27 @@
+// ============================================================
+// AnalyticsDashboard.jsx - Trọng thêm mới (Sprint Analytics)
+// Trang thống kê tổng quan dành cho Admin:
+//   - Gọi API của Thái: GET /api/analytics/dashboard
+//   - Hiển thị biểu đồ doanh thu, booking, điểm loyalty, v.v.
+//   - Dùng thư viện Recharts để vẽ biểu đồ
+// ============================================================
+
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import "./AnalyticsDashboard.css";
 import {
-  LineChart, Line,
-  BarChart, Bar,
-  PieChart, Pie, Cell,
+  LineChart, Line,       // Biểu đồ đường (doanh thu, loyalty)
+  BarChart, Bar,         // Biểu đồ cột (booking, top dịch vụ)
+  PieChart, Pie, Cell,   // Biểu đồ tròn (trạng thái, loại xe)
   XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer
 } from "recharts";
 
+// Địa chỉ API analytics do Thái xây dựng ở Back-end/routes/analytics.js
 const API_BASE = "http://127.0.0.1:5000/api/analytics";
 
+// Danh sách lựa chọn khoảng thời gian lọc dữ liệu
 const RANGE_OPTIONS = [
   { value: "7d",    label: "7 ngày qua" },
   { value: "30d",   label: "30 ngày qua" },
@@ -21,14 +31,17 @@ const RANGE_OPTIONS = [
   { value: "all",   label: "Tất cả" },
 ];
 
+// Danh sách lựa chọn cách nhóm dữ liệu (theo ngày hoặc tháng)
 const GROUP_OPTIONS = [
   { value: "day",   label: "Theo ngày" },
   { value: "month", label: "Theo tháng" },
 ];
 
+// Bảng màu dùng cho biểu đồ tròn (Pie chart)
 const PIE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"];
 
-// ─── Custom Tooltip ────────────────────────────────────────
+// ─── Component tooltip tùy chỉnh cho biểu đồ ─────────────────
+// Hiện popup khi hover vào điểm dữ liệu trên chart
 function ChartTooltip({ active, payload, label, formatter }) {
   if (!active || !payload?.length) return null;
   return (
@@ -36,6 +49,7 @@ function ChartTooltip({ active, payload, label, formatter }) {
       <div className="label">{label}</div>
       {payload.map((p, i) => (
         <div key={i} className="value" style={{ color: p.color }}>
+          {/* Nếu có hàm formatter thì định dạng giá trị (VD: số tiền → VNĐ) */}
           {p.name}: {formatter ? formatter(p.value) : p.value}
         </div>
       ))}
@@ -43,11 +57,12 @@ function ChartTooltip({ active, payload, label, formatter }) {
   );
 }
 
-// ─── Format helpers ────────────────────────────────────────
-const fmtVND = (v) => Number(v || 0).toLocaleString("vi-VN") + " đ";
-const fmtNum = (v) => Number(v || 0).toLocaleString("vi-VN");
+// ─── Hàm định dạng hiển thị ───────────────────────────────────
+const fmtVND = (v) => Number(v || 0).toLocaleString("vi-VN") + " đ"; // Format tiền VNĐ
+const fmtNum = (v) => Number(v || 0).toLocaleString("vi-VN");         // Format số nguyên
 
-// ─── Summary Card ──────────────────────────────────────────
+// ─── Component thẻ tóm tắt (Summary Card) ─────────────────────
+// Hiện 4 thẻ tổng quan: tổng booking, doanh thu, đánh giá, điểm tích lũy
 function SummaryCard({ icon, label, value, sub, color }) {
   return (
     <div className={`analytics-card ${color}`}>
@@ -56,25 +71,33 @@ function SummaryCard({ icon, label, value, sub, color }) {
         <div className="analytics-card-icon">{icon}</div>
       </div>
       <div className="analytics-card-value">{value}</div>
+      {/* Dòng phụ bên dưới giá trị chính (VD: số đã hoàn thành / đã hủy) */}
       {sub && <div className="analytics-card-sub">{sub}</div>}
     </div>
   );
 }
 
-// ─── Main Component ────────────────────────────────────────
+// ─── Component chính: AnalyticsDashboard ──────────────────────
+// Trọng thêm mới - Trang Analytics chỉ dành cho Admin
 export default function AnalyticsDashboard() {
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
-  const [range, setRange]     = useState("30d");
-  const [groupBy, setGroupBy] = useState("day");
+  const [data, setData]       = useState(null);    // Dữ liệu trả về từ API
+  const [loading, setLoading] = useState(true);    // Đang tải hay không
+  const [error, setError]     = useState(null);    // Lỗi nếu có
+  const [range, setRange]     = useState("30d");   // Khoảng thời gian lọc (mặc định 30 ngày)
+  const [groupBy, setGroupBy] = useState("day");   // Nhóm theo ngày hay tháng
 
+  // ─── Hàm gọi API lấy dữ liệu analytics ───────────────────
+  // useCallback để tránh tạo lại hàm khi re-render (chỉ tạo lại khi range/groupBy thay đổi)
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      // Lấy token đăng nhập để xác thực với server
       const token = localStorage.getItem("token") || localStorage.getItem("TOKEN") || "";
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      // Gọi API analytics dashboard của Thái (Back-end/routes/analytics.js)
+      // Truyền tham số range và groupBy để lọc dữ liệu
       const res = await axios.get(`${API_BASE}/dashboard`, {
         params: { range, groupBy },
         headers,
@@ -86,43 +109,41 @@ export default function AnalyticsDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [range, groupBy]);
+  }, [range, groupBy]); // Tự động gọi lại khi thay đổi bộ lọc
 
+  // ─── Khởi tạo: load font, icon và gọi API lần đầu ────────
   useEffect(() => {
-    // Load fonts & icons
+    // Nạp font chữ từ Google Fonts
     const linkFont = document.createElement("link");
     linkFont.href = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap";
     linkFont.rel = "stylesheet";
     document.head.appendChild(linkFont);
 
+    // Nạp icon FontAwesome
     const linkIcons = document.createElement("link");
     linkIcons.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
     linkIcons.rel = "stylesheet";
     document.head.appendChild(linkIcons);
 
-    fetchData();
+    fetchData(); // Gọi API lần đầu khi component mount
   }, [fetchData]);
 
+  // Shortcut để truy cập phần summary trong data trả về
   const s = data?.summary || {};
-
-  // ── Booking status map
-  const statusMap = {
-    1: "Chờ duyệt", 2: "Đã xác nhận",
-    3: "Đang làm",  4: "Hoàn thành", 5: "Đã hủy"
-  };
 
   return (
     <div className="analytics-page">
       <Sidebar />
       <main className="analytics-content">
 
-        {/* ── Header ── */}
+        {/* ── Phần đầu trang: tiêu đề + bộ lọc thời gian ── */}
         <div className="analytics-header">
           <div className="analytics-title-block">
             <h1>📊 Analytics Dashboard</h1>
             <p>Thống kê tổng quan hệ thống rửa xe</p>
           </div>
           <div className="analytics-filters">
+            {/* Dropdown chọn khoảng thời gian (7d / 30d / 90d / tháng / năm / tất cả) */}
             <select
               className="analytics-select"
               value={range}
@@ -132,6 +153,8 @@ export default function AnalyticsDashboard() {
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
+
+            {/* Dropdown chọn cách nhóm dữ liệu (theo ngày hoặc theo tháng) */}
             <select
               className="analytics-select"
               value={groupBy}
@@ -141,6 +164,8 @@ export default function AnalyticsDashboard() {
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
+
+            {/* Nút làm mới dữ liệu thủ công */}
             <button
               className="analytics-refresh-btn"
               onClick={fetchData}
@@ -152,7 +177,7 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
 
-        {/* ── Loading ── */}
+        {/* ── Trạng thái đang tải ── */}
         {loading && (
           <div className="analytics-loading">
             <div className="analytics-spinner" />
@@ -160,7 +185,7 @@ export default function AnalyticsDashboard() {
           </div>
         )}
 
-        {/* ── Error ── */}
+        {/* ── Trạng thái lỗi (VD: server chưa bật, API 404...) ── */}
         {!loading && error && (
           <div className="analytics-error">
             <div className="analytics-error-icon">⚠️</div>
@@ -171,26 +196,30 @@ export default function AnalyticsDashboard() {
           </div>
         )}
 
-        {/* ── Data ── */}
+        {/* ── Hiển thị dữ liệu khi tải thành công ── */}
         {!loading && !error && data && (
           <>
-            {/* ① Summary Cards */}
+            {/* ① 4 Thẻ tóm tắt tổng quan (Summary Cards) */}
             <div className="analytics-summary-grid">
+              {/* Tổng số lượng booking trong khoảng thời gian */}
               <SummaryCard
                 icon="📋" color="blue" label="Tổng Booking"
                 value={fmtNum(s.totalBookings)}
                 sub={`Hoàn thành: ${fmtNum(s.completedBookings)} | Hủy: ${fmtNum(s.cancelledBookings)}`}
               />
+              {/* Tổng doanh thu từ các lần thanh toán */}
               <SummaryCard
                 icon="💰" color="green" label="Doanh Thu"
                 value={Number(s.totalRevenue || 0).toLocaleString("vi-VN") + " đ"}
                 sub={`Từ ${data.meta?.range || range}`}
               />
+              {/* Điểm đánh giá trung bình từ feedback khách hàng */}
               <SummaryCard
                 icon="⭐" color="yellow" label="Đánh Giá TB"
                 value={`${s.averageRating || 0} / 5`}
                 sub={`${fmtNum(s.totalFeedbacks)} đánh giá`}
               />
+              {/* Tổng điểm loyalty khách hàng đã tích lũy */}
               <SummaryCard
                 icon="🎯" color="purple" label="Điểm Tích Lũy"
                 value={fmtNum(s.pointsEarned)}
@@ -198,9 +227,9 @@ export default function AnalyticsDashboard() {
               />
             </div>
 
-            {/* ② Revenue Trend + Booking Trend */}
+            {/* ② Biểu đồ xu hướng: Doanh thu (Line) + Số booking (Bar) */}
             <div className="analytics-grid-2">
-              {/* Doanh thu */}
+              {/* Biểu đồ đường - xu hướng doanh thu theo ngày/tháng */}
               <div className="analytics-section">
                 <div className="analytics-section-header">
                   <div className="analytics-section-title">
@@ -212,6 +241,7 @@ export default function AnalyticsDashboard() {
                     <LineChart data={data.revenueTrend} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                       <XAxis dataKey="period" tick={{ fill: "#9ca3af", fontSize: 11 }} />
+                      {/* Trục Y hiển thị đơn vị nghìn đồng (VD: 500k) */}
                       <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} tickFormatter={v => (v / 1000).toFixed(0) + "k"} />
                       <Tooltip content={<ChartTooltip formatter={fmtVND} />} />
                       <Line
@@ -223,7 +253,7 @@ export default function AnalyticsDashboard() {
                 ) : <div className="analytics-empty">Không có dữ liệu</div>}
               </div>
 
-              {/* Số booking */}
+              {/* Biểu đồ cột - số lượng booking theo ngày/tháng */}
               <div className="analytics-section">
                 <div className="analytics-section-header">
                   <div className="analytics-section-title">
@@ -244,9 +274,9 @@ export default function AnalyticsDashboard() {
               </div>
             </div>
 
-            {/* ③ Booking Status + Vehicle Type */}
+            {/* ③ Biểu đồ tròn: Trạng thái booking + Loại xe */}
             <div className="analytics-grid-2">
-              {/* Trạng thái booking - Pie */}
+              {/* Pie chart - phân bố trạng thái booking (Chờ duyệt / Hoàn thành / Hủy...) */}
               <div className="analytics-section">
                 <div className="analytics-section-header">
                   <div className="analytics-section-title">
@@ -261,9 +291,10 @@ export default function AnalyticsDashboard() {
                         dataKey="total"
                         nameKey="status"
                         cx="50%" cy="50%"
-                        outerRadius={80} innerRadius={40}
+                        outerRadius={80} innerRadius={40} // Donut chart (có lỗ ở giữa)
                         paddingAngle={3}
                       >
+                        {/* Mỗi phần được tô màu theo PIE_COLORS */}
                         {data.bookingStatus.map((_, i) => (
                           <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                         ))}
@@ -277,7 +308,7 @@ export default function AnalyticsDashboard() {
                 ) : <div className="analytics-empty">Không có dữ liệu</div>}
               </div>
 
-              {/* Loại xe - Pie */}
+              {/* Pie chart - tỷ lệ xe máy vs ô tô */}
               <div className="analytics-section">
                 <div className="analytics-section-header">
                   <div className="analytics-section-title">
@@ -309,7 +340,7 @@ export default function AnalyticsDashboard() {
               </div>
             </div>
 
-            {/* ④ Top Services */}
+            {/* ④ Biểu đồ cột ngang - Top 10 dịch vụ được đặt nhiều nhất */}
             <div className="analytics-section">
               <div className="analytics-section-header">
                 <div className="analytics-section-title">
@@ -320,7 +351,7 @@ export default function AnalyticsDashboard() {
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart
                     data={data.serviceUsage}
-                    layout="vertical"
+                    layout="vertical" // Cột nằm ngang để hiện tên dịch vụ dễ đọc
                     margin={{ top: 5, right: 20, left: 120, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
@@ -336,7 +367,7 @@ export default function AnalyticsDashboard() {
               ) : <div className="analytics-empty">Không có dữ liệu</div>}
             </div>
 
-            {/* ⑤ Loyalty Usage */}
+            {/* ⑤ Biểu đồ đường - điểm loyalty tích lũy và điểm đã đổi theo ngày/tháng */}
             <div className="analytics-section">
               <div className="analytics-section-header">
                 <div className="analytics-section-title">
@@ -353,16 +384,17 @@ export default function AnalyticsDashboard() {
                     <Legend
                       formatter={(value) => <span style={{ color: "var(--text-secondary, #9ca3af)", fontSize: 12 }}>{value}</span>}
                     />
-                    <Line type="monotone" dataKey="pointsEarned"    name="Tích lũy" stroke="#10b981" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="pointsRedeemed"  name="Đổi điểm" stroke="#f59e0b" strokeWidth={2} dot={false} strokeDasharray="4 4" />
+                    {/* Đường xanh = điểm tích lũy, đường vàng đứt đoạn = điểm đã đổi */}
+                    <Line type="monotone" dataKey="pointsEarned"   name="Tích lũy" stroke="#10b981" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="pointsRedeemed" name="Đổi điểm" stroke="#f59e0b" strokeWidth={2} dot={false} strokeDasharray="4 4" />
                   </LineChart>
                 </ResponsiveContainer>
               ) : <div className="analytics-empty">Không có dữ liệu</div>}
             </div>
 
-            {/* ⑥ Voucher Table + Feedback */}
+            {/* ⑥ Bảng voucher + Đánh giá feedback */}
             <div className="analytics-grid-2">
-              {/* Voucher */}
+              {/* Bảng top voucher được dùng nhiều nhất */}
               <div className="analytics-section">
                 <div className="analytics-section-header">
                   <div className="analytics-section-title">
@@ -397,7 +429,7 @@ export default function AnalyticsDashboard() {
                 ) : <div className="analytics-empty">Không có dữ liệu</div>}
               </div>
 
-              {/* Feedback */}
+              {/* Phần đánh giá: thanh phân bố sao + 5 feedback mới nhất */}
               <div className="analytics-section">
                 <div className="analytics-section-header">
                   <div className="analytics-section-title">
@@ -405,8 +437,9 @@ export default function AnalyticsDashboard() {
                   </div>
                 </div>
 
-                {/* Rating distribution */}
+                {/* Thanh ngang phân bố số lượng từng mức sao (5→1) */}
                 {data.feedback?.ratingDistribution?.length > 0 && (() => {
+                  // Tìm giá trị lớn nhất để tính % chiều dài thanh
                   const maxVal = Math.max(...data.feedback.ratingDistribution.map(r => r.total), 1);
                   return [5, 4, 3, 2, 1].map((star) => {
                     const row = data.feedback.ratingDistribution.find(r => r.rating === star);
@@ -415,6 +448,7 @@ export default function AnalyticsDashboard() {
                       <div className="rating-row" key={star}>
                         <div className="rating-label">{"⭐".repeat(star)}</div>
                         <div className="rating-bar-wrap">
+                          {/* Chiều dài thanh = (số lượng / max) * 100% */}
                           <div
                             className="rating-bar-fill"
                             style={{ width: `${(count / maxVal) * 100}%` }}
@@ -426,7 +460,7 @@ export default function AnalyticsDashboard() {
                   });
                 })()}
 
-                {/* Latest feedback */}
+                {/* Danh sách 5 feedback mới nhất từ khách hàng */}
                 {data.feedback?.latest?.length > 0 && (
                   <div className="feedback-list">
                     {data.feedback.latest.map((fb) => (
@@ -444,6 +478,7 @@ export default function AnalyticsDashboard() {
                   </div>
                 )}
 
+                {/* Thông báo khi không có dữ liệu feedback */}
                 {!data.feedback?.ratingDistribution?.length && !data.feedback?.latest?.length && (
                   <div className="analytics-empty">Không có đánh giá</div>
                 )}

@@ -1,3 +1,10 @@
+/* ============================================================
+   AnalyticsDashboard.css - Trọng thêm mới (Sprint Analytics)
+   CSS riêng cho trang Analytics Dashboard dành cho Admin.
+   Dùng chung các biến màu (CSS variables) với AdminDashboard.css
+   nên tự động hỗ trợ cả dark mode lẫn light mode.
+   ============================================================ */
+
 /* AnalyticsDashboard.css - Analytics Dashboard Styles */
 /* Dùng chung design tokens với AdminDashboard.css */
 
