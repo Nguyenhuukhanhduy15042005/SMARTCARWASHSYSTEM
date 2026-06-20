@@ -460,7 +460,7 @@ export default function AnalyticsDashboard() {
                   });
                 })()}
 
-                {/* Danh sách 5 feedback mới nhất từ khách hàng */}
+                {/* Danh sách các feedback mới nhất từ khách hàng (hỗ trợ cuộn) */}
                 {data.feedback?.latest?.length > 0 && (
                   <div className="feedback-list">
                     {data.feedback.latest.map((fb) => (
