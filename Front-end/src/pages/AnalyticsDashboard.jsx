@@ -102,7 +102,29 @@ export default function AnalyticsDashboard() {
         params: { range, groupBy },
         headers,
       });
-      setData(res.data);
+
+      // Xử lý chuẩn hóa và gộp nhóm loại xe ở Front-end để không đụng vào Back-end của Thái
+      const rawData = res.data;
+      if (rawData && Array.isArray(rawData.vehicleTypeUsage)) {
+        const vehicleMap = {};
+        rawData.vehicleTypeUsage.forEach((item) => {
+          const typeUpper = String(item.vehicleType || "").trim().toUpperCase();
+          let normalized = "Khác";
+          if (["CAR", "OTO", "Ô TÔ", "OTÔ", "O TÔ"].includes(typeUpper)) {
+            normalized = "Ô tô";
+          } else if (["BIKE", "MOTORBIKE", "XE MÁY", "XEMAY", "XE MAY"].includes(typeUpper)) {
+            normalized = "Xe máy";
+          }
+          vehicleMap[normalized] = (vehicleMap[normalized] || 0) + (Number(item.total) || 0);
+        });
+
+        rawData.vehicleTypeUsage = Object.keys(vehicleMap).map((key) => ({
+          vehicleType: key,
+          total: vehicleMap[key],
+        })).sort((a, b) => b.total - a.total);
+      }
+
+      setData(rawData);
     } catch (err) {
       console.error("Analytics fetch error:", err);
       setError(err.response?.data?.message || err.message || "Không thể tải dữ liệu");

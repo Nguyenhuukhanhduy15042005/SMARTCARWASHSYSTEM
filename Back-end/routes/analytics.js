@@ -203,20 +203,11 @@ async function queryVehicleTypeUsage(pool, range) {
 
   const result = await pool.request().query(`
     SELECT
-      CASE 
-        WHEN UPPER(LTRIM(RTRIM(b.VehicleType))) IN ('CAR', 'OTO', 'Ô TÔ', 'OTÔ', 'O TÔ') THEN N'Ô tô'
-        WHEN UPPER(LTRIM(RTRIM(b.VehicleType))) IN ('BIKE', 'MOTORBIKE', 'XE MÁY', 'XEMAY', 'XE MAY') THEN N'Xe máy'
-        ELSE N'Khác'
-      END AS VehicleType,
+      ISNULL(NULLIF(LTRIM(RTRIM(b.VehicleType)), ''), 'Unknown') AS VehicleType,
       COUNT(*) AS Total
     FROM BOOKING b
     WHERE 1 = 1 ${bookingFilter}
-    GROUP BY 
-      CASE 
-        WHEN UPPER(LTRIM(RTRIM(b.VehicleType))) IN ('CAR', 'OTO', 'Ô TÔ', 'OTÔ', 'O TÔ') THEN N'Ô tô'
-        WHEN UPPER(LTRIM(RTRIM(b.VehicleType))) IN ('BIKE', 'MOTORBIKE', 'XE MÁY', 'XEMAY', 'XE MAY') THEN N'Xe máy'
-        ELSE N'Khác'
-      END
+    GROUP BY ISNULL(NULLIF(LTRIM(RTRIM(b.VehicleType)), ''), 'Unknown')
     ORDER BY Total DESC
   `);
 
@@ -294,7 +285,7 @@ async function queryFeedbackStats(pool, range) {
   `);
 
   const latestFeedbackResult = await pool.request().query(`
-    SELECT TOP 30
+    SELECT TOP 5
       f.FeedbackID,
       f.Rating,
       f.Comment,
