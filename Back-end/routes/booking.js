@@ -129,6 +129,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
         }
     }
 
+    // Trọng thêm: Xử lý tích điểm và tự động nâng hạng thành viên (Silver/Gold/Platinum) khi đơn hàng hoàn tất
     // 4. Booking Completion Flow (statusInt === 4)
     if (statusInt === 4) {
         const finalPrice = Number(booking.FinalPrice || booking.TotalPrice || 0);

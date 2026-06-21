@@ -1,6 +1,7 @@
 const sql = require("mssql");
 const { poolPromise } = require("../db");
 
+// Trọng thêm: Viết logic đổi điểm lấy Voucher (MEMBER_PROMOTION) và lấy danh sách Voucher
 const redeemRewardPoints = async (
   userId,
   bookingId,
