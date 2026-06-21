@@ -19,6 +19,66 @@ const formatLocalDateTime = (dateInput) => {
     };
 };
 
+// Helper to find an available machine of a specific type (or check if a requested MachineID is available)
+// at the given booking date/time.
+const getAvailableMachineForBooking = async (pool, bookingDate, vehicleType, requestedMachineId = null) => {
+    // 1. Determine machine type (CAR_WASHER or BIKE_WASHER)
+    const typeUpper = String(vehicleType || "").trim().toUpperCase();
+    let machineType = "CAR_WASHER";
+    if (["BIKE", "MOTORBIKE", "XE MÁY", "XEMAY", "XE MAY"].includes(typeUpper)) {
+        machineType = "BIKE_WASHER";
+    }
+
+    // 2. Fetch active candidate machines (Status != 3 / Maintenance)
+    const machineRequest = pool.request();
+    machineRequest.input('machineType', sql.NVarChar, machineType);
+    let machineQuery = "SELECT MachineID, MachineName FROM MACHINE WHERE Status <> 3 AND MachineType = @machineType";
+    
+    if (requestedMachineId) {
+        machineRequest.input('reqMachineId', sql.Int, requestedMachineId);
+        machineQuery += " AND MachineID = @reqMachineId";
+    }
+    
+    const machineRes = await machineRequest.query(machineQuery);
+    const machines = machineRes.recordset;
+    if (machines.length === 0) {
+        return null;
+    }
+
+    // 3. Fetch all bookings for these machines on the same date
+    const bookingRequest = pool.request();
+    bookingRequest.input('bookingDate', sql.DateTime, bookingDate);
+    const bookingsRes = await bookingRequest.query(`
+        SELECT b.BookingID, b.BookingDate, bd.MachineID
+        FROM BOOKING b
+        INNER JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
+        WHERE CAST(b.BookingDate AS DATE) = CAST(@bookingDate AS DATE)
+          AND b.Status <> 5
+          AND bd.MachineID IS NOT NULL
+    `);
+    const existingBookings = bookingsRes.recordset;
+
+    // 4. Overlap parameters
+    const rStart = new Date(bookingDate).getTime();
+    const rEnd = rStart + 30 * 60 * 1000; // Default slot duration is 30 minutes
+
+    // 5. Find the first machine that has no overlapping bookings
+    for (const machine of machines) {
+        const isOccupied = existingBookings.some(eb => {
+            if (eb.MachineID !== machine.MachineID) return false;
+            const ebStart = new Date(eb.BookingDate).getTime();
+            const ebEnd = ebStart + 30 * 60 * 1000;
+            return ebStart < rEnd && ebEnd > rStart;
+        });
+
+        if (!isOccupied) {
+            return machine.MachineID;
+        }
+    }
+
+    return null;
+};
+
 // Helper to process FSM state changes (Loyalty calculation, Machine status updates, Payment auto-generation)
 const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
     const statusInt = parseInt(nextStatus, 10);
@@ -282,6 +342,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const { CustomerID, BookingDate, VehicleType, LicensePlate, TotalPrice, FinalPrice, Status, ServiceIDs } = req.body;
+        const machineId = req.body.MachineID || req.body.machineId || null;
         
         // Validation checks
         if (!CustomerID || !BookingDate || !VehicleType || !LicensePlate || !ServiceIDs || !Array.isArray(ServiceIDs) || ServiceIDs.length === 0) {
@@ -297,6 +358,16 @@ router.post('/', async (req, res) => {
         }
 
         const pool = await poolPromise;
+
+        // Auto-allocate or validate machine availability
+        const assignedMachineId = await getAvailableMachineForBooking(pool, scheduledDate, VehicleType, machineId);
+        if (!assignedMachineId) {
+            if (machineId) {
+                return res.status(409).json({ message: 'Sàn/khoang rửa xe được chọn đã có lịch đặt hoặc đang bảo trì vào khung giờ này!' });
+            } else {
+                return res.status(409).json({ message: 'Tất cả các sàn/khoang rửa xe cho loại xe này đã đầy vào khung giờ này, vui lòng chọn khung giờ khác!' });
+            }
+        }
 
         // Anti-spam check: Maximum of 2 pending bookings (Status = 1 or 2)
         const pendingCheck = await pool.request()
@@ -339,13 +410,14 @@ router.post('/', async (req, res) => {
                 await pool.request()
                     .input('BookingID', sql.Int, newBookingID)
                     .input('ServiceID', sql.Int, serviceID)
+                    .input('MachineID', sql.Int, assignedMachineId)
                     .query(`
-                        INSERT INTO BOOKING_DETAIL (BookingID, ServiceID)
-                        VALUES (@BookingID, @ServiceID)
+                        INSERT INTO BOOKING_DETAIL (BookingID, ServiceID, MachineID)
+                        VALUES (@BookingID, @ServiceID, @MachineID)
                     `);
             }
         }
-        res.status(201).json({ message: 'Tạo booking thành công', BookingID: newBookingID });
+        res.status(201).json({ message: 'Tạo booking thành công', BookingID: newBookingID, MachineID: assignedMachineId });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -740,10 +812,24 @@ router.get('/admin/:id', adminAuth, async (req, res) => {
 router.post('/admin/create', adminAuth, async (req, res) => {
     try {
         const { CustomerID, BookingDate, VehicleType, LicensePlate, TotalPrice, FinalPrice, Status, ServiceIDs } = req.body;
+        const machineId = req.body.MachineID || req.body.machineId || null;
+        
+        const scheduledDate = BookingDate ? new Date(BookingDate) : new Date();
         const pool = await poolPromise;
+
+        // Auto-allocate or validate machine availability
+        const assignedMachineId = await getAvailableMachineForBooking(pool, scheduledDate, VehicleType, machineId);
+        if (!assignedMachineId) {
+            if (machineId) {
+                return res.status(409).json({ message: 'Sàn/khoang rửa xe được chọn đã có lịch đặt hoặc đang bảo trì vào khung giờ này!' });
+            } else {
+                return res.status(409).json({ message: 'Tất cả các sàn/khoang rửa xe cho loại xe này đã đầy vào khung giờ này, vui lòng chọn khung giờ khác!' });
+            }
+        }
+
         const result = await pool.request()
             .input('CustomerID', sql.Int, CustomerID)
-            .input('BookingDate', sql.DateTime, BookingDate ? new Date(BookingDate) : new Date())
+            .input('BookingDate', sql.DateTime, scheduledDate)
             .input('VehicleType', sql.NVarChar, VehicleType)
             .input('LicensePlate', sql.NVarChar, LicensePlate)
             .input('TotalPrice', sql.Decimal, TotalPrice)
@@ -761,13 +847,14 @@ router.post('/admin/create', adminAuth, async (req, res) => {
                 await pool.request()
                     .input('BookingID', sql.Int, newBookingID)
                     .input('ServiceID', sql.Int, serviceID)
+                    .input('MachineID', sql.Int, assignedMachineId)
                     .query(`
-                        INSERT INTO BOOKING_DETAIL (BookingID, ServiceID)
-                        VALUES (@BookingID, @ServiceID)
+                        INSERT INTO BOOKING_DETAIL (BookingID, ServiceID, MachineID)
+                        VALUES (@BookingID, @ServiceID, @MachineID)
                     `);
             }
         }
-        res.status(201).json({ message: 'Tạo booking thành công', id: newBookingID });
+        res.status(201).json({ message: 'Tạo booking thành công', id: newBookingID, MachineID: assignedMachineId });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
