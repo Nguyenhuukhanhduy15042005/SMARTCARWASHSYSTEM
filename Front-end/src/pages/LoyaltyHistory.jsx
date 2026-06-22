@@ -336,7 +336,7 @@ export default function LoyaltyHistory() {
               </div>
             </div>
 
-            {/* Card 2: Tier Upgrade Progress */}
+            {/* Giao diện Xếp hạng & Tiến trình nâng hạng */}
             <div className="loyalty-progress-card">
               <div className="card-title-row">
                 <h3>Tiến Trình Nâng Hạng</h3>
@@ -507,7 +507,7 @@ export default function LoyaltyHistory() {
             </div>
           </section>
 
-          {/* Transactions Log Section */}
+          {/* Lọc, tìm kiếm lịch sử tích điểm và sử dụng điểm đổi quà */}
           <section className="loyalty-transactions-section">
             <div className="section-header-row">
               <h2>Lịch Sử Tích Lũy Điểm</h2>
@@ -589,10 +589,10 @@ export default function LoyaltyHistory() {
                         <td>
                           <span
                             className={`points-val ${tx.type === "Earned"
-                                ? "positive"
-                                : tx.type === "Redeem"
-                                  ? "negative"
-                                  : "pending"
+                              ? "positive"
+                              : tx.type === "Redeem"
+                                ? "negative"
+                                : "pending"
                               }`}
                           >
                             {tx.type === "Redeem" ? "-" : "+"}{tx.points} PTS
