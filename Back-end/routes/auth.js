@@ -29,6 +29,37 @@ const otpStore = new Map();
 // ==========================================
 // 1A. ĐĂNG KÝ BƯỚC 1: KIỂM TRA & GỬI OTP
 // ==========================================
+/**
+ * @swagger
+ * /api/auth/register-step1:
+ *   post:
+ *     summary: Đăng ký bước 1 - Kiểm tra thông tin và gửi OTP qua email
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fullName, phone, email]
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 example: Nguyen Van A
+ *               phone:
+ *                 type: string
+ *                 example: "0901234567"
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
+ *     responses:
+ *       200:
+ *         description: Mã OTP đã được gửi đến email
+ *       400:
+ *         description: Thiếu thông tin hoặc email/SĐT đã được sử dụng
+ *       500:
+ *         description: Lỗi server khi gửi OTP
+ */
 router.post("/register-step1", async (req, res) => {
   const { fullName, phone, email } = req.body;
   if (!fullName || !phone || !email) {
@@ -89,6 +120,43 @@ router.post("/register-step1", async (req, res) => {
 // ==========================================
 // 1B. ĐĂNG KÝ BƯỚC 2: XÁC THỰC OTP & LƯU DB
 // ==========================================
+/**
+ * @swagger
+ * /api/auth/register-step2:
+ *   post:
+ *     summary: Đăng ký bước 2 - Xác thực OTP và tạo tài khoản
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fullName, phone, email, password, otp]
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 example: Nguyen Van A
+ *               phone:
+ *                 type: string
+ *                 example: "0901234567"
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
+ *               password:
+ *                 type: string
+ *                 example: User@123
+ *               otp:
+ *                 type: string
+ *                 example: "123456"
+ *     responses:
+ *       201:
+ *         description: Đăng ký tài khoản thành công
+ *       400:
+ *         description: OTP không tồn tại, hết hạn, không chính xác, hoặc thiếu thông tin
+ *       500:
+ *         description: Lỗi server
+ */
 router.post("/register-step2", async (req, res) => {
   const { fullName, phone, email, password, otp } = req.body;
 
@@ -141,6 +209,40 @@ router.post("/register-step2", async (req, res) => {
 // ================================================================
 // 1C. Đăng ký thông thường (Trực tiếp không qua OTP - giữ lại làm fallback)
 // ================================================================
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Đăng ký trực tiếp, không qua OTP (dùng làm fallback)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fullName, phone, email, password]
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 example: Nguyen Van A
+ *               phone:
+ *                 type: string
+ *                 example: "0901234567"
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
+ *               password:
+ *                 type: string
+ *                 example: User@123
+ *     responses:
+ *       201:
+ *         description: Đăng ký thành công
+ *       400:
+ *         description: Thiếu thông tin hoặc email/SĐT đã được sử dụng
+ *       500:
+ *         description: Lỗi server
+ */
 router.post("/register", async (req, res) => {
   const { fullName, phone, email, password } = req.body;
 
@@ -188,6 +290,35 @@ router.post("/register", async (req, res) => {
 // ================================================================
 // 2. Đăng nhập thông thường
 // ================================================================
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Đăng nhập tài khoản (bằng email hoặc số điện thoại)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [account, password]
+ *             properties:
+ *               account:
+ *                 type: string
+ *                 description: Email hoặc số điện thoại đã đăng ký
+ *                 example: admin@motoshine.com
+ *               password:
+ *                 type: string
+ *                 example: Admin@123
+ *     responses:
+ *       200:
+ *         description: Đăng nhập thành công, trả về token
+ *       401:
+ *         description: Sai tài khoản hoặc mật khẩu
+ *       500:
+ *         description: Lỗi server
+ */
 router.post("/login", async (req, res) => {
   const { account, password } = req.body;
 
@@ -250,6 +381,34 @@ router.post("/login", async (req, res) => {
 // ================================================================
 // 3. Đăng nhập bằng Google
 // ================================================================
+/**
+ * @swagger
+ * /api/auth/google-login:
+ *   post:
+ *     summary: Đăng nhập bằng Google (tự tạo tài khoản nếu email chưa tồn tại)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: user@gmail.com
+ *               fullName:
+ *                 type: string
+ *                 example: Nguyen Van A
+ *     responses:
+ *       200:
+ *         description: Đăng nhập Google thành công, trả về token
+ *       400:
+ *         description: Thiếu thông tin email từ Google
+ *       500:
+ *         description: Lỗi server Google Login
+ */
 router.post("/google-login", async (req, res) => {
   const { email, fullName } = req.body;
 
