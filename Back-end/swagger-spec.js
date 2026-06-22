@@ -493,10 +493,10 @@ const swaggerSpec = {
             "application/json": {
               schema: {
                 type: "object",
-                required: ["bookingId", "paymentMethod"],
+                required: ["bookingId", "method"],
                 properties: {
                   bookingId: { type: "integer", example: 10 },
-                  paymentMethod: { type: "string", enum: ["VNPay", "Tiền mặt"], example: "VNPay" },
+                  method: { type: "string", enum: ["VNPay", "Tiền mặt"], example: "VNPay" },
                 },
               },
             },
