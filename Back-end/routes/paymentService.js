@@ -310,7 +310,8 @@ const confirmCashDeposit = async (paymentId) => {
   if (!pc.recordset.length) throw new Error('Không tìm thấy payment với ID này');
   const payment = pc.recordset[0];
 
-  if (payment.PaymentMethod !== 'Tiền mặt' && payment.PaymentMethod !== 'Cash') {
+  const methodLower = (payment.PaymentMethod || '').toLowerCase();
+  if (methodLower !== 'cash' && methodLower !== 'tiền mặt' && methodLower !== 'tien mat') {
     throw new Error('Payment này không phải thanh toán tiền mặt!');
   }
 
