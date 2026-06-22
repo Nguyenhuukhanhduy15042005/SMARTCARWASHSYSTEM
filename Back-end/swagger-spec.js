@@ -417,8 +417,18 @@ const swaggerSpec = {
         tags: ["Loyalty"],
         summary: "Xem thông tin tích điểm, hạng thành viên hiện tại và ưu đãi",
         security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: true,
+            schema: { type: "integer", example: 12 },
+            description: "Mã khách hàng (UserID)",
+          },
+        ],
         responses: {
           200: { description: "Thành công" },
+          404: { description: "Không tìm thấy hồ sơ thành viên" },
         },
       },
     },
@@ -427,6 +437,15 @@ const swaggerSpec = {
         tags: ["Loyalty"],
         summary: "Xem lịch sử tích lũy và sử dụng điểm",
         security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "customerId",
+            in: "query",
+            required: true,
+            schema: { type: "integer", example: 12 },
+            description: "Mã khách hàng (UserID)",
+          },
+        ],
         responses: {
           200: { description: "Thành công" },
         },
@@ -443,9 +462,13 @@ const swaggerSpec = {
             "application/json": {
               schema: {
                 type: "object",
-                required: ["promotionId"],
+                required: ["userId", "RewardCode", "RewardPointsUsed", "promotionId"],
                 properties: {
-                  promotionId: { type: "integer", example: 1 },
+                  userId: { type: "integer", example: 12, description: "Mã khách hàng" },
+                  bookingId: { type: "integer", example: null, description: "Mã booking (có thể null)" },
+                  RewardCode: { type: "string", example: "PR-1", description: "Mã voucher đổi" },
+                  RewardPointsUsed: { type: "integer", example: 100, description: "Số điểm cần trừ" },
+                  promotionId: { type: "integer", example: 1, description: "Mã khuyến mãi (PromotionID)" },
                 },
               },
             },
@@ -453,7 +476,7 @@ const swaggerSpec = {
         },
         responses: {
           200: { description: "Đổi voucher thành công" },
-          400: { description: "Không đủ điểm để đổi voucher" },
+          400: { description: "Không đủ điểm hoặc thiếu thông tin bắt buộc" },
         },
       },
     },
