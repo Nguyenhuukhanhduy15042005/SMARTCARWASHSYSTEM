@@ -297,4 +297,28 @@ const refundPayment = async (paymentId) => {
   return { paymentId, refunded: true, amount: payment.Amount };
 };
 
-module.exports = { createPayment, confirmVNPay, getPaymentHistory, refundPayment, getUserTier };
+// Nhân viên xác nhận đã nhận tiền mặt từ khách hàng
+const confirmCashDeposit = async (paymentId) => {
+  const pool = await poolPromise;
+  const pc = await pool.request().input('paymentId', sql.Int, paymentId)
+    .query(`
+      SELECT p.PaymentID, p.BookingID, p.Amount, p.PaymentMethod, b.Status AS BookingStatus
+      FROM PAYMENT p
+      JOIN BOOKING b ON p.BookingID = b.BookingID
+      WHERE p.PaymentID = @paymentId
+    `);
+  if (!pc.recordset.length) throw new Error('Không tìm thấy payment với ID này');
+  const payment = pc.recordset[0];
+
+  if (payment.PaymentMethod !== 'Tiền mặt' && payment.PaymentMethod !== 'Cash') {
+    throw new Error('Payment này không phải thanh toán tiền mặt!');
+  }
+
+  // Cập nhật trạng thái payment thành đã xác nhận (nếu có cột PaidAt chưa có giá trị)
+  await pool.request().input('paymentId', sql.Int, paymentId)
+    .query(`UPDATE PAYMENT SET PaidAt = GETDATE() WHERE PaymentID = @paymentId AND PaidAt IS NULL`);
+
+  return { paymentId, confirmed: true, amount: payment.Amount, message: 'Xác nhận thanh toán tiền mặt thành công' };
+};
+
+module.exports = { createPayment, confirmVNPay, getPaymentHistory, refundPayment, getUserTier, confirmCashDeposit };
