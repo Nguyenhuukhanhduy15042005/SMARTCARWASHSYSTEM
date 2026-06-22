@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const cron = require("node-cron"); // <-- THÊM THƯ VIỆN CRON TẠI ĐÂY
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swagger-spec");
 require("dotenv").config();
 const { sql, poolPromise } = require("./db"); // <-- Đổi cách gọi db để có thể dùng poolPromise cho Cron Job
 
@@ -84,6 +86,8 @@ cron.schedule("* * * * *", async () => {
     console.error("[CRON] Lỗi khi chạy tự động khóa máy:", err.message);
   }
 });
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

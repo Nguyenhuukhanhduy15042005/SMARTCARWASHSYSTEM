@@ -438,29 +438,37 @@ router.delete("/:userId", verifyToken, async (req, res) => {
       const request = transaction.request();
       request.input("userId", sql.Int, userId);
 
-      // 1. Delete MEMBER_PROFILE
-      await request.query("DELETE FROM MEMBER_PROFILE WHERE UserID = @userId");
+      // 1. Delete LOYALTY_TRANSACTION (to release reference to BOOKING)
+      await request.query("DELETE FROM LOYALTY_TRANSACTION WHERE UserID = @userId");
 
-      // 2. Delete SURVEY (Feedback/Survey feedback)
-      await request.query("DELETE FROM SURVEY WHERE UserID = @userId");
-
-      // 3. Delete VEHICLE
-      await request.query("DELETE FROM VEHICLE WHERE UserID = @userId");
-
-      // 4. Delete BOOKING details & payments first, then BOOKING
+      // 2. Delete payments belonging to the user's bookings
       await request.query(`
         DELETE FROM PAYMENT 
         WHERE BookingID IN (SELECT BookingID FROM BOOKING WHERE CustomerID = @userId)
       `);
 
+      // 3. Delete booking details
       await request.query(`
         DELETE FROM BOOKING_DETAIL 
         WHERE BookingID IN (SELECT BookingID FROM BOOKING WHERE CustomerID = @userId)
       `);
 
+      // 4. Delete bookings (to release reference to MEMBER_PROMOTION)
       await request.query("DELETE FROM BOOKING WHERE CustomerID = @userId");
 
-      // 5. Delete [USER]
+      // 5. Delete MEMBER_PROMOTION (wallet)
+      await request.query("DELETE FROM MEMBER_PROMOTION WHERE UserID = @userId");
+
+      // 6. Delete MEMBER_PROFILE
+      await request.query("DELETE FROM MEMBER_PROFILE WHERE UserID = @userId");
+
+      // 7. Delete SURVEY
+      await request.query("DELETE FROM SURVEY WHERE UserID = @userId");
+
+      // 8. Delete VEHICLE
+      await request.query("DELETE FROM VEHICLE WHERE UserID = @userId");
+
+      // 9. Finally delete [USER]
       await request.query("DELETE FROM [USER] WHERE UserID = @userId");
 
       await transaction.commit();
