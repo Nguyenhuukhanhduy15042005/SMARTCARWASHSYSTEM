@@ -58,7 +58,11 @@ router.get("/", async (req, res) => {
           OR u.FullName LIKE @search
           OR u.PhoneNumber LIKE @search
           OR b.LicensePlate LIKE @search
-          OR s.ServiceName LIKE @search
+          OR EXISTS (
+            SELECT 1 FROM BOOKING_DETAIL bd_search
+            INNER JOIN SERVICE s_search ON bd_search.ServiceID = s_search.ServiceID
+            WHERE bd_search.BookingID = b.BookingID AND s_search.ServiceName LIKE @search
+          )
         )
       `;
     }
@@ -79,14 +83,21 @@ router.get("/", async (req, res) => {
         u.FullName AS CustomerName,
         u.PhoneNumber,
         u.Email,
-        s.ServiceName,
-        m.MachineName
+        (
+          SELECT STRING_AGG(s.ServiceName, ', ') 
+          FROM BOOKING_DETAIL bd
+          INNER JOIN SERVICE s ON bd.ServiceID = s.ServiceID
+          WHERE bd.BookingID = b.BookingID
+        ) AS ServiceName,
+        (
+          SELECT STRING_AGG(m.MachineName, ', ') 
+          FROM BOOKING_DETAIL bd
+          INNER JOIN MACHINE m ON bd.MachineID = m.MachineID
+          WHERE bd.BookingID = b.BookingID
+        ) AS MachineName
       FROM FEEDBACK f
       INNER JOIN BOOKING b ON f.BookingID = b.BookingID
       INNER JOIN [USER] u ON b.CustomerID = u.UserID
-      LEFT JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
-      LEFT JOIN SERVICE s ON bd.ServiceID = s.ServiceID
-      LEFT JOIN MACHINE m ON bd.MachineID = m.MachineID
       ${where}
       ORDER BY f.CreatedDate DESC, f.FeedbackID DESC
     `);
@@ -148,14 +159,21 @@ router.get("/:id", async (req, res) => {
           u.FullName AS CustomerName,
           u.PhoneNumber,
           u.Email,
-          s.ServiceName,
-          m.MachineName
+          (
+            SELECT STRING_AGG(s.ServiceName, ', ') 
+            FROM BOOKING_DETAIL bd
+            INNER JOIN SERVICE s ON bd.ServiceID = s.ServiceID
+            WHERE bd.BookingID = b.BookingID
+          ) AS ServiceName,
+          (
+            SELECT STRING_AGG(m.MachineName, ', ') 
+            FROM BOOKING_DETAIL bd
+            INNER JOIN MACHINE m ON bd.MachineID = m.MachineID
+            WHERE bd.BookingID = b.BookingID
+          ) AS MachineName
         FROM FEEDBACK f
         INNER JOIN BOOKING b ON f.BookingID = b.BookingID
         INNER JOIN [USER] u ON b.CustomerID = u.UserID
-        LEFT JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
-        LEFT JOIN SERVICE s ON bd.ServiceID = s.ServiceID
-        LEFT JOIN MACHINE m ON bd.MachineID = m.MachineID
         WHERE f.FeedbackID = @feedbackId
       `);
 
