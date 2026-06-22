@@ -263,21 +263,41 @@ router.get("/profile", async (req, res) => {
   }
 });
 
-// booking-Customer: Cập nhật profile từ User Dashboard
 router.put("/profile", async (req, res) => {
   try {
-    const { FullName, Email, PhoneNumber, UserID } = req.body;
+    const FullName = req.body.FullName !== undefined ? req.body.FullName : req.body.fullName;
+    const Email = req.body.Email !== undefined ? req.body.Email : req.body.email;
+    const PhoneNumber = req.body.PhoneNumber !== undefined ? req.body.PhoneNumber : (req.body.phoneNumber !== undefined ? req.body.phoneNumber : req.body.phone);
+    const UserID = req.body.UserID || req.body.userId || 12;
+
     const pool = await poolPromise;
+
+    // Fetch current user data to fallback if not provided
+    const userRes = await pool
+      .request()
+      .input("userId", sql.Int, UserID)
+      .query("SELECT FullName, Email, PhoneNumber FROM [USER] WHERE UserID = @userId");
+
+    if (userRes.recordset.length === 0) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng!" });
+    }
+
+    const currentUser = userRes.recordset[0];
+    const finalFullName = FullName !== undefined && FullName !== null ? FullName : currentUser.FullName;
+    const finalEmail = Email !== undefined && Email !== null ? Email : currentUser.Email;
+    const finalPhoneNumber = PhoneNumber !== undefined && PhoneNumber !== null ? PhoneNumber : currentUser.PhoneNumber;
+
     await pool
       .request()
-      .input("userId", sql.Int, UserID || 12)
-      .input("fullName", sql.NVarChar, FullName)
-      .input("email", sql.NVarChar, Email)
-      .input("phoneNumber", sql.NVarChar, PhoneNumber).query(`
-                UPDATE [USER]
-                SET FullName = @fullName, Email = @email, PhoneNumber = @phoneNumber
-                WHERE UserID = @userId
-            `);
+      .input("userId", sql.Int, UserID)
+      .input("fullName", sql.NVarChar, finalFullName)
+      .input("email", sql.NVarChar, finalEmail)
+      .input("phoneNumber", sql.NVarChar, finalPhoneNumber)
+      .query(`
+        UPDATE [USER]
+        SET FullName = @fullName, Email = @email, PhoneNumber = @phoneNumber
+        WHERE UserID = @userId
+      `);
     res.json({ message: "Cập nhật thông tin cá nhân thành công!" });
   } catch (err) {
     res.status(500).json({ message: err.message });
