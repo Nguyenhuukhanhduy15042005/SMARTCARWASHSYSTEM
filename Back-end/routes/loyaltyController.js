@@ -1,6 +1,7 @@
 const sql = require("mssql");
 const { poolPromise } = require("../db");
 
+// Trọng thêm: Định nghĩa các API Controller cho module Loyalty (Hồ sơ tích điểm, Lịch sử giao dịch, Đổi quà)
 // Đường dẫn cùng thư mục routes
 const { redeemRewardPoints, getMemberVouchers } = require("./rewardService");
 

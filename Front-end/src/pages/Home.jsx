@@ -58,7 +58,7 @@ const Home = () => {
             Trang chủ
           </Link>
           <Link
-            to="/services"
+            to="/login"
             className="text-xl font-medium text-gray-600 hover:text-[#192b4d] transition-colors"
           >
             Dịch vụ
@@ -178,7 +178,7 @@ const Home = () => {
                 to="/login"
                 className="px-8 py-3.5 text-lg font-bold text-gray-800 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
               >
-                Login
+                Đăng nhập
               </Link>
               <Link
                 to="/register"

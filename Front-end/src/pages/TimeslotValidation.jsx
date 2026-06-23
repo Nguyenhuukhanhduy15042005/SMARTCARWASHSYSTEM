@@ -64,6 +64,7 @@ export default function TimeslotValidation() {
   const [submitting, setSubmitting]   = useState(false);
   const [successBooking, setSuccessBooking] = useState(null);
 
+
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -112,6 +113,7 @@ export default function TimeslotValidation() {
   useEffect(() => {
     fetchServices(bookingForm.vehicleType);
   }, [bookingForm.vehicleType, fetchServices]);
+
 
   // ── Fetch slots ────────────────────────────────────────────
   const fetchSlots = useCallback(async () => {
@@ -211,9 +213,9 @@ export default function TimeslotValidation() {
 
     // Kiểm tra định dạng biển số xe Việt Nam nếu có nhập
     if (licensePlate.trim()) {
-      const plateRegex = /^[0-9]{2}[- ]?([A-Z]{1,2}|[A-Z][0-9])[- ]?[0-9]{3,5}(\.[0-9]{2})?$/i; // Trọng thêm: Regex kiểm tra biển số xe thật
+      const plateRegex = /^[0-9]{2}[- ]?([A-Z]{1,2}|[A-Z][0-9])[- ]?[0-9]{3,5}(\.[0-9]{2})?$/i;
       if (!plateRegex.test(licensePlate.trim())) {
-        showToast("Biển số xe không hợp lệ! Định dạng đúng VD: 59A-123.45 hoặc 59G1-123.45", "error"); // Trọng thêm: Khai báo lỗi định dạng biển số
+        showToast("Biển số xe không hợp lệ! Định dạng đúng VD: 59A-123.45 hoặc 59G1-123.45", "error");
         return;
       }
     }
@@ -249,6 +251,7 @@ export default function TimeslotValidation() {
       setSubmitting(false);
     }
   };
+
 
   const bookedCount = slots.filter(s => s.status === "booked").length;
   const freeCount   = slots.filter(s => s.status === "free").length;

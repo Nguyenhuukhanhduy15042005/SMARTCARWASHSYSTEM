@@ -102,8 +102,8 @@ export default function LoyaltyHistory() {
           ),
           AccumulatedPoints: Number(
             profileRes.data.AccumulatedPoints ??
-              profileRes.data.accumulatedPoints ??
-              0,
+            profileRes.data.accumulatedPoints ??
+            0,
           ),
           TierName:
             profileRes.data.TierName || profileRes.data.tierName || "Bronze",
@@ -168,7 +168,7 @@ export default function LoyaltyHistory() {
   };
 
   // Derive points transactions
-  // Trọng thêm: Đơn giản hóa map từ danh sách đã chuẩn hóa
+  // Trọng thêm: danh sách đã chuẩn hóa
   const transactionsList = useMemo(() => {
     return bookings
       .map((b) => {
@@ -336,7 +336,7 @@ export default function LoyaltyHistory() {
               </div>
             </div>
 
-            {/* Card 2: Tier Upgrade Progress */}
+            {/* Giao diện Xếp hạng & Tiến trình nâng hạng */}
             <div className="loyalty-progress-card">
               <div className="card-title-row">
                 <h3>Tiến Trình Nâng Hạng</h3>
@@ -507,7 +507,7 @@ export default function LoyaltyHistory() {
             </div>
           </section>
 
-          {/* Transactions Log Section */}
+          {/* Lọc, tìm kiếm lịch sử tích điểm và sử dụng điểm đổi quà */}
           <section className="loyalty-transactions-section">
             <div className="section-header-row">
               <h2>Lịch Sử Tích Lũy Điểm</h2>
@@ -588,13 +588,12 @@ export default function LoyaltyHistory() {
                         </td>
                         <td>
                           <span
-                            className={`points-val ${
-                              tx.type === "Earned"
-                                ? "positive"
-                                : tx.type === "Redeem"
-                                  ? "negative"
-                                  : "pending"
-                            }`}
+                            className={`points-val ${tx.type === "Earned"
+                              ? "positive"
+                              : tx.type === "Redeem"
+                                ? "negative"
+                                : "pending"
+                              }`}
                           >
                             {tx.type === "Redeem" ? "-" : "+"}{tx.points} PTS
                           </span>

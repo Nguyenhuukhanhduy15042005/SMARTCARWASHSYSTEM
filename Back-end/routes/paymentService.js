@@ -120,31 +120,32 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
   if (method === 'cash') {
     tierID = await getUserTier(userId || booking.CustomerID);
     if (tierID === 1 || tierID === 2) {
-      // Đặt cọc 10%, tối thiểu 10.000đ
-      paymentAmount = Math.max(Math.round(finalAmount * 0.1), 10000);
+      const calculatedDeposit = Math.round(finalAmount * 0.1);
+      paymentAmount = Math.min(finalAmount, Math.max(10000, calculatedDeposit));
       depositOnly = true;
     } else {
       paymentAmount = 0;
     }
   }
 
-  const result = await pool.request()
-    .input('bookingId', sql.Int,          bookingId)
-    .input('method',    sql.NVarChar(50),  method)
-    .input('amount',    sql.Decimal(18,2), paymentAmount)
-    .input('paidAt',    sql.DateTime,      new Date())
-    .query(`
-      INSERT INTO PAYMENT (BookingID, PaymentMethod, Amount, PaidAt)
-      OUTPUT INSERTED.*
-      VALUES (@bookingId, @method, @amount, @paidAt)
-    `);
+  let payment = null;
+  let paymentUrl = null;
 
-  const payment = result.recordset[0];
-
-  // Cash Gold/Platinum (amount=0) → xác nhận giữ chỗ luôn (Status = 2)
-  // Cash Bronze/Silver → chờ VNPay callback mới lên Status 2
-  // VNPay/MoMo chọn thẳng → chờ callback
   if (method === 'cash' && !depositOnly) {
+    // Gold/Platinum: Miễn phí đặt cọc, thanh toán sau tại quầy. 
+    // Chúng ta lưu bản ghi thanh toán 0đ trực tiếp và cập nhật trạng thái đơn thành 2 (Đã xác nhận).
+    const result = await pool.request()
+      .input('bookingId', sql.Int,          bookingId)
+      .input('method',    sql.NVarChar(50),  method)
+      .input('amount',    sql.Decimal(18,2), 0)
+      .input('paidAt',    sql.DateTime,      new Date())
+      .query(`
+        INSERT INTO PAYMENT (BookingID, PaymentMethod, Amount, PaidAt)
+        OUTPUT INSERTED.*
+        VALUES (@bookingId, @method, @amount, @paidAt)
+      `);
+    payment = result.recordset[0];
+
     await pool.request()
       .input('bookingId', sql.Int, bookingId)
       .query(`
@@ -153,21 +154,22 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
         SET IsUsed = 1 
         WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
       `);
-  }
-
-  let paymentUrl = null;
-
-  if (method === 'vnpay') {
-    // Thanh toán VNPay thường — toàn bộ giá trị
-    paymentUrl = createVNPayUrl(payment.PaymentID, paymentAmount, `Thanh toan booking ${bookingId}`, ipAddr);
-  } else if (method === 'cash' && depositOnly) {
-    // Cash Bronze/Silver → dùng VNPay để thu 10% đặt cọc
-    paymentUrl = createVNPayUrl(
-      payment.PaymentID,
-      paymentAmount, // đã là 10% rồi
-      `Dat coc booking ${bookingId}`,
-      ipAddr
-    );
+  } else {
+    // Bronze/Silver hoặc thanh toán online VNPay toàn bộ:
+    // KHÔNG chèn bản ghi thanh toán nháp (draft) vào PAYMENT để tránh hiển thị ảo.
+    // Chúng ta tạo mã giao dịch vnp_TxnRef chứa đầy đủ thông tin: bookingId_method_amount_timestamp
+    const txnRef = `${bookingId}_${method}_${paymentAmount}_${Date.now()}`;
+    const orderInfo = method === 'vnpay' ? `Thanh toan booking ${bookingId}` : `Dat coc booking ${bookingId}`;
+    
+    paymentUrl = createVNPayUrl(txnRef, paymentAmount, orderInfo, ipAddr);
+    
+    // Tạo đối tượng payment giả lập để trả về cho Client
+    payment = {
+      BookingID: bookingId,
+      PaymentMethod: method,
+      Amount: paymentAmount,
+      PaidAt: new Date()
+    };
   }
 
   return {
@@ -180,22 +182,65 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
 
 const confirmVNPay = async (query) => {
   const isValid = verifyVNPayReturn(query);
-  const paymentId = Number(query['vnp_TxnRef']);
-  if (isValid) {
-    const pool = await poolPromise;
-    const pc = await pool.request().input('paymentId', sql.Int, paymentId)
-      .query(`SELECT BookingID FROM PAYMENT WHERE PaymentID = @paymentId`);
-    if (pc.recordset.length) {
-      const bookingId = pc.recordset[0].BookingID;
-      await pool.request().input('bookingId', sql.Int, bookingId)
-        .query(`
-          UPDATE BOOKING SET Status = 2 WHERE BookingID = @bookingId;
-          UPDATE MEMBER_PROMOTION 
-          SET IsUsed = 1 
-          WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
-        `);
-    }
+  const txnRef = query['vnp_TxnRef'];
+  
+  if (!txnRef) {
+    return { isValid: false, paymentId: null };
   }
+
+  const parts = txnRef.split('_');
+  const bookingId = Number(parts[0]);
+  const method = parts[1];
+  const paymentAmount = Number(parts[2]);
+
+  if (!bookingId) {
+    return { isValid: false, paymentId: null };
+  }
+
+  const pool = await poolPromise;
+  let paymentId = null;
+
+  if (isValid) {
+    // Thanh toán thành công: lưu bản ghi thanh toán chính thức vào CSDL
+    const existing = await pool.request()
+      .input('bookingId', sql.Int, bookingId)
+      .query(`SELECT PaymentID FROM PAYMENT WHERE BookingID = @bookingId`);
+
+    if (existing.recordset.length === 0) {
+      const insertResult = await pool.request()
+        .input('bookingId', sql.Int, bookingId)
+        .input('method', sql.NVarChar(50), method)
+        .input('amount', sql.Decimal(18,2), paymentAmount)
+        .input('paidAt', sql.DateTime, new Date())
+        .query(`
+          INSERT INTO PAYMENT (BookingID, PaymentMethod, Amount, PaidAt)
+          OUTPUT INSERTED.PaymentID
+          VALUES (@bookingId, @method, @amount, @paidAt)
+        `);
+      paymentId = insertResult.recordset[0].PaymentID;
+    } else {
+      paymentId = existing.recordset[0].PaymentID;
+    }
+
+    // Cập nhật trạng thái BOOKING thành 2 (Đã xác nhận) và sử dụng voucher
+    await pool.request().input('bookingId', sql.Int, bookingId)
+      .query(`
+        UPDATE BOOKING SET Status = 2 WHERE BookingID = @bookingId;
+        UPDATE MEMBER_PROMOTION 
+        SET IsUsed = 1 
+        WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
+      `);
+  } else {
+    // Thanh toán thất bại hoặc bị hủy: chuyển sang 5 (Đã hủy) và nhả voucher
+    await pool.request().input('bookingId', sql.Int, bookingId)
+      .query(`
+        UPDATE BOOKING SET Status = 5 WHERE BookingID = @bookingId;
+        UPDATE MEMBER_PROMOTION 
+        SET IsUsed = 0 
+        WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
+      `);
+  }
+  
   return { isValid, paymentId };
 };
 
@@ -252,22 +297,29 @@ const refundPayment = async (paymentId, reason) => {
   return { paymentId, refunded: true, amount: payment.Amount };
 };
 
+// Nhân viên xác nhận đã nhận tiền mặt từ khách hàng
 const confirmCashDeposit = async (paymentId) => {
   const pool = await poolPromise;
-  const pc = await pool.request()
-    .input('paymentId', sql.Int, paymentId)
-    .query(`SELECT BookingID FROM PAYMENT WHERE PaymentID = @paymentId`);
-  if (!pc.recordset.length) throw new Error('Không tìm thấy payment');
-  const { BookingID } = pc.recordset[0];
-  await pool.request()
-    .input('bookingId', sql.Int, BookingID)
+  const pc = await pool.request().input('paymentId', sql.Int, paymentId)
     .query(`
-      UPDATE BOOKING SET Status = 2 WHERE BookingID = @bookingId;
-      UPDATE MEMBER_PROMOTION 
-      SET IsUsed = 1 
-      WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
+      SELECT p.PaymentID, p.BookingID, p.Amount, p.PaymentMethod, b.Status AS BookingStatus
+      FROM PAYMENT p
+      JOIN BOOKING b ON p.BookingID = b.BookingID
+      WHERE p.PaymentID = @paymentId
     `);
-  return { paymentId, confirmed: true };
+  if (!pc.recordset.length) throw new Error('Không tìm thấy payment với ID này');
+  const payment = pc.recordset[0];
+
+  const methodLower = (payment.PaymentMethod || '').toLowerCase();
+  if (methodLower !== 'cash' && methodLower !== 'tiền mặt' && methodLower !== 'tien mat') {
+    throw new Error('Payment này không phải thanh toán tiền mặt!');
+  }
+
+  // Cập nhật trạng thái payment thành đã xác nhận (nếu có cột PaidAt chưa có giá trị)
+  await pool.request().input('paymentId', sql.Int, paymentId)
+    .query(`UPDATE PAYMENT SET PaidAt = GETDATE() WHERE PaymentID = @paymentId AND PaidAt IS NULL`);
+
+  return { paymentId, confirmed: true, amount: payment.Amount, message: 'Xác nhận thanh toán tiền mặt thành công' };
 };
 
 module.exports = { createPayment, confirmVNPay, getPaymentHistory, refundPayment, getUserTier, confirmCashDeposit };

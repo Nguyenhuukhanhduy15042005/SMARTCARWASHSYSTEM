@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 import "./Payment.css";
 
 const API_BASE = "/api";
@@ -39,6 +40,19 @@ export default function Payment() {
   const [showVoucherModal, setShowVoucherModal] = useState(false);
 
   const getToken = () => localStorage.getItem("token") || localStorage.getItem("TOKEN");
+
+  const getCustomerId = () => {
+    const token = getToken();
+    if (token && token !== "mock-token" && token !== "null" && token !== "undefined") {
+      try {
+        const decoded = jwtDecode(token);
+        return decoded.id || decoded.userId || 12;
+      } catch (err) {
+        console.error("Error decoding token:", err);
+      }
+    }
+    return 12;
+  };
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -83,7 +97,8 @@ export default function Payment() {
       }
 
       try {
-        const vouchersRes = await axios.get(`${API_BASE}/promotions/my-vouchers`, {
+        const userId = getCustomerId();
+        const vouchersRes = await axios.get(`${API_BASE}/loyalty/my-vouchers?userId=${userId}`, {
           headers: { Authorization: `Bearer ${getToken()}` },
         });
         setVouchers(vouchersRes.data);
@@ -102,7 +117,7 @@ export default function Payment() {
 
   // Tính số tiền hiển thị theo method + tier
   const tier = TIER_INFO[tierID] || TIER_INFO[1];
-  const depositAmount  = Math.max(Math.round(currentFinalPrice * 0.1), 10000);
+  const depositAmount  = Math.min(currentFinalPrice, Math.max(10000, Math.round(currentFinalPrice * 0.1)));
   const remainingAmount = currentFinalPrice - depositAmount;
 
   const getPaymentNote = () => {
@@ -112,7 +127,7 @@ export default function Payment() {
         <div className="payment-redirect-note" style={{ borderColor: "rgba(205,127,50,0.3)", background: "rgba(205,127,50,0.06)" }}>
           <span>⚠️</span>
           <div>
-            <p>Hạng <strong style={{ color: tier.color }}>{tier.name}</strong> cần đặt cọc <strong style={{ color: "#f97316" }}>10% = {formatPrice(depositAmount)}</strong></p>
+            <p>Hạng <strong style={{ color: tier.color }}>{tier.name}</strong> cần đặt cọc <strong style={{ color: "#f97316" }}>{Math.round(currentFinalPrice * 0.1) < 10000 ? "10% (Tối thiểu 10.000 đ)" : "10%"} = {formatPrice(depositAmount)}</strong></p>
             <p style={{ marginTop: 4, fontSize: 12, color: "#94a3b8" }}>Số tiền còn lại <strong>{formatPrice(remainingAmount)}</strong> sẽ thanh toán khi check-in.</p>
           </div>
         </div>
@@ -353,7 +368,7 @@ export default function Payment() {
               {method === "cash" && !loadingTier && tier.needDeposit && (
                 <>
                   <div className="ps-row">
-                    <span>Đặt cọc (10%)</span>
+                    <span>{Math.round(currentFinalPrice * 0.1) < 10000 ? "Đặt cọc (Tối thiểu 10.000 đ)" : "Đặt cọc (10%)"}</span>
                     <span style={{ color: "#f97316", fontWeight: 700 }}>{formatPrice(depositAmount)}</span>
                   </div>
                   <div className="ps-row">
@@ -378,7 +393,7 @@ export default function Payment() {
 
             {method === "cash" && !loadingTier && tier.needDeposit && (
               <div style={{ textAlign: "center", fontSize: 12, color: "#64748b", marginTop: 8 }}>
-                Hạng {tier.name} — đặt cọc 10% để giữ chỗ
+                Hạng {tier.name} — đặt cọc {Math.round(currentFinalPrice * 0.1) < 10000 ? "tối thiểu 10.000 đ" : "10%"} để giữ chỗ
               </div>
             )}
             {method === "cash" && !loadingTier && !tier.needDeposit && (

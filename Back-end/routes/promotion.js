@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const { sql, poolPromise } = require("../db");
-const verifyToken = require("../middleware/verifyToken");
 
 function normalizeText(value, maxLength = 255) {
   return String(value || "").trim().slice(0, maxLength);
@@ -76,34 +75,6 @@ router.get("/", async (req, res) => {
   } catch (err) {
     console.error("GET /api/promotions error:", err);
     res.status(500).json({ message: "Lỗi khi lấy danh sách khuyến mãi" });
-  }
-});
-
-// GET /api/promotions/my-vouchers
-router.get("/my-vouchers", verifyToken, async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input("userId", sql.Int, req.user.userId)
-      .query(`
-        SELECT 
-          mp.MemberPromoID,
-          mp.PromotionID,
-          p.PromoName,
-          p.DiscountPercent,
-          p.EndDate
-        FROM MEMBER_PROMOTION mp
-        INNER JOIN PROMOTION p ON mp.PromotionID = p.PromotionID
-        WHERE mp.UserID = @userId 
-          AND mp.IsUsed = 0
-          AND (p.EndDate IS NULL OR p.EndDate >= GETDATE())
-        ORDER BY mp.MemberPromoID DESC
-      `);
-
-    res.json(result.recordset);
-  } catch (err) {
-    console.error("GET /api/promotions/my-vouchers error:", err);
-    res.status(500).json({ message: "Lỗi khi lấy danh sách voucher của bạn" });
   }
 });
 
@@ -245,46 +216,64 @@ router.patch("/:id/expire", async (req, res) => {
 
 
 // DELETE /api/promotions/:id
+// Hard delete dùng cho dữ liệu demo/test:
+// xóa các bản ghi liên quan trong MEMBER_PROMOTION trước rồi mới xóa PROMOTION.
 router.delete("/:id", async (req, res) => {
   const promotionId = Number(req.params.id);
-  if (!promotionId) {
-    return res.status(400).json({ message: "PromotionID không hợp lệ" });
-  }
+  if (!promotionId) return res.status(400).json({ message: "PromotionID không hợp lệ" });
 
-  const transaction = new sql.Transaction(await poolPromise);
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
 
   try {
     await transaction.begin();
 
-    const request = new sql.Request(transaction);
-    request.input("promotionId", sql.Int, promotionId);
-
-    const checkResult = await request.query(`
-      SELECT PromotionID
-      FROM PROMOTION
-      WHERE PromotionID = @promotionId
-    `);
+    const checkRequest = new sql.Request(transaction);
+    const checkResult = await checkRequest
+      .input("promotionId", sql.Int, promotionId)
+      .query(`
+        SELECT PromotionID, PromoName
+        FROM PROMOTION
+        WHERE PromotionID = @promotionId
+      `);
 
     if (!checkResult.recordset.length) {
       await transaction.rollback();
       return res.status(404).json({ message: "Không tìm thấy khuyến mãi" });
     }
 
-    await request.query(`
-      DELETE FROM MEMBER_PROMOTION
-      WHERE PromotionID = @promotionId
-    `);
+    const walletRequest = new sql.Request(transaction);
+    const walletDeleteResult = await walletRequest
+      .input("promotionId", sql.Int, promotionId)
+      .query(`
+        DELETE FROM MEMBER_PROMOTION
+        WHERE PromotionID = @promotionId
+      `);
 
-    await request.query(`
-      DELETE FROM PROMOTION
-      WHERE PromotionID = @promotionId
-    `);
+    const promotionRequest = new sql.Request(transaction);
+    await promotionRequest
+      .input("promotionId", sql.Int, promotionId)
+      .query(`
+        DELETE FROM PROMOTION
+        WHERE PromotionID = @promotionId
+      `);
 
     await transaction.commit();
 
-    res.json({ message: "Xóa khuyến mãi thành công" });
+    const walletDeleted =
+      walletDeleteResult.rowsAffected && walletDeleteResult.rowsAffected.length
+        ? walletDeleteResult.rowsAffected[0]
+        : 0;
+
+    res.json({
+      message: "Xóa khuyến mãi thành công",
+      deletedMemberPromotions: walletDeleted,
+    });
   } catch (err) {
-    await transaction.rollback();
+    try {
+      await transaction.rollback();
+    } catch (_) {}
+
     console.error("DELETE /api/promotions/:id error:", err);
     res.status(500).json({ message: "Lỗi khi xóa khuyến mãi" });
   }

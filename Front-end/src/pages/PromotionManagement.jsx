@@ -358,6 +358,7 @@ export default function PromotionManagement() {
                             type="button"
                             onClick={() => setDeleteTarget(item)}
                             className="danger"
+                            disabled={false}
                             title="Xóa khuyến mãi"
                           >
                             <i className="fa-solid fa-trash"></i>
