@@ -99,7 +99,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
 
     if (statusInt === 4) {
         const finalPrice = Number(booking.FinalPrice || booking.TotalPrice || 0);
-        const points = Math.floor(finalPrice / 1000);
+        const points = Math.floor(finalPrice / 10000);
 
         if (points > 0) {
             const txCheck = await pool.request()
@@ -107,15 +107,6 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
                 .query("SELECT TransactionID FROM LOYALTY_TRANSACTION WHERE BookingID = @bookingId AND TransactionType = 'Accumulate'");
 
             if (txCheck.recordset.length === 0) {
-                await pool.request()
-                    .input('userId', sql.Int, customerId)
-                    .input('bookingId', sql.Int, bookingId)
-                    .input('points', sql.Int, points)
-                    .query(`
-                        INSERT INTO LOYALTY_TRANSACTION (UserID, BookingID, TransactionType, Points, CreatedDate)
-                        VALUES (@userId, @bookingId, 'Accumulate', @points, GETDATE())
-                    `);
-
                 const profileCheck = await pool.request()
                     .input('userId', sql.Int, customerId)
                     .query('SELECT UserID, AccumulatedPoints FROM MEMBER_PROFILE WHERE UserID = @userId');
@@ -141,6 +132,15 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
                             WHERE UserID = @userId
                         `);
                 }
+
+                await pool.request()
+                    .input('userId', sql.Int, customerId)
+                    .input('bookingId', sql.Int, bookingId)
+                    .input('points', sql.Int, points)
+                    .query(`
+                        INSERT INTO LOYALTY_TRANSACTION (UserID, BookingID, TransactionType, Points, CreatedDate)
+                        VALUES (@userId, @bookingId, 'Accumulate', @points, GETDATE())
+                    `);
 
                 const tiersRes = await pool.request().query('SELECT TierID, RequiredPoints FROM LOYALTY_TIER ORDER BY RequiredPoints ASC');
                 let newTierId = 1;

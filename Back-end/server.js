@@ -4,7 +4,7 @@ const cron = require("node-cron"); // <-- THÊM THƯ VIỆN CRON TẠI ĐÂY
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger-spec");
 require("dotenv").config();
-const { sql, poolPromise } = require("./db"); // <-- Đổi cách gọi db để có thể dùng poolPromise cho Cron Job
+const { sql, poolPromise } = require("./db");
 
 if (!process.env.JWT_SECRET) {
   console.error("FATAL: Thiếu JWT_SECRET trong file .env. Dừng server.");
