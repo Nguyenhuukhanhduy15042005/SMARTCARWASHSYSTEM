@@ -4,7 +4,7 @@ const router = express.Router();
 const jwt = require("jsonwebtoken");
 const { sql, poolPromise } = require("../db");
 
-// định dạng ngày giờ một cách an toàn, bảo toàn múi giờ địa phương
+// Helper to format date and time safely preserving local timezone offsets
 const formatLocalDateTime = (dateInput) => {
   if (!dateInput) return { dateStr: "", timeStr: "" };
   const d = new Date(dateInput);
@@ -19,11 +19,11 @@ const formatLocalDateTime = (dateInput) => {
   };
 };
 
-// thay đổi trạng thái của FSM
+// Helper to process FSM state changes (Loyalty calculation, Machine status updates, Payment auto-generation)
 const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
   const statusInt = parseInt(nextStatus, 10);
 
-  // 1.Nhận thông tin đặt phòng hiện tại
+  // 1. Get current booking info
   const bookingRes = await pool
     .request()
     .input("bookingId", sql.Int, bookingId)
@@ -39,9 +39,9 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
   const oldStatus = booking.Status;
   const customerId = booking.CustomerID;
 
-  if (oldStatus === statusInt) return;
+  if (oldStatus === statusInt) return; // No change needed
 
-  // 2. Cập nhật trạng thái đặt phòng & Thời gian nhận phòng nếu đang hoạt động
+  // 2. Update booking status & CheckInTime if In Service (status = 3)
   await pool
     .request()
     .input("bookingId", sql.Int, bookingId)
@@ -52,7 +52,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
             WHERE BookingID = @bookingId
         `);
 
-  // 3. Cập nhật trạng thái máy
+  // 3. Update machine status (assigned to the booking in BOOKING_DETAIL)
   const detailRes = await pool
     .request()
     .input("bookingId", sql.Int, bookingId)
@@ -63,13 +63,13 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
 
   for (const machineId of machineIds) {
     if (statusInt === 3) {
-      // Đặt trạng thái máy thành 2
+      // Set machine status to 2 (Busy/Operating)
       await pool
         .request()
         .input("machineId", sql.Int, machineId)
         .query("UPDATE MACHINE SET Status = 2 WHERE MachineID = @machineId");
     } else if (statusInt === 4 || statusInt === 5) {
-      // Giải phóng máy: đặt trạng thái thành 1
+      // Free the machine: set status to 1 (Available)
       await pool
         .request()
         .input("machineId", sql.Int, machineId)
@@ -77,13 +77,13 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
     }
   }
 
-  // 4. Flow hoàn thành đặt phòng (statusInt === 4)
+  // 4. Booking Completion Flow (statusInt === 4)
   if (statusInt === 4) {
     const finalPrice = Number(booking.FinalPrice || booking.TotalPrice || 0);
     const points = Math.floor(finalPrice / 1000);
 
     if (points > 0) {
-      //Kiểm tra xem giao dịch tích điểm đã được ghi nhận cho đặt phòng chưa
+      // Check if loyalty transaction already recorded for this booking
       const txCheck = await pool
         .request()
         .input("bookingId", sql.Int, bookingId)
@@ -92,7 +92,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
         );
 
       if (txCheck.recordset.length === 0) {
-        // a.Chèn giao dịch khách hàng thân thiết
+        // a. Insert loyalty transaction
         await pool
           .request()
           .input("userId", sql.Int, customerId)
@@ -102,7 +102,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
                         VALUES (@userId, @bookingId, 'Accumulate', @points, GETDATE())
                     `);
 
-        // b. Cập nhật/Thêm thông tin khách hàng MEMBER_PROFILE
+        // b. Update/Insert customer MEMBER_PROFILE
         const profileCheck = await pool
           .request()
           .input("userId", sql.Int, customerId)
@@ -134,7 +134,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
                         `);
         }
 
-        // c. Tier Evaluation
+        // c. Tier Evaluation: Silver >= 500, Gold >= 1500, Platinum >= 5000
         const tiersRes = await pool
           .request()
           .query(
@@ -216,7 +216,9 @@ function adminAuth(req, res, next) {
   }
 }
 
+// ==========================================
 // STAFF & USER ROUTES (Database PascalCase Casing)
+// ==========================================
 
 // 1. Xem danh sách booking (Cho Staff Dashboard hoặc User Dashboard)
 router.get("/", async (req, res) => {
@@ -332,9 +334,11 @@ router.post("/", async (req, res) => {
       !Array.isArray(ServiceIDs) ||
       ServiceIDs.length === 0
     ) {
-      return res.status(400).json({
-        message: "Thiếu thông tin đặt lịch hoặc gói dịch vụ không hợp lệ!",
-      });
+      return res
+        .status(400)
+        .json({
+          message: "Thiếu thông tin đặt lịch hoặc gói dịch vụ không hợp lệ!",
+        });
     }
 
     const scheduledDate = new Date(BookingDate);
@@ -521,9 +525,11 @@ router.delete("/:id", async (req, res) => {
     }
 
     if (booking.Status !== 4 && booking.Status !== 5) {
-      return res.status(400).json({
-        message: "Chỉ có thể xóa lịch đặt xe đã hoàn thành hoặc đã hủy",
-      });
+      return res
+        .status(400)
+        .json({
+          message: "Chỉ có thể xóa lịch đặt xe đã hoàn thành hoặc đã hủy",
+        });
     }
 
     try {
@@ -598,9 +604,11 @@ router.post("/:id/apply-voucher", async (req, res) => {
 
     // Chỉ cho phép áp dụng voucher khi lịch đặt ở trạng thái 1 (Chờ cọc/thanh toán)
     if (booking.Status !== 1) {
-      return res.status(400).json({
-        message: "Chỉ có thể áp dụng voucher cho lịch đặt chưa thanh toán",
-      });
+      return res
+        .status(400)
+        .json({
+          message: "Chỉ có thể áp dụng voucher cho lịch đặt chưa thanh toán",
+        });
     }
 
     // 2. Nếu memberPromoId là null -> thực hiện gỡ voucher
