@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 
-// Lỗi cũ nằm ở đây: Đã bổ sung = require("./loyaltyController");
 const {
   getLoyaltyProfile,
   getLoyaltyTransactions,

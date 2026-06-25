@@ -11,9 +11,9 @@ const { poolPromise } = require("../db");
  *
  * Schema thực tế (smartcarwash_final_merged.sql):
  *   MEMBER_PROFILE: UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate
- *   LOYALTY_TIER:   TierID, TierName, RequiredPoints, DiscountRate, BookingWindow
- *   LOYALTY_TRANSACTION: TransactionID, UserID, BookingID, TransactionType, Points, CreatedDate
- *
+ *   LOYALTY_TIER:   TierID, TierName, RequiredP BookingID, TransactionType, Points, CreatedDate
+ *points, DiscountRate, BookingWindow
+ *   LOYALTY_TRANSACTION: TransactionID, UserID,
  * @param {number} userId         - UserID của khách hàng
  * @param {number} bookingId      - BookingID vừa hoàn thành
  * @param {number} paymentAmount  - FinalPrice của booking (VNĐ)

@@ -168,5 +168,5 @@ module.exports = {
   getLoyaltyProfile,
   getLoyaltyTransactions,
   handleRedeem,
-  getMyVouchers, // Export hàm mới
+  getMyVouchers,
 };
