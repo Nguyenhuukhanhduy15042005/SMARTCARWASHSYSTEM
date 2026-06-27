@@ -912,6 +912,44 @@ const swaggerSpec = {
         responses: { 200: { description: "Thành công" } },
       },
     },
+    "/api/surveys": {
+      get: {
+        tags: ["Surveys"],
+        summary: "Lấy danh sách dữ liệu khảo sát",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "rating", in: "query", schema: { type: "integer", minimum: 1, maximum: 5 } },
+          { name: "search", in: "query", schema: { type: "string" } },
+          { name: "fromDate", in: "query", schema: { type: "string", format: "date" } },
+          { name: "toDate", in: "query", schema: { type: "string", format: "date" } }
+        ],
+        responses: {
+          200: { description: "Lấy dữ liệu khảo sát thành công" }
+        }
+      }
+    },
+
+    "/api/surveys/stats": {
+      get: {
+        tags: ["Surveys"],
+        summary: "Lấy thống kê khảo sát",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: "Lấy thống kê thành công" }
+        }
+      }
+    },
+
+    "/api/surveys/export": {
+      get: {
+        tags: ["Surveys"],
+        summary: "Export dữ liệu khảo sát",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: "Export thành công" }
+        }
+      }
+    },
   },
 };
 
