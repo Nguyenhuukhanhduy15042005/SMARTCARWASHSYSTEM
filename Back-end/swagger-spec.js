@@ -912,6 +912,31 @@ const swaggerSpec = {
         responses: { 200: { description: "Thành công" } },
       },
     },
+    "/api/analytics/summary": {
+      get: {
+        tags: ["Analytics"],
+        summary: "Thống kê tổng quan nhanh cho analytics",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "range",
+            in: "query",
+            schema: {
+              type: "string",
+              enum: ["7d", "30d", "90d", "month", "year", "all"],
+              default: "30d"
+            },
+            description: "Khoảng thời gian thống kê"
+          }
+        ],
+        responses: {
+          200: { description: "Thành công - trả về meta và summary" },
+          500: { description: "Lỗi khi tải tổng quan analytics" }
+        }
+      }
+    },
+
+    // ── SURVEYS ───────────────────────────────────────────────────────────────
     "/api/surveys": {
       get: {
         tags: ["Surveys"],
