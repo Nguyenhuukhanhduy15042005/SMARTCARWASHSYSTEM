@@ -265,11 +265,68 @@ const getPaymentHistory = async (userId, { page = 1, limit = 10 } = {}) => {
   return { data: result.recordset, total: countResult.recordset[0].total, page: Number(page), limit: Number(limit) };
 };
 
-const refundPayment = async (paymentId) => {
-  const pool = await poolPromise;
-  const pc = await pool.request().input('paymentId', sql.Int, paymentId)
+// ─── Helper: tính cancelCount + hoursLeft + refundPercent ───────────────────
+
+const calcRefundInfo = async (pool, bookingId, customerId) => {
+  // Đếm số lần hủy trong 30 ngày gần nhất (chỉ tính booking của user này, Status=5)
+  const cancelResult = await pool.request()
+    .input('customerId', sql.Int, customerId)
     .query(`
-      SELECT p.*, b.Status AS BookingStatus
+      SELECT COUNT(*) AS cancelCount
+      FROM BOOKING
+      WHERE CustomerID = @customerId
+        AND Status = 5
+        AND BookingDate >= DATEADD(DAY, -30, GETDATE())
+    `);
+  const cancelCount = cancelResult.recordset[0].cancelCount || 0;
+
+  // Lấy BookingDate (ngày hẹn rửa xe)
+  const bookingResult = await pool.request()
+    .input('bookingId', sql.Int, bookingId)
+    .query(`SELECT BookingDate FROM BOOKING WHERE BookingID = @bookingId`);
+  const bookingDate = bookingResult.recordset[0]?.BookingDate;
+
+  const now = new Date();
+  const hoursLeft = bookingDate
+    ? (new Date(bookingDate) - now) / 1000 / 3600
+    : null;
+
+  // Bảng hoàn tiền:
+  //   Lần 1, 2 → >24h: 100%, 2-24h: 50%, <2h: 0%
+  //   Lần 3    → >24h: 50%,  2-24h: 0%,  <2h: 0%
+  //   Lần 4+   → 0%
+  let refundPercent = 0;
+  if (hoursLeft !== null && hoursLeft > 0) {
+    if (cancelCount <= 1) {
+      // lần hủy thứ 1 hoặc 2 (cancelCount hiện tại là số đã hủy TRƯỚC lần này)
+      if (hoursLeft > 24) refundPercent = 100;
+      else if (hoursLeft >= 2) refundPercent = 50;
+    } else if (cancelCount === 2) {
+      // lần hủy thứ 3
+      if (hoursLeft > 24) refundPercent = 50;
+    }
+    // cancelCount >= 3 → lần 4 trở đi → 0%
+  }
+
+  let warning = null;
+  if (cancelCount >= 3) {
+    warning = 'Bạn đã hủy từ 4 lần trở lên trong 30 ngày. Không được hoàn tiền.';
+  } else if (hoursLeft !== null && hoursLeft <= 0) {
+    warning = 'Đã qua giờ hẹn, không thể hoàn tiền.';
+  } else if (refundPercent === 0) {
+    warning = 'Không đủ điều kiện hoàn tiền theo chính sách hiện tại.';
+  }
+
+  return { cancelCount, hoursLeft, refundPercent, warning };
+};
+
+// GET /api/payments/:id/refund-preview
+const getRefundPreview = async (paymentId) => {
+  const pool = await poolPromise;
+  const pc = await pool.request()
+    .input('paymentId', sql.Int, paymentId)
+    .query(`
+      SELECT p.PaymentID, p.BookingID, p.Amount, b.Status AS BookingStatus, b.CustomerID
       FROM PAYMENT p
       JOIN BOOKING b ON p.BookingID = b.BookingID
       WHERE p.PaymentID = @paymentId
@@ -277,24 +334,60 @@ const refundPayment = async (paymentId) => {
   if (!pc.recordset.length) throw new Error('Không tìm thấy payment');
   const payment = pc.recordset[0];
 
-  // Không cho hoàn tiền nếu xe đã bắt đầu rửa hoặc đã hoàn thành
-  if (payment.BookingStatus === 3) {
-    throw new Error('Xe đang được rửa, không thể hoàn tiền!');
-  }
-  if (payment.BookingStatus === 4) {
-    throw new Error('Đơn đã hoàn thành, không thể hoàn tiền!');
-  }
+  if (payment.BookingStatus === 3) throw new Error('Xe đang được rửa, không thể hủy!');
+  if (payment.BookingStatus === 4) throw new Error('Đơn đã hoàn thành, không thể hủy!');
+  if (payment.BookingStatus === 5) throw new Error('Booking đã bị hủy trước đó.');
 
-  await pool.request().input('bookingId', sql.Int, payment.BookingID)
+  const { cancelCount, hoursLeft, refundPercent, warning } = await calcRefundInfo(
+    pool, payment.BookingID, payment.CustomerID
+  );
+
+  const refundAmount = Math.round(payment.Amount * refundPercent / 100);
+
+  return { refundPercent, refundAmount, cancelCount, hoursLeft, warning };
+};
+
+// POST /api/payments/:id/refund
+const refundPayment = async (paymentId, reason) => {
+  const pool = await poolPromise;
+  const pc = await pool.request()
+    .input('paymentId', sql.Int, paymentId)
+    .query(`
+      SELECT p.*, b.Status AS BookingStatus, b.CustomerID
+      FROM PAYMENT p
+      JOIN BOOKING b ON p.BookingID = b.BookingID
+      WHERE p.PaymentID = @paymentId
+    `);
+  if (!pc.recordset.length) throw new Error('Không tìm thấy payment');
+  const payment = pc.recordset[0];
+
+  if (payment.BookingStatus === 3) throw new Error('Xe đang được rửa, không thể hủy!');
+  if (payment.BookingStatus === 4) throw new Error('Đơn đã hoàn thành, không thể hủy!');
+  if (payment.BookingStatus === 5) throw new Error('Booking đã bị hủy trước đó.');
+
+  const { cancelCount, hoursLeft, refundPercent, warning } = await calcRefundInfo(
+    pool, payment.BookingID, payment.CustomerID
+  );
+
+  const refundAmount = Math.round(payment.Amount * refundPercent / 100);
+
+  // Hủy booking (Status=5) + nhả voucher
+  await pool.request()
+    .input('bookingId', sql.Int, payment.BookingID)
     .query(`
       UPDATE BOOKING SET Status = 5 WHERE BookingID = @bookingId;
-      UPDATE MEMBER_PROMOTION 
-      SET IsUsed = 0 
+      UPDATE MEMBER_PROMOTION
+      SET IsUsed = 0
       WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
     `);
-  await pool.request().input('paymentId', sql.Int, paymentId)
-    .query(`DELETE FROM PAYMENT WHERE PaymentID = @paymentId`);
-  return { paymentId, refunded: true, amount: payment.Amount };
+
+  // Soft delete PAYMENT (IsHiddenByUser=1) thay vì DELETE thật
+  // để cancelCount đếm đúng qua BOOKING.Status=5
+  await pool.request()
+    .input('paymentId', sql.Int, paymentId)
+    .query(`UPDATE PAYMENT SET IsHiddenByUser = 1 WHERE PaymentID = @paymentId`);
+
+  return { paymentId, refunded: true, refundPercent, refundAmount, cancelCount, warning };
 };
 
 // Nhân viên xác nhận đã nhận tiền mặt từ khách hàng
@@ -322,4 +415,4 @@ const confirmCashDeposit = async (paymentId) => {
   return { paymentId, confirmed: true, amount: payment.Amount, message: 'Xác nhận thanh toán tiền mặt thành công' };
 };
 
-module.exports = { createPayment, confirmVNPay, getPaymentHistory, refundPayment, getUserTier, confirmCashDeposit };
+module.exports = { createPayment, confirmVNPay, getPaymentHistory, getRefundPreview, refundPayment, getUserTier, confirmCashDeposit };
