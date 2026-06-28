@@ -49,14 +49,10 @@ const createVNPayUrl = (paymentId, amount, orderInfo, ipAddr) => {
   };
 
   vnp_Params = sortObject(vnp_Params);
-
-  // Dùng encode: false vì sortObject đã tự encode các giá trị tham số
   const signData = querystring.stringify(vnp_Params, { encode: false });
   const hmac = crypto.createHmac('sha512', VNPAY_CONFIG.hashSecret);
   const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
-
   vnp_Params['vnp_SecureHash'] = signed;
-
   const paymentUrl = VNPAY_CONFIG.url + '?' + querystring.stringify(vnp_Params, { encode: false });
 
   console.log('SignData:', signData.substring(0, 100) + '...');
@@ -72,7 +68,6 @@ const verifyVNPayReturn = (query) => {
   delete params['vnp_SecureHashType'];
 
   const sortedParams = sortObject(params);
-  // Dùng encode: false vì sortObject đã tự encode các giá trị tham số
   const signData = querystring.stringify(sortedParams, { encode: false });
   const hmac = crypto.createHmac('sha512', VNPAY_CONFIG.hashSecret);
   const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
@@ -98,14 +93,11 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
   const booking = bookingCheck.recordset[0];
   if (booking.Status === 5) throw new Error('Booking đã bị huỷ');
 
-  // Nếu Booking đang ở trạng thái 1 (Chờ cọc/thanh toán), bất kỳ bản ghi PAYMENT nào tồn tại đều là thanh toán lỗi/chưa hoàn tất.
-  // Chúng ta xoá đi để cho phép khách hàng thực hiện thanh toán lại.
   if (booking.Status === 1) {
     await pool.request()
       .input('bookingId', sql.Int, bookingId)
       .query(`DELETE FROM PAYMENT WHERE BookingID = @bookingId`);
   } else {
-    // Nếu trạng thái khác 1 (ví dụ đã xác nhận = 2, hoặc đang rửa = 3), và có PAYMENT thì chặn.
     const existingPayment = await pool.request()
       .input('bookingId', sql.Int, bookingId)
       .query(`SELECT PaymentID FROM PAYMENT WHERE BookingID = @bookingId`);
@@ -132,8 +124,6 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
   let paymentUrl = null;
 
   if (method === 'cash' && !depositOnly) {
-    // Gold/Platinum: Miễn phí đặt cọc, thanh toán sau tại quầy. 
-    // Chúng ta lưu bản ghi thanh toán 0đ trực tiếp và cập nhật trạng thái đơn thành 2 (Đã xác nhận).
     const result = await pool.request()
       .input('bookingId', sql.Int,          bookingId)
       .input('method',    sql.NVarChar(50),  method)
@@ -155,15 +145,9 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
         WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
       `);
   } else {
-    // Bronze/Silver hoặc thanh toán online VNPay toàn bộ:
-    // KHÔNG chèn bản ghi thanh toán nháp (draft) vào PAYMENT để tránh hiển thị ảo.
-    // Chúng ta tạo mã giao dịch vnp_TxnRef chứa đầy đủ thông tin: bookingId_method_amount_timestamp
     const txnRef = `${bookingId}_${method}_${paymentAmount}_${Date.now()}`;
     const orderInfo = method === 'vnpay' ? `Thanh toan booking ${bookingId}` : `Dat coc booking ${bookingId}`;
-    
     paymentUrl = createVNPayUrl(txnRef, paymentAmount, orderInfo, ipAddr);
-    
-    // Tạo đối tượng payment giả lập để trả về cho Client
     payment = {
       BookingID: bookingId,
       PaymentMethod: method,
@@ -184,24 +168,19 @@ const confirmVNPay = async (query) => {
   const isValid = verifyVNPayReturn(query);
   const txnRef = query['vnp_TxnRef'];
   
-  if (!txnRef) {
-    return { isValid: false, paymentId: null };
-  }
+  if (!txnRef) return { isValid: false, paymentId: null };
 
   const parts = txnRef.split('_');
   const bookingId = Number(parts[0]);
   const method = parts[1];
   const paymentAmount = Number(parts[2]);
 
-  if (!bookingId) {
-    return { isValid: false, paymentId: null };
-  }
+  if (!bookingId) return { isValid: false, paymentId: null };
 
   const pool = await poolPromise;
   let paymentId = null;
 
   if (isValid) {
-    // Thanh toán thành công: lưu bản ghi thanh toán chính thức vào CSDL
     const existing = await pool.request()
       .input('bookingId', sql.Int, bookingId)
       .query(`SELECT PaymentID FROM PAYMENT WHERE BookingID = @bookingId`);
@@ -222,7 +201,6 @@ const confirmVNPay = async (query) => {
       paymentId = existing.recordset[0].PaymentID;
     }
 
-    // Cập nhật trạng thái BOOKING thành 2 (Đã xác nhận) và sử dụng voucher
     await pool.request().input('bookingId', sql.Int, bookingId)
       .query(`
         UPDATE BOOKING SET Status = 2 WHERE BookingID = @bookingId;
@@ -231,7 +209,6 @@ const confirmVNPay = async (query) => {
         WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
       `);
   } else {
-    // Thanh toán thất bại hoặc bị hủy: chuyển sang 5 (Đã hủy) và nhả voucher
     await pool.request().input('bookingId', sql.Int, bookingId)
       .query(`
         UPDATE BOOKING SET Status = 5 WHERE BookingID = @bookingId;
@@ -248,7 +225,9 @@ const getPaymentHistory = async (userId, { page = 1, limit = 10 } = {}) => {
   const pool = await poolPromise;
   const offset = (page - 1) * limit;
   const result = await pool.request()
-    .input('userId', sql.Int, userId).input('limit', sql.Int, limit).input('offset', sql.Int, offset)
+    .input('userId', sql.Int, userId)
+    .input('limit', sql.Int, limit)
+    .input('offset', sql.Int, offset)
     .query(`
       SELECT p.PaymentID, p.BookingID, p.PaymentMethod AS Method, p.Amount, p.PaidAt,
         b.Status AS BookingStatus, b.VehicleType, b.LicensePlate, b.FinalPrice, s.ServiceName
@@ -260,47 +239,169 @@ const getPaymentHistory = async (userId, { page = 1, limit = 10 } = {}) => {
       ORDER BY p.PaidAt DESC
       OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
     `);
-  const countResult = await pool.request().input('userId', sql.Int, userId)
+  const countResult = await pool.request()
+    .input('userId', sql.Int, userId)
     .query(`SELECT COUNT(*) AS total FROM PAYMENT p JOIN BOOKING b ON p.BookingID = b.BookingID WHERE b.CustomerID = @userId`);
-  return { data: result.recordset, total: countResult.recordset[0].total, page: Number(page), limit: Number(limit) };
+  return {
+    data: result.recordset,
+    total: countResult.recordset[0].total,
+    page: Number(page),
+    limit: Number(limit)
+  };
+};
+
+// ── HOÀN TIỀN THEO QUY TẮC MỚI ───────────────────────────────────────────────
+// Bảng hoàn tiền:
+//                    Trước 24h   2-24h    Dưới 2h
+// Lần 1, 2          → 100%    → 50%   → 0%
+// Lần 3             → 50%     → 0%    → 0%
+// Lần 4 trở đi      → 0%      → 0%    → 0%
+//
+// Đếm số lần hủy trong 30 ngày gần nhất từ bảng BOOKING (Status=5)
+// Tính thời gian còn lại từ BOOKING.BookingDate
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Tính % hoàn tiền dựa vào số giờ còn lại và số lần đã hủy
+const getRefundPercent = (hoursLeft, cancelCount) => {
+  // Dưới 2 tiếng → hoàn 0% bất kể lần mấy
+  if (hoursLeft < 2) return 0;
+
+  // Lần 4 trở đi → hoàn 0%
+  if (cancelCount >= 4) return 0;
+
+  // Lần 3
+  if (cancelCount === 3) {
+    if (hoursLeft >= 24) return 50;
+    return 0; // 2-24h lần 3 → 0%
+  }
+
+  // Lần 1, 2
+  if (hoursLeft >= 24) return 100;
+  return 50; // 2-24h lần 1,2 → 50%
+};
+
+// Tạo message cảnh báo cho khách
+const getWarningMessage = (hoursLeft, cancelCount, refundPercent, refundAmount) => {
+  const nextCancelCount = cancelCount + 1;
+
+  // Cảnh báo dưới 2 tiếng
+  if (hoursLeft < 2) {
+    return `⚠️ Bạn đang hủy trong vòng 2 tiếng trước giờ rửa xe. Bạn sẽ không được hoàn tiền.`;
+  }
+
+  // Cảnh báo lần 4+
+  if (cancelCount >= 4) {
+    return `❌ Bạn đã hủy quá nhiều lần trong 30 ngày qua. Không được hoàn tiền cho lần hủy này.`;
+  }
+
+  // Cảnh báo lần 3
+  if (cancelCount === 3) {
+    if (hoursLeft >= 24) {
+      return `🚨 Đây là lần hủy thứ ${nextCancelCount} trong 30 ngày. Bạn chỉ được hoàn 50% = ${refundAmount.toLocaleString('vi-VN')}đ. Lần hủy tiếp theo sẽ không được hoàn tiền.`;
+    }
+    return `🚨 Bạn đang hủy trong khoảng 2-24 tiếng và đây là lần thứ ${nextCancelCount}. Bạn sẽ không được hoàn tiền.`;
+  }
+
+  // Cảnh báo lần 2
+  if (cancelCount === 2) {
+    if (hoursLeft >= 24) {
+      return `⚠️ Đây là lần hủy thứ ${nextCancelCount} trong 30 ngày. Bạn được hoàn 100% = ${refundAmount.toLocaleString('vi-VN')}đ. Lần hủy tiếp theo chỉ được hoàn 50%.`;
+    }
+    return `⚠️ Bạn đang hủy trong khoảng 2-24 tiếng (lần ${nextCancelCount}). Bạn chỉ được hoàn 50% = ${refundAmount.toLocaleString('vi-VN')}đ.`;
+  }
+
+  // Lần 1 - thông báo bình thường
+  if (hoursLeft >= 24) {
+    return `✅ Bạn được hoàn 100% = ${refundAmount.toLocaleString('vi-VN')}đ.`;
+  }
+  return `⚠️ Bạn đang hủy trong khoảng 2-24 tiếng. Bạn chỉ được hoàn 50% = ${refundAmount.toLocaleString('vi-VN')}đ.`;
 };
 
 const refundPayment = async (paymentId) => {
   const pool = await poolPromise;
-  const pc = await pool.request().input('paymentId', sql.Int, paymentId)
+
+  // 1. Lấy thông tin payment + booking
+  const pc = await pool.request()
+    .input('paymentId', sql.Int, paymentId)
     .query(`
-      SELECT p.*, b.Status AS BookingStatus
+      SELECT p.*, b.Status AS BookingStatus, b.BookingDate, b.CustomerID
       FROM PAYMENT p
       JOIN BOOKING b ON p.BookingID = b.BookingID
       WHERE p.PaymentID = @paymentId
     `);
+
   if (!pc.recordset.length) throw new Error('Không tìm thấy payment');
   const payment = pc.recordset[0];
 
-  // Không cho hoàn tiền nếu xe đã bắt đầu rửa hoặc đã hoàn thành
-  if (payment.BookingStatus === 3) {
-    throw new Error('Xe đang được rửa, không thể hoàn tiền!');
-  }
-  if (payment.BookingStatus === 4) {
-    throw new Error('Đơn đã hoàn thành, không thể hoàn tiền!');
-  }
+  // 2. Kiểm tra trạng thái booking
+  if (payment.BookingStatus === 3) throw new Error('Xe đang được rửa, không thể hoàn tiền!');
+  if (payment.BookingStatus === 4) throw new Error('Đơn đã hoàn thành, không thể hoàn tiền!');
+  if (payment.BookingStatus === 5) throw new Error('Booking đã bị hủy trước đó!');
 
-  await pool.request().input('bookingId', sql.Int, payment.BookingID)
+  // 3. Tính giờ còn lại đến BookingDate
+  const now = new Date();
+  const bookingDate = new Date(payment.BookingDate);
+  const hoursLeft = (bookingDate - now) / (1000 * 60 * 60);
+
+  // Nếu đã qua giờ rửa xe mà chưa rửa → vẫn cho hủy nhưng hoàn 0%
+  const hoursLeftSafe = Math.max(0, hoursLeft);
+
+  // 4. Đếm số lần hủy trong 30 ngày gần nhất
+  const cancelResult = await pool.request()
+    .input('customerId', sql.Int, payment.CustomerID)
+    .query(`
+      SELECT COUNT(*) AS CancelCount
+      FROM BOOKING
+      WHERE CustomerID = @customerId
+        AND Status = 5
+        AND BookingDate >= DATEADD(DAY, -30, GETDATE())
+    `);
+  const cancelCount = cancelResult.recordset[0].CancelCount;
+
+  // 5. Tính % và số tiền hoàn
+  const refundPercent = getRefundPercent(hoursLeftSafe, cancelCount);
+  const originalAmount = Number(payment.Amount || 0);
+  const refundAmount = Math.round(originalAmount * refundPercent / 100);
+
+  // 6. Tạo cảnh báo
+  const warning = getWarningMessage(hoursLeftSafe, cancelCount, refundPercent, refundAmount);
+
+  // 7. Thực hiện hủy booking + nhả voucher
+  await pool.request()
+    .input('bookingId', sql.Int, payment.BookingID)
     .query(`
       UPDATE BOOKING SET Status = 5 WHERE BookingID = @bookingId;
       UPDATE MEMBER_PROMOTION 
       SET IsUsed = 0 
       WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
     `);
-  await pool.request().input('paymentId', sql.Int, paymentId)
+
+  // 8. Xóa bản ghi payment
+  await pool.request()
+    .input('paymentId', sql.Int, paymentId)
     .query(`DELETE FROM PAYMENT WHERE PaymentID = @paymentId`);
-  return { paymentId, refunded: true, amount: payment.Amount };
+
+  return {
+    paymentId,
+    refunded: true,
+    originalAmount,
+    refundPercent,
+    refundAmount,
+    cancelCount: cancelCount + 1, // cộng thêm lần này
+    warning,
+    // Thông tin cho frontend hiển thị
+    nextCancelInfo: cancelCount + 1 >= 4
+      ? '❌ Lần hủy tiếp theo sẽ không được hoàn tiền'
+      : cancelCount + 1 === 3
+        ? '⚠️ Còn 1 lần hủy được hoàn tiền trong 30 ngày'
+        : null
+  };
 };
 
-// Nhân viên xác nhận đã nhận tiền mặt từ khách hàng
 const confirmCashDeposit = async (paymentId) => {
   const pool = await poolPromise;
-  const pc = await pool.request().input('paymentId', sql.Int, paymentId)
+  const pc = await pool.request()
+    .input('paymentId', sql.Int, paymentId)
     .query(`
       SELECT p.PaymentID, p.BookingID, p.Amount, p.PaymentMethod, b.Status AS BookingStatus
       FROM PAYMENT p
@@ -315,8 +416,8 @@ const confirmCashDeposit = async (paymentId) => {
     throw new Error('Payment này không phải thanh toán tiền mặt!');
   }
 
-  // Cập nhật trạng thái payment thành đã xác nhận (nếu có cột PaidAt chưa có giá trị)
-  await pool.request().input('paymentId', sql.Int, paymentId)
+  await pool.request()
+    .input('paymentId', sql.Int, paymentId)
     .query(`UPDATE PAYMENT SET PaidAt = GETDATE() WHERE PaymentID = @paymentId AND PaidAt IS NULL`);
 
   return { paymentId, confirmed: true, amount: payment.Amount, message: 'Xác nhận thanh toán tiền mặt thành công' };

@@ -101,6 +101,20 @@ const swaggerSpec = {
           color:        { type: "string", example: "Trắng" },
         },
       },
+      RefundResponse: {
+        type: "object",
+        properties: {
+          paymentId:      { type: "integer", example: 5 },
+          refunded:       { type: "boolean", example: true },
+          originalAmount: { type: "number",  example: 150000, description: "Số tiền đã trả ban đầu" },
+          refundPercent:  { type: "integer", example: 50,
+            description: "% hoàn tiền theo bảng: Trước 24h(lần 1,2)=100%, 2-24h(lần 1,2)=50%, Dưới 2h=0%, Lần 3 trước 24h=50%, Lần 3+ 2-24h=0%, Lần 4+=0%" },
+          refundAmount:   { type: "number",  example: 75000,  description: "Số tiền thực tế được hoàn lại" },
+          cancelCount:    { type: "integer", example: 2,      description: "Tổng số lần đã hủy trong 30 ngày gần nhất (bao gồm lần này)" },
+          warning:        { type: "string",  example: "⚠️ Bạn đang hủy trong 2-24 tiếng. Chỉ hoàn 50% = 75,000đ" },
+          nextCancelInfo: { type: "string",  example: "⚠️ Còn 1 lần hủy được hoàn tiền trong 30 ngày", description: "Cảnh báo cho lần hủy tiếp theo (null nếu không cần)" },
+        },
+      },
     },
   },
   paths: {
@@ -405,12 +419,7 @@ const swaggerSpec = {
               schema: {
                 allOf: [
                   { $ref: "#/components/schemas/VehicleRequest" },
-                  {
-                    type: "object",
-                    properties: {
-                      userId: { type: "integer", example: 12, description: "Chủ xe (tự lấy từ token nếu là Member)" },
-                    },
-                  },
+                  { type: "object", properties: { userId: { type: "integer", example: 12 } } },
                 ],
               },
             },
@@ -429,11 +438,7 @@ const swaggerSpec = {
         summary: "Lấy chi tiết một phương tiện",
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
-        responses: {
-          200: { description: "Thành công" },
-          403: { description: "Không có quyền xem xe này" },
-          404: { description: "Không tìm thấy xe" },
-        },
+        responses: { 200: { description: "Thành công" }, 403: { description: "Không có quyền" }, 404: { description: "Không tìm thấy xe" } },
       },
       put: {
         tags: ["Vehicles"],
@@ -441,23 +446,14 @@ const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
         requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/VehicleRequest" } } } },
-        responses: {
-          200: { description: "Cập nhật thành công" },
-          403: { description: "Không có quyền chỉnh sửa xe này" },
-          404: { description: "Không tìm thấy xe" },
-          409: { description: "Biển số đã được dùng bởi xe khác" },
-        },
+        responses: { 200: { description: "Cập nhật thành công" }, 404: { description: "Không tìm thấy xe" }, 409: { description: "Biển số đã tồn tại" } },
       },
       delete: {
         tags: ["Vehicles"],
         summary: "Xóa phương tiện",
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
-        responses: {
-          200: { description: "Xóa xe thành công" },
-          403: { description: "Không có quyền xóa xe này" },
-          404: { description: "Không tìm thấy xe" },
-        },
+        responses: { 200: { description: "Xóa xe thành công" }, 404: { description: "Không tìm thấy xe" } },
       },
     },
 
@@ -465,11 +461,9 @@ const swaggerSpec = {
     "/api/bookings": {
       get: {
         tags: ["Bookings"],
-        summary: "Lấy danh sách booking (Member chỉ thấy của mình, Staff/Admin thấy tất cả trừ Status=1)",
+        summary: "Lấy danh sách booking",
         security: [{ bearerAuth: [] }],
-        parameters: [
-          { name: "customerId", in: "query", schema: { type: "integer" }, description: "Lọc theo khách hàng" },
-        ],
+        parameters: [{ name: "customerId", in: "query", schema: { type: "integer" } }],
         responses: { 200: { description: "Thành công" } },
       },
       post: {
@@ -477,11 +471,7 @@ const swaggerSpec = {
         summary: "Tạo lịch đặt rửa xe mới",
         security: [{ bearerAuth: [] }],
         requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/BookingRequest" } } } },
-        responses: {
-          201: { description: "Đặt lịch thành công, trả về BookingID và MachineID" },
-          400: { description: "Thời gian không hợp lệ, trùng lịch hoặc đã có 2 đơn chờ" },
-          409: { description: "Tất cả máy rửa xe đã đầy khung giờ này" },
-        },
+        responses: { 201: { description: "Đặt lịch thành công" }, 400: { description: "Thời gian không hợp lệ hoặc đã có 2 đơn chờ" }, 409: { description: "Máy rửa đã đầy" } },
       },
     },
     "/api/bookings/{id}": {
@@ -490,22 +480,14 @@ const swaggerSpec = {
         summary: "Lấy chi tiết một lịch đặt xe",
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
-        responses: {
-          200: { description: "Thành công" },
-          404: { description: "Không tìm thấy booking" },
-        },
+        responses: { 200: { description: "Thành công" }, 404: { description: "Không tìm thấy booking" } },
       },
       delete: {
         tags: ["Bookings"],
         summary: "Khách xóa booking đã hoàn thành hoặc đã hủy khỏi lịch sử",
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
-        responses: {
-          200: { description: "Xóa thành công" },
-          400: { description: "Chỉ xóa được đơn hoàn thành (4) hoặc đã hủy (5)" },
-          403: { description: "Không có quyền xóa booking này" },
-          404: { description: "Không tìm thấy booking" },
-        },
+        responses: { 200: { description: "Xóa thành công" }, 400: { description: "Chỉ xóa được đơn Status=4 hoặc 5" }, 403: { description: "Không có quyền" } },
       },
     },
     "/api/bookings/{id}/transition": {
@@ -522,10 +504,7 @@ const swaggerSpec = {
                 type: "object",
                 required: ["nextStatus"],
                 properties: {
-                  nextStatus: {
-                    type: "integer", example: 2,
-                    description: "1=Chờ duyệt, 2=Đã nhận, 3=Đang rửa, 4=Hoàn thành, 5=Đã hủy",
-                  },
+                  nextStatus: { type: "integer", example: 2, description: "1=Chờ duyệt, 2=Đã nhận, 3=Đang rửa, 4=Hoàn thành, 5=Đã hủy" },
                 },
               },
             },
@@ -546,18 +525,12 @@ const swaggerSpec = {
             "application/json": {
               schema: {
                 type: "object",
-                properties: {
-                  memberPromoId: { type: "integer", example: 1, description: "ID voucher trong ví (null để gỡ voucher)" },
-                },
+                properties: { memberPromoId: { type: "integer", example: 1, description: "null để gỡ voucher" } },
               },
             },
           },
         },
-        responses: {
-          200: { description: "Áp dụng/gỡ voucher thành công, trả về FinalPrice mới" },
-          400: { description: "Chỉ áp dụng được khi booking Status=1" },
-          404: { description: "Không tìm thấy voucher trong ví" },
-        },
+        responses: { 200: { description: "Thành công" }, 400: { description: "Chỉ áp dụng khi Status=1" } },
       },
     },
     "/api/bookings/admin/all": {
@@ -566,9 +539,9 @@ const swaggerSpec = {
         summary: "Lấy toàn bộ danh sách booking có bộ lọc (Admin)",
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "status",      in: "query", schema: { type: "integer" }, description: "Lọc theo trạng thái 1-5" },
-          { name: "vehicleType", in: "query", schema: { type: "string"  }, description: "CAR hoặc MOTORBIKE" },
-          { name: "search",      in: "query", schema: { type: "string"  }, description: "Tìm theo tên/biển số/SĐT" },
+          { name: "status",      in: "query", schema: { type: "integer" } },
+          { name: "vehicleType", in: "query", schema: { type: "string"  } },
+          { name: "search",      in: "query", schema: { type: "string"  } },
           { name: "fromDate",    in: "query", schema: { type: "string", format: "date" } },
           { name: "toDate",      in: "query", schema: { type: "string", format: "date" } },
         ],
@@ -585,7 +558,7 @@ const swaggerSpec = {
       },
       delete: {
         tags: ["Bookings"],
-        summary: "Admin xóa vĩnh viễn booking khỏi DB (bao gồm feedback, payment, detail)",
+        summary: "Admin xóa vĩnh viễn booking khỏi DB",
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
         responses: { 200: { description: "Xóa thành công" } },
@@ -608,14 +581,7 @@ const swaggerSpec = {
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
         requestBody: {
           required: true,
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: { status: { type: "integer", example: 4 } },
-              },
-            },
-          },
+          content: { "application/json": { schema: { type: "object", properties: { status: { type: "integer", example: 4 } } } } },
         },
         responses: { 200: { description: "Cập nhật thành công" } },
       },
@@ -638,14 +604,14 @@ const swaggerSpec = {
                   bookingId: { type: "integer", example: 10 },
                   method:    { type: "string", enum: ["vnpay", "cash"], example: "vnpay",
                                description: "vnpay=online, cash=tiền mặt (Bronze/Silver đặt cọc 10%, Gold/Platinum miễn phí)" },
-                  amount:    { type: "number", example: 150000, description: "Tùy chọn, mặc định lấy FinalPrice của booking" },
+                  amount:    { type: "number", example: 150000, description: "Tùy chọn" },
                 },
               },
             },
           },
         },
         responses: {
-          201: { description: "Thành công - trả về paymentUrl nếu dùng VNPay, depositAmount, remainingAmount" },
+          201: { description: "Thành công - trả về paymentUrl nếu VNPay, depositAmount, remainingAmount" },
           400: { description: "Booking đã thanh toán hoặc đã hủy" },
         },
       },
@@ -653,7 +619,7 @@ const swaggerSpec = {
     "/api/payments/tier": {
       get: {
         tags: ["Payments"],
-        summary: "Lấy hạng thành viên và thông tin đặt cọc của người dùng hiện tại",
+        summary: "Lấy hạng thành viên và thông tin đặt cọc",
         security: [{ bearerAuth: [] }],
         responses: {
           200: {
@@ -696,18 +662,47 @@ const swaggerSpec = {
           { name: "vnp_TxnRef",       in: "query", schema: { type: "string" }, description: "bookingId_method_amount_timestamp" },
           { name: "vnp_SecureHash",   in: "query", schema: { type: "string" }, description: "Chữ ký HMAC-SHA512" },
         ],
-        responses: { 302: { description: "Redirect về frontend: /payments/result?status=success|failed" } },
+        responses: { 302: { description: "Redirect về /payments/result?status=success|failed" } },
       },
     },
     "/api/payments/{id}/refund": {
       post: {
         tags: ["Payments"],
-        summary: "Hoàn tiền và chuyển booking về trạng thái Đã hủy",
+        summary: "Hủy booking và hoàn tiền theo % dựa vào thời gian + số lần hủy trong 30 ngày",
+        description: `
+**Bảng hoàn tiền:**
+
+| Thời gian còn lại | Lần 1, 2 | Lần 3 | Lần 4+ |
+|---|---|---|---|
+| Trước 24 tiếng | 100% | 50% | 0% |
+| 2 - 24 tiếng | 50% | 0% | 0% |
+| Dưới 2 tiếng | 0% | 0% | 0% |
+
+**Lưu ý:** Đếm số lần hủy trong 30 ngày gần nhất từ bảng BOOKING (Status=5)
+        `,
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" }, description: "PaymentID" }],
         responses: {
-          200: { description: "Hoàn tiền thành công" },
-          400: { description: "Xe đang rửa hoặc đã hoàn thành, không thể hoàn tiền" },
+          200: {
+            description: "Hủy thành công - trả về thông tin hoàn tiền",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/RefundResponse" },
+                example: {
+                  paymentId: 5,
+                  refunded: true,
+                  originalAmount: 150000,
+                  refundPercent: 50,
+                  refundAmount: 75000,
+                  cancelCount: 2,
+                  warning: "⚠️ Bạn đang hủy trong 2-24 tiếng (lần 2). Chỉ hoàn 50% = 75,000đ.",
+                  nextCancelInfo: "⚠️ Còn 1 lần hủy được hoàn tiền trong 30 ngày"
+                },
+              },
+            },
+          },
+          400: { description: "Xe đang rửa (Status=3) hoặc đã hoàn thành (Status=4)" },
+          404: { description: "Không tìm thấy payment" },
         },
       },
     },
@@ -731,7 +726,7 @@ const swaggerSpec = {
         summary: "Lấy danh sách khuyến mãi",
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "search", in: "query", schema: { type: "string"  }, description: "Tìm theo tên khuyến mãi" },
+          { name: "search", in: "query", schema: { type: "string" } },
           { name: "status", in: "query", schema: { type: "string", enum: ["all", "active", "expired"] } },
         ],
         responses: { 200: { description: "Thành công - trả về Status: Active/Expired, WalletCount, UsedCount" } },
@@ -741,10 +736,7 @@ const swaggerSpec = {
         summary: "Tạo khuyến mãi mới (Admin/Staff)",
         security: [{ bearerAuth: [] }],
         requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/PromotionRequest" } } } },
-        responses: {
-          201: { description: "Tạo khuyến mãi thành công" },
-          400: { description: "Thiếu tên hoặc % giảm không hợp lệ" },
-        },
+        responses: { 201: { description: "Tạo thành công" }, 400: { description: "Thiếu tên hoặc % giảm không hợp lệ" } },
       },
     },
     "/api/promotions/{id}": {
@@ -786,18 +778,6 @@ const swaggerSpec = {
         summary: "Kích hoạt lại khuyến mãi đã hết hạn - gia hạn thêm 30 ngày (Admin)",
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
-        requestBody: {
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  endDate: { type: "string", format: "date", description: "Ngày hết hạn tùy chỉnh (để trống = +30 ngày)" },
-                },
-              },
-            },
-          },
-        },
         responses: { 200: { description: "Kích hoạt lại thành công" } },
       },
     },
@@ -810,19 +790,16 @@ const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: "rating", in: "query", schema: { type: "integer", minimum: 1, maximum: 5 } },
-          { name: "search", in: "query", schema: { type: "string" }, description: "Tìm theo comment/tên/biển số/dịch vụ" },
+          { name: "search", in: "query", schema: { type: "string" } },
         ],
-        responses: { 200: { description: "Thành công - trả về data[] và stats (TotalFeedback, AverageRating,...)" } },
+        responses: { 200: { description: "Thành công" } },
       },
       post: {
         tags: ["Feedbacks"],
-        summary: "Khách hàng gửi đánh giá sau khi booking hoàn thành (1 booking chỉ 1 feedback)",
+        summary: "Khách hàng gửi đánh giá sau khi booking hoàn thành",
         security: [{ bearerAuth: [] }],
         requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/FeedbackRequest" } } } },
-        responses: {
-          201: { description: "Gửi đánh giá thành công" },
-          409: { description: "Booking này đã có feedback rồi" },
-        },
+        responses: { 201: { description: "Gửi đánh giá thành công" }, 409: { description: "Booking này đã có feedback rồi" } },
       },
     },
     "/api/feedbacks/{id}": {
@@ -848,9 +825,7 @@ const swaggerSpec = {
         tags: ["Loyalty"],
         summary: "Xem thông tin tích điểm và hạng thành viên",
         security: [{ bearerAuth: [] }],
-        parameters: [
-          { name: "userId", in: "query", required: true, schema: { type: "integer", example: 12 } },
-        ],
+        parameters: [{ name: "userId", in: "query", required: true, schema: { type: "integer", example: 12 } }],
         responses: { 200: { description: "Thành công" } },
       },
     },
@@ -859,9 +834,7 @@ const swaggerSpec = {
         tags: ["Loyalty"],
         summary: "Xem lịch sử tích lũy và sử dụng điểm",
         security: [{ bearerAuth: [] }],
-        parameters: [
-          { name: "customerId", in: "query", required: true, schema: { type: "integer", example: 12 } },
-        ],
+        parameters: [{ name: "customerId", in: "query", required: true, schema: { type: "integer", example: 12 } }],
         responses: { 200: { description: "Thành công" } },
       },
     },
@@ -882,16 +855,13 @@ const swaggerSpec = {
                   RewardCode:       { type: "string",  example: "PR-1" },
                   RewardPointsUsed: { type: "integer", example: 100 },
                   promotionId:      { type: "integer", example: 1 },
-                  bookingId:        { type: "integer", example: null, description: "Tùy chọn" },
+                  bookingId:        { type: "integer", description: "Tùy chọn" },
                 },
               },
             },
           },
         },
-        responses: {
-          200: { description: "Đổi voucher thành công" },
-          400: { description: "Không đủ điểm hoặc thiếu thông tin" },
-        },
+        responses: { 200: { description: "Đổi voucher thành công" }, 400: { description: "Không đủ điểm" } },
       },
     },
     "/api/loyalty/my-vouchers": {
