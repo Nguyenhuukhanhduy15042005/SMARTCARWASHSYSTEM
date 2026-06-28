@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const { sql, poolPromise } = require("../db");
+const { createAndSendNotification } = require("../Services/notificationService");
 
 const formatLocalDateTime = (dateInput) => {
     if (!dateInput) return { dateStr: "", timeStr: "" };
@@ -190,6 +191,20 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
                     .query(
                         "UPDATE MEMBER_PROFILE SET TierID = @tierId WHERE UserID = @userId",
                     );
+
+                //Thông báo tích điểm thành công
+                const userRes = await pool.request()
+                    .input("userId", sql.Int, customerId)
+                    .query("SELECT Email FROM [USER] WHERE UserID = @userId");
+                const userEmail = userRes.recordset[0]?.Email;
+                createAndSendNotification({
+                    userId: customerId,
+                    bookingId: bookingId,
+                    title: "Chúc mừng! Bạn vừa tích lũy điểm thưởng mới",
+                    message: `Dịch vụ rửa xe BK-${bookingId} đã hoàn thành. Bạn được cộng ${points} điểm vào tài khoản hội viên!`,
+                    type: "LOYALTY",
+                    userEmail: userEmail
+                });
             }
         }
 
@@ -454,6 +469,21 @@ router.post("/", async (req, res) => {
                     `INSERT INTO BOOKING_DETAIL (BookingID, ServiceID, MachineID) VALUES (@BookingID, @ServiceID, @MachineID)`,
                 );
         }
+        //Thông báo đặt lịch rửa xe thành công
+        const userRes = await pool.request()
+            .input("userId", sql.Int, CustomerID)
+            .query("SELECT Email FROM [USER] WHERE UserID = @userId");
+        const userEmail = userRes.recordset[0]?.Email;
+
+        createAndSendNotification({
+            userId: CustomerID,
+            bookingId: newBookingID,
+            title: "Xác nhận đặt lịch rửa xe thành công",
+            message: `Lịch đặt rửa xe của bạn (Mã đơn BK-${newBookingID}) đã được khởi tạo thành công trên hệ thống.`,
+            type: "CONFIRMATION",
+            userEmail: userEmail
+        });
+
         res.status(201).json({
             message: "Tạo booking thành công",
             BookingID: newBookingID,
