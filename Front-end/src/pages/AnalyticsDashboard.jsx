@@ -1,10 +1,3 @@
-// ============================================================
-// AnalyticsDashboard.jsx - Trọng thêm mới (Sprint Analytics)
-// Trang thống kê tổng quan dành cho Admin:
-//   - Gọi API của Thái: GET /api/analytics/dashboard
-//   - Hiển thị biểu đồ doanh thu, booking, điểm loyalty, v.v.
-//   - Dùng thư viện Recharts để vẽ biểu đồ
-// ============================================================
 
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
