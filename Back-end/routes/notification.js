@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { sql, poolPromise } = require('../db');
-
+// GET /api/notifications?userId=123 — Lấy danh sách thông báo của User
 router.get('/', async (req, res) => {
     try {
         const userId = req.query.userId;
@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-
+// PUT /api/notifications/:id/read — Đánh dấu 1 thông báo là đã đọc
 router.put('/:id/read', async (req, res) => {
     try {
         const { id } = req.params;
@@ -28,5 +28,4 @@ router.put('/:id/read', async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-
 module.exports = router;

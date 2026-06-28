@@ -4,7 +4,7 @@ import "./MemberHeader.css";
 import { useAuth } from "../context/AuthContext";
 import NotificationBell from "./NotificationBell";
 
-// Trọng thêm: Thành phần Header dùng chung cho phần Member Portal
+// Thành phần Header dùng chung cho phần Member Portal
 export default function MemberHeader() {
   const navigate = useNavigate();
   const { logout } = useAuth();

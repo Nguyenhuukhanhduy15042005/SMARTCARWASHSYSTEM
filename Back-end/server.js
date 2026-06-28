@@ -36,8 +36,8 @@ const feedbackRouter = require("./routes/feedback");
 const loyaltyRouter = require("./routes/loyalty");
 const machineRouter = require("./routes/machine");
 const analyticsRouter = require("./routes/analytics");
-const notificationRouter = require("./routes/notification"); // ← THÊM MỚI
- 
+const surveyRouter = require("./routes/survey");
+
 // MOUNT ROUTERS
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
@@ -50,8 +50,8 @@ app.use("/api/feedbacks", feedbackRouter);
 app.use("/api/loyalty", loyaltyRouter);
 app.use("/api/machines", machineRouter);
 app.use("/api/analytics", analyticsRouter);
-app.use("/api/notifications", notificationRouter); // ← THÊM MỚI
- 
+app.use("/api/surveys", surveyRouter);
+
 // Test Endpoint
 app.get("/api/test", (req, res) => {
   res.json({ message: "API Car Wash System hoạt động tốt!" });
@@ -94,3 +94,12 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });
+
+//v3
+
+const initReminderJob = require('./jobs/reminderJob');
+initReminderJob(); // Khởi chạy cron job khi server bật
+
+// Đăng kí notification.js
+const notificationRouter = require('./routes/notification');
+app.use('/api/notifications', notificationRouter);
