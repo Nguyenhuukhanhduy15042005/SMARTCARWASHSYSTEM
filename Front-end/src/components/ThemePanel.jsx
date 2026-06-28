@@ -12,10 +12,10 @@ export default function ThemePanel({ compact = false }) {
   const { mode, toggleMode, accent, changeAccent, canChangeAccent } = useTheme();
 
   return (
-    <div className="theme-panel-wrapper" style={styles.wrapper}> {/* Trọng thêm: Thêm className */}
+    <div className="theme-panel-wrapper" style={styles.wrapper}>
       {/* ── Dark / Light toggle ────────────────────────── */}
-      <div className="theme-panel-row" style={styles.row}> {/* Trọng thêm: Thêm className */}
-        {!compact && <span className="theme-panel-label" style={styles.label}>Giao diện</span>} {/* Trọng thêm: Thêm className */}
+      <div className="theme-panel-row" style={styles.row}>
+        {!compact && <span className="theme-panel-label" style={styles.label}>Giao diện</span>}
 
         <button
           onClick={toggleMode}
@@ -27,14 +27,13 @@ export default function ThemePanel({ compact = false }) {
             <span style={styles.thumb(mode)} />
           </span>
           {!compact && (
-            <span className="theme-panel-mode-label" style={styles.modeLabel}> {/* Trọng thêm: Thêm className */}
+            <span className="theme-panel-mode-label" style={styles.modeLabel}>
               {mode === "dark" ? "🌙 Tối" : "☀️ Sáng"}
             </span>
           )}
         </button>
       </div>
 
-      {/* Trọng thêm: Đã bỏ phần chọn màu chủ đạo theo yêu cầu */}
     </div>
   );
 }

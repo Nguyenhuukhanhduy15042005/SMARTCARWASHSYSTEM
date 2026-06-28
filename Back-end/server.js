@@ -1,8 +1,10 @@
 const express = require("express");
 const cors = require("cors");
 const cron = require("node-cron"); // <-- THÊM THƯ VIỆN CRON TẠI ĐÂY
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swagger-spec");
 require("dotenv").config();
-const { sql, poolPromise } = require("./db"); // <-- Đổi cách gọi db để có thể dùng poolPromise cho Cron Job
+const { sql, poolPromise } = require("./db");
 
 if (!process.env.JWT_SECRET) {
   console.error("FATAL: Thiếu JWT_SECRET trong file .env. Dừng server.");
@@ -33,6 +35,8 @@ const promotionRouter = require("./routes/promotion");
 const feedbackRouter = require("./routes/feedback");
 const loyaltyRouter = require("./routes/loyalty");
 const machineRouter = require("./routes/machine");
+const analyticsRouter = require("./routes/analytics");
+const surveyRouter = require("./routes/survey");
 
 // MOUNT ROUTERS
 app.use("/api/auth", authRouter);
@@ -45,6 +49,8 @@ app.use("/api/promotions", promotionRouter);
 app.use("/api/feedbacks", feedbackRouter);
 app.use("/api/loyalty", loyaltyRouter);
 app.use("/api/machines", machineRouter);
+app.use("/api/analytics", analyticsRouter);
+app.use("/api/surveys", surveyRouter);
 
 // Test Endpoint
 app.get("/api/test", (req, res) => {
@@ -83,7 +89,18 @@ cron.schedule("* * * * *", async () => {
   }
 });
 
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });
+
+//v3
+
+const initReminderJob = require('./jobs/reminderJob');
+initReminderJob(); // Khởi chạy cron job khi server bật
+
+// Đăng kí notification.js
+const notificationRouter = require('./routes/notification');
+app.use('/api/notifications', notificationRouter);

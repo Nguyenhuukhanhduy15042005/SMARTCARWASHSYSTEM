@@ -24,6 +24,10 @@ import FeedbackManagement from "./pages/FeedbackManagement";
 import RewardRedemption from "./pages/RewardRedemption";
 import LoyaltyHistory from "./pages/LoyaltyHistory";
 import MachineDashboard from "./pages/MachineDashboard";
+// Trọng thêm mới: trang Thống kê Analytics dành cho Admin
+import AnalyticsDashboard from "./pages/AnalyticsDashboard";
+// Duy thêm mới: trang Khảo sát Survey dành cho Admin
+import SurveyDashboard from "./pages/SurveyDashboard";
 
 const getStoredRole = () => {
   try {
@@ -110,6 +114,16 @@ function App() {
 
         <Route path="/admin/dashboard" element={
           <ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>
+        } />
+
+        {/* Trọng thêm mới: Route trang Thống kê Analytics - chỉ Admin mới vào được */}
+        <Route path="/admin/analytics" element={
+          <ProtectedRoute requiredRole="admin"><AnalyticsDashboard /></ProtectedRoute>
+        } />
+
+        {/* Duy thêm mới: Route trang Khảo sát Survey - chỉ Admin mới vào được */}
+        <Route path="/admin/surveys" element={
+          <ProtectedRoute requiredRole="admin"><SurveyDashboard /></ProtectedRoute>
         } />
 
         <Route path="/admin/members" element={

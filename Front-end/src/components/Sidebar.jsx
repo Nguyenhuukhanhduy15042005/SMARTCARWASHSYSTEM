@@ -47,6 +47,12 @@ export default function Sidebar() {
         label: "Trang chủ",
         icon: "fa-solid fa-chart-line",
       },
+      // menu Thống kê Analytics dẫn đến trang /admin/analytics
+      {
+        path: "/admin/analytics",
+        label: "Thống kê",
+        icon: "fa-solid fa-chart-pie",
+      },
       {
         path: "/timeslots",
         label: "Bàn làm việc",
