@@ -5,12 +5,12 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger-spec");
 require("dotenv").config();
 const { sql, poolPromise } = require("./db");
-
+ 
 if (!process.env.JWT_SECRET) {
   console.error("FATAL: Thiếu JWT_SECRET trong file .env. Dừng server.");
   process.exit(1);
 }
-
+ 
 const app = express();
 app.use((req, res, next) => {
   console.log(`[REQUEST] ${req.method} ${req.url}`);
@@ -23,7 +23,7 @@ app.use(
     credentials: true,
   }),
 );
-
+ 
 // IMPORT ROUTERS
 const authRouter = require("./routes/auth");
 const userRouter = require("./routes/user");
@@ -36,7 +36,8 @@ const feedbackRouter = require("./routes/feedback");
 const loyaltyRouter = require("./routes/loyalty");
 const machineRouter = require("./routes/machine");
 const analyticsRouter = require("./routes/analytics");
-
+const notificationRouter = require("./routes/notification"); // ← THÊM MỚI
+ 
 // MOUNT ROUTERS
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
@@ -49,12 +50,13 @@ app.use("/api/feedbacks", feedbackRouter);
 app.use("/api/loyalty", loyaltyRouter);
 app.use("/api/machines", machineRouter);
 app.use("/api/analytics", analyticsRouter);
-
+app.use("/api/notifications", notificationRouter); // ← THÊM MỚI
+ 
 // Test Endpoint
 app.get("/api/test", (req, res) => {
   res.json({ message: "API Car Wash System hoạt động tốt!" });
 });
-
+ 
 // ================================================================
 // CRON JOB: TỰ ĐỘNG KHÓA MÁY VÀO NGÀY BẢO TRÌ
 // Đang set chạy mỗi phút để bạn test (* * * * *).
@@ -64,7 +66,6 @@ cron.schedule("* * * * *", async () => {
   console.log("[CRON] Đang quét lịch bảo trì máy hôm nay...");
   try {
     const pool = await poolPromise;
-    // Tìm các máy có lịch bảo trì TRONG NGÀY HÔM NAY và khóa chúng lại (Status = 3)
     const result = await pool.request().query(`
       UPDATE MACHINE 
       SET Status = 3 
@@ -74,7 +75,7 @@ cron.schedule("* * * * *", async () => {
         WHERE CAST(MaintenanceDate AS DATE) = CAST(GETDATE() AS DATE)
       ) AND Status <> 3
     `);
-
+ 
     if (result.rowsAffected[0] > 0) {
       console.log(
         `[CRON] Đã tự động khóa ${result.rowsAffected[0]} máy đến hạn bảo trì.`,
@@ -86,9 +87,9 @@ cron.schedule("* * * * *", async () => {
     console.error("[CRON] Lỗi khi chạy tự động khóa máy:", err.message);
   }
 });
-
+ 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
+ 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server đang chạy tại http://localhost:${PORT}`);
