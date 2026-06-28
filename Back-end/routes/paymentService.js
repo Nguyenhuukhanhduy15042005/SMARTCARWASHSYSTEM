@@ -4,10 +4,10 @@ const moment = require('moment');
 const querystring = require('qs');
 
 const VNPAY_CONFIG = {
-  tmnCode:    process.env.VNPAY_TMN_CODE    || 'I50786JJ',
+  tmnCode: process.env.VNPAY_TMN_CODE || 'I50786JJ',
   hashSecret: process.env.VNPAY_HASH_SECRET || 'Z3H1YFPAW2VN5NZ3ZXLGB2RXSGTWZ3SN',
-  url:        process.env.VNPAY_URL         || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
-  returnUrl:  process.env.VNPAY_RETURN_URL  || 'http://localhost:5000/api/payments/vnpay-return',
+  url: process.env.VNPAY_URL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
+  returnUrl: process.env.VNPAY_RETURN_URL || 'http://localhost:5000/api/payments/vnpay-return',
 };
 
 function sortObject(obj) {
@@ -34,17 +34,17 @@ const createVNPayUrl = (paymentId, amount, orderInfo, ipAddr) => {
     .substring(0, 255);
 
   let vnp_Params = {
-    vnp_Version:    '2.1.0',
-    vnp_Command:    'pay',
-    vnp_TmnCode:    VNPAY_CONFIG.tmnCode,
-    vnp_Locale:     'vn',
-    vnp_CurrCode:   'VND',
-    vnp_TxnRef:     String(paymentId),
-    vnp_OrderInfo:  safeOrderInfo,
-    vnp_OrderType:  'other',
-    vnp_Amount:     String(Math.round(amount) * 100),
-    vnp_ReturnUrl:  VNPAY_CONFIG.returnUrl,
-    vnp_IpAddr:     cleanIp,
+    vnp_Version: '2.1.0',
+    vnp_Command: 'pay',
+    vnp_TmnCode: VNPAY_CONFIG.tmnCode,
+    vnp_Locale: 'vn',
+    vnp_CurrCode: 'VND',
+    vnp_TxnRef: String(paymentId),
+    vnp_OrderInfo: safeOrderInfo,
+    vnp_OrderType: 'other',
+    vnp_Amount: String(Math.round(amount) * 100),
+    vnp_ReturnUrl: VNPAY_CONFIG.returnUrl,
+    vnp_IpAddr: cleanIp,
     vnp_CreateDate: date,
   };
 
@@ -135,10 +135,10 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
     // Gold/Platinum: Miễn phí đặt cọc, thanh toán sau tại quầy. 
     // Chúng ta lưu bản ghi thanh toán 0đ trực tiếp và cập nhật trạng thái đơn thành 2 (Đã xác nhận).
     const result = await pool.request()
-      .input('bookingId', sql.Int,          bookingId)
-      .input('method',    sql.NVarChar(50),  method)
-      .input('amount',    sql.Decimal(18,2), 0)
-      .input('paidAt',    sql.DateTime,      new Date())
+      .input('bookingId', sql.Int, bookingId)
+      .input('method', sql.NVarChar(50), method)
+      .input('amount', sql.Decimal(18, 2), 0)
+      .input('paidAt', sql.DateTime, new Date())
       .query(`
         INSERT INTO PAYMENT (BookingID, PaymentMethod, Amount, PaidAt)
         OUTPUT INSERTED.*
@@ -160,9 +160,9 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
     // Chúng ta tạo mã giao dịch vnp_TxnRef chứa đầy đủ thông tin: bookingId_method_amount_timestamp
     const txnRef = `${bookingId}_${method}_${paymentAmount}_${Date.now()}`;
     const orderInfo = method === 'vnpay' ? `Thanh toan booking ${bookingId}` : `Dat coc booking ${bookingId}`;
-    
+
     paymentUrl = createVNPayUrl(txnRef, paymentAmount, orderInfo, ipAddr);
-    
+
     // Tạo đối tượng payment giả lập để trả về cho Client
     payment = {
       BookingID: bookingId,
@@ -183,7 +183,7 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
 const confirmVNPay = async (query) => {
   const isValid = verifyVNPayReturn(query);
   const txnRef = query['vnp_TxnRef'];
-  
+
   if (!txnRef) {
     return { isValid: false, paymentId: null };
   }
@@ -210,7 +210,7 @@ const confirmVNPay = async (query) => {
       const insertResult = await pool.request()
         .input('bookingId', sql.Int, bookingId)
         .input('method', sql.NVarChar(50), method)
-        .input('amount', sql.Decimal(18,2), paymentAmount)
+        .input('amount', sql.Decimal(18, 2), paymentAmount)
         .input('paidAt', sql.DateTime, new Date())
         .query(`
           INSERT INTO PAYMENT (BookingID, PaymentMethod, Amount, PaidAt)
@@ -240,7 +240,7 @@ const confirmVNPay = async (query) => {
         WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
       `);
   }
-  
+
   return { isValid, paymentId };
 };
 
