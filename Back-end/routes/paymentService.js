@@ -87,7 +87,7 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
       .query(`DELETE FROM PAYMENT WHERE BookingID = @bookingId`);
   } else {
     const existingPayment = await pool.request().input('bookingId', sql.Int, bookingId)
-      .query(`SELECT PaymentID FROM PAYMENT WHERE BookingID = @bookingId`);
+      .query(`SELECT PaymentID FROM PAYMENT WHERE BookingID = @bookingId AND (IsHiddenByUser IS NULL OR IsHiddenByUser = 0)`);
     if (existingPayment.recordset.length) throw new Error('Booking này đã được thanh toán');
   }
  
@@ -153,7 +153,7 @@ const confirmVNPay = async (query) => {
  
   if (isValid) {
     const existing = await pool.request().input('bookingId', sql.Int, bookingId)
-      .query(`SELECT PaymentID FROM PAYMENT WHERE BookingID = @bookingId`);
+      .query(`SELECT PaymentID FROM PAYMENT WHERE BookingID = @bookingId AND (IsHiddenByUser IS NULL OR IsHiddenByUser = 0)`);
     if (existing.recordset.length === 0) {
       const insertResult = await pool.request()
         .input('bookingId', sql.Int, bookingId)
@@ -193,14 +193,21 @@ const getPaymentHistory = async (userId, { page = 1, limit = 10 } = {}) => {
       LEFT JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
       LEFT JOIN SERVICE s ON bd.ServiceID = s.ServiceID
       WHERE b.CustomerID = @userId
+        AND (p.IsHiddenByUser IS NULL OR p.IsHiddenByUser = 0)
       ORDER BY p.PaidAt DESC
       OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
     `);
   const countResult = await pool.request().input('userId', sql.Int, userId)
-    .query(`SELECT COUNT(*) AS total FROM PAYMENT p JOIN BOOKING b ON p.BookingID = b.BookingID WHERE b.CustomerID = @userId`);
+    .query(`
+      SELECT COUNT(*) AS total
+      FROM PAYMENT p
+      JOIN BOOKING b ON p.BookingID = b.BookingID
+      WHERE b.CustomerID = @userId
+        AND (p.IsHiddenByUser IS NULL OR p.IsHiddenByUser = 0)
+    `);
   return { data: result.recordset, total: countResult.recordset[0].total, page: Number(page), limit: Number(limit) };
 };
- 
+
 // ─── Helper: tính cancelCount + hoursLeft + refundPercent (HEAD) ─────────────
 const calcRefundInfo = async (pool, bookingId, customerId) => {
   const cancelResult = await pool.request()
@@ -246,7 +253,7 @@ const calcRefundInfo = async (pool, bookingId, customerId) => {
   return { cancelCount, hoursLeft, refundPercent, warning };
 };
  
-// GET /api/payments/:id/refund-preview (HEAD)
+// GET /api/payments/:id/refund-preview
 const getRefundPreview = async (paymentId) => {
   const pool = await poolPromise;
   const pc = await pool.request()
@@ -270,10 +277,10 @@ const getRefundPreview = async (paymentId) => {
  
   const refundAmount = Math.round(payment.Amount * refundPercent / 100);
  
-  return { refundPercent, refundAmount, cancelCount, hoursLeft, warning };
+  return { refundPercent, refundAmount, cancelCount, hoursLeft, warning, originalAmount: payment.Amount };
 };
- 
-// ── BẢNG HOÀN TIỀN (origin/main) ─────────────────────────────────────────────
+
+// ── BẢNG HOÀN TIỀN ───────────────────────────────────────────────────────────
 //                    Trước 24h   2-24h    Dưới 2h
 // Lần 1, 2          → 100%    → 50%   → 0%
 // Lần 3             → 50%     → 0%    → 0%
@@ -309,7 +316,7 @@ const getWarningMessage = (hoursLeft, cancelCount, refundPercent, refundAmount) 
   return `⚠️ Hủy trong 2-24 tiếng. Chỉ hoàn 50% = ${refundAmount.toLocaleString('vi-VN')}đ.`;
 };
  
-// POST /api/payments/:id/refund (origin/main)
+// POST /api/payments/:id/refund
 const refundPayment = async (paymentId) => {
   const pool = await poolPromise;
  
@@ -353,7 +360,8 @@ const refundPayment = async (paymentId) => {
   const refundAmount = Math.round(originalAmount * refundPercent / 100);
   const warning = getWarningMessage(hoursLeftSafe, cancelCount, refundPercent, refundAmount);
  
-  // ✅ 6. Nếu hoàn 0% và có tiền → KHÔNG hủy booking, trả về cảnh báo
+  // 6. Nếu hoàn 0% và có tiền → KHÔNG hủy booking, trả về cảnh báo
+  //    Khách vẫn giữ lịch rửa xe
   if (refundPercent === 0 && originalAmount > 0) {
     return {
       paymentId,
@@ -374,9 +382,9 @@ const refundPayment = async (paymentId) => {
     UPDATE MEMBER_PROMOTION SET IsUsed = 0 WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
   `);
  
-  // 8. Xóa payment
+  // 8. Soft delete payment (IsHiddenByUser=1) — giữ record để cancelCount đếm đúng qua BOOKING.Status=5
   await pool.request().input('paymentId', sql.Int, paymentId)
-    .query(`DELETE FROM PAYMENT WHERE PaymentID = @paymentId`);
+    .query(`UPDATE PAYMENT SET IsHiddenByUser = 1 WHERE PaymentID = @paymentId`);
  
   return {
     paymentId,
@@ -417,4 +425,3 @@ const confirmCashDeposit = async (paymentId) => {
 };
  
 module.exports = { createPayment, confirmVNPay, getPaymentHistory, getRefundPreview, refundPayment, getUserTier, confirmCashDeposit };
- 

@@ -5,15 +5,14 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Lấy userId từ localStorage
+  // Lấy userId từ JWT trong localStorage
   const getUserId = () => {
     try {
-      const saved = localStorage.getItem("LOGIN_USER");
       const token = localStorage.getItem("TOKEN");
       if (!token) return null;
-      // Decode JWT lấy userId
       const payload = JSON.parse(atob(token.split(".")[1]));
       return payload?.userId || payload?.id || payload?.UserID || null;
     } catch {
@@ -27,7 +26,10 @@ export default function NotificationBell() {
     if (!userId) return;
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/notifications?userId=${userId}`);
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/notifications?userId=${userId}`
+      );
+      if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
       setNotifications(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -37,13 +39,14 @@ export default function NotificationBell() {
     }
   }, []);
 
-  // Gọi API đánh dấu đã đọc
+  // Đánh dấu một thông báo đã đọc
   const markAsRead = async (notificationId) => {
     try {
-      await fetch(`http://localhost:5000/api/notifications/${notificationId}/read`, {
-        method: "PUT",
-      });
-      // Cập nhật state local ngay không cần fetch lại
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/notifications/${notificationId}/read`,
+        { method: "PUT" }
+      );
+      if (!res.ok) throw new Error("HTTP " + res.status);
       setNotifications((prev) =>
         prev.map((n) =>
           n.NotificationID === notificationId ? { ...n, IsRead: true } : n
@@ -57,16 +60,22 @@ export default function NotificationBell() {
   // Đánh dấu tất cả đã đọc
   const markAllAsRead = async () => {
     const unread = notifications.filter((n) => !n.IsRead);
-    await Promise.all(unread.map((n) => markAsRead(n.NotificationID)));
+    if (unread.length === 0) return;
+    setMarkingAll(true);
+    try {
+      await Promise.all(unread.map((n) => markAsRead(n.NotificationID)));
+    } finally {
+      setMarkingAll(false);
+    }
   };
 
-  // Mở dropdown thì fetch mới nhất
+  // Toggle dropdown và fetch mới nhất khi mở
   const toggleDropdown = () => {
     if (!open) fetchNotifications();
     setOpen((prev) => !prev);
   };
 
-  // Click ra ngoài thì đóng dropdown
+  // Đóng dropdown khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -77,16 +86,16 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Auto-fetch khi mount (để badge hiện đúng số)
+  // Auto-fetch khi mount + polling 5 phút để đồng bộ cron job backend
   useEffect(() => {
     fetchNotifications();
-    // Polling mỗi 5 phút để đồng bộ với cron job backend
     const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.IsRead).length;
 
+  // Format thời gian tiếng Việt
   const formatTime = (dateStr) => {
     if (!dateStr) return "";
     const date = new Date(dateStr);
@@ -97,105 +106,133 @@ export default function NotificationBell() {
     if (diffMins < 60) return `${diffMins} phút trước`;
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `${diffHours} giờ trước`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays} ngày trước`;
     return date.toLocaleDateString("vi-VN");
   };
 
+  // Icon theo loại thông báo
   const getIcon = (type) => {
-    switch (type) {
-      case "REMINDER": return "fa-solid fa-clock";
-      case "BOOKING":  return "fa-solid fa-calendar-check";
-      case "PAYMENT":  return "fa-solid fa-credit-card";
-      case "CANCEL":   return "fa-solid fa-circle-xmark";
-      default:         return "fa-solid fa-bell";
-    }
+    const icons = {
+      REMINDER: "fa-solid fa-clock",
+      BOOKING:  "fa-solid fa-calendar-check",
+      PAYMENT:  "fa-solid fa-credit-card",
+      CANCEL:   "fa-solid fa-circle-xmark",
+      LOYALTY:  "fa-solid fa-star",
+    };
+    return icons[type] || "fa-solid fa-bell";
   };
 
-  const getIconColor = (type) => {
-    switch (type) {
-      case "REMINDER": return "#f59e0b";
-      case "BOOKING":  return "#3b82f6";
-      case "PAYMENT":  return "#10b981";
-      case "CANCEL":   return "#ef4444";
-      default:         return "#8b5cf6";
-    }
+  // Màu sắc theo loại thông báo (CSS class)
+  const getTypeClass = (type) => {
+    const classes = {
+      REMINDER: "type-reminder",
+      BOOKING:  "type-booking",
+      PAYMENT:  "type-payment",
+      CANCEL:   "type-cancel",
+      LOYALTY:  "type-loyalty",
+    };
+    return classes[type] || "type-default";
   };
 
   return (
     <div className="noti-bell-wrapper" ref={dropdownRef}>
-      {/* Nút quả chuông */}
+      {/* Nút chuông */}
       <button
-        className={`noti-bell-btn ${open ? "active" : ""}`}
+        className={`noti-bell-btn${open ? " active" : ""}`}
         onClick={toggleDropdown}
-        title="Thông báo"
         aria-label="Thông báo"
+        aria-expanded={open}
+        aria-haspopup="true"
       >
-        <i className="fa-solid fa-bell"></i>
+        <i className="fa-solid fa-bell" aria-hidden="true"></i>
         {unreadCount > 0 && (
-          <span className="noti-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+          <span className="noti-badge" aria-label={`${unreadCount} thông báo chưa đọc`}>
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
         )}
       </button>
 
       {/* Dropdown */}
       {open && (
-        <div className="noti-dropdown">
-          {/* Header dropdown */}
+        <div className="noti-dropdown" role="dialog" aria-label="Danh sách thông báo">
+          {/* Header */}
           <div className="noti-dropdown-header">
-            <span className="noti-dropdown-title">
-              <i className="fa-solid fa-bell"></i> Thông báo
+            <div className="noti-header-left">
+              <span className="noti-dropdown-title">Thông báo</span>
               {unreadCount > 0 && (
                 <span className="noti-unread-chip">{unreadCount} chưa đọc</span>
               )}
-            </span>
+            </div>
             {unreadCount > 0 && (
-              <button className="noti-mark-all-btn" onClick={markAllAsRead}>
-                Đánh dấu tất cả đã đọc
+              <button
+                className="noti-mark-all-btn"
+                onClick={markAllAsRead}
+                disabled={markingAll}
+                aria-label="Đánh dấu tất cả đã đọc"
+              >
+                {markingAll ? (
+                  <><i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Đang xử lý...</>
+                ) : (
+                  <><i className="fa-solid fa-check-double" aria-hidden="true"></i> Đánh dấu tất cả</>
+                )}
               </button>
             )}
           </div>
 
-          {/* Danh sách thông báo */}
-          <div className="noti-list">
+          {/* Danh sách */}
+          <div className="noti-list" role="list">
             {loading ? (
               <div className="noti-empty">
-                <i className="fa-solid fa-spinner fa-spin"></i>
-                <span>Đang tải...</span>
+                <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                <span>Đang tải thông báo...</span>
               </div>
             ) : notifications.length === 0 ? (
               <div className="noti-empty">
-                <i className="fa-solid fa-bell-slash"></i>
+                <i className="fa-solid fa-bell-slash" aria-hidden="true"></i>
                 <span>Chưa có thông báo nào</span>
               </div>
             ) : (
               notifications.map((noti) => (
                 <div
                   key={noti.NotificationID}
-                  className={`noti-item ${!noti.IsRead ? "unread" : ""}`}
+                  className={`noti-item${!noti.IsRead ? " unread" : ""}`}
                   onClick={() => !noti.IsRead && markAsRead(noti.NotificationID)}
+                  role="listitem"
+                  tabIndex={!noti.IsRead ? 0 : undefined}
+                  onKeyDown={(e) => e.key === "Enter" && !noti.IsRead && markAsRead(noti.NotificationID)}
+                  aria-label={`${noti.Title}${!noti.IsRead ? " - chưa đọc" : ""}`}
                 >
-                  {/* Icon loại thông báo */}
-                  <div
-                    className="noti-item-icon"
-                    style={{ background: getIconColor(noti.Type) + "22", color: getIconColor(noti.Type) }}
-                  >
+                  <div className={`noti-item-icon ${getTypeClass(noti.Type)}`} aria-hidden="true">
                     <i className={getIcon(noti.Type)}></i>
                   </div>
 
-                  {/* Nội dung */}
                   <div className="noti-item-content">
                     <p className="noti-item-title">{noti.Title}</p>
                     <p className="noti-item-message">{noti.Message}</p>
                     <span className="noti-item-time">
-                      <i className="fa-regular fa-clock"></i>
+                      <i className="fa-regular fa-clock" aria-hidden="true"></i>
                       {formatTime(noti.CreatedDate)}
                     </span>
                   </div>
 
-                  {/* Chấm chưa đọc */}
-                  {!noti.IsRead && <span className="noti-unread-dot"></span>}
+                  {!noti.IsRead && (
+                    <span className="noti-unread-dot" aria-hidden="true"></span>
+                  )}
                 </div>
               ))
             )}
           </div>
+
+          {/* Footer */}
+          {notifications.length > 0 && (
+            <div className="noti-dropdown-footer">
+              <button className="noti-refresh-btn" onClick={fetchNotifications} aria-label="Làm mới thông báo">
+                <i className="fa-solid fa-rotate-right" aria-hidden="true"></i>
+                Làm mới
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

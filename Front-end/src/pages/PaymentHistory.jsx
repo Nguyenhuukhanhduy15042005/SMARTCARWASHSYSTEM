@@ -13,19 +13,15 @@ const METHOD_LABEL = {
   "Tiền mặt": "💵 Tiền mặt",
 };
 
-// Bảng quy tắc hoàn tiền (chỉ dùng để hiển thị cho user)
-const REFUND_RULES = [
-  { cancel: "Lần 1, 2", before24: "100%", between2_24: "50%", under2: "0%" },
-  { cancel: "Lần 3",    before24: "50%",  between2_24: "0%",  under2: "0%" },
-  { cancel: "Lần 4+",   before24: "0%",   between2_24: "0%",  under2: "0%" },
-];
-
 export default function PaymentHistory() {
   const navigate = useNavigate();
-  const location = useLocation(); // ✅ Dùng để reload khi navigate về trang này
+  const location = useLocation();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refundModal, setRefundModal] = useState(null);
+
+  // refundModal giờ chứa cả preview từ backend
+  const [refundModal, setRefundModal] = useState(null);   // { payment, preview: null | {...} }
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [refunding, setRefunding] = useState(false);
 
   const [toast, setToast] = useState(null);
@@ -39,7 +35,7 @@ export default function PaymentHistory() {
   const getToken = () =>
     localStorage.getItem("token") || localStorage.getItem("TOKEN");
 
-  // ✅ Reload mỗi khi navigate vào trang này (kể cả từ UserDashboard sau khi hủy)
+  // Reload mỗi khi navigate vào trang này
   useEffect(() => { fetchHistory(); }, [location.key]);
 
   const fetchHistory = async () => {
@@ -56,12 +52,33 @@ export default function PaymentHistory() {
     }
   };
 
-  const openRefundModal = (payment) => {
-    setRefundModal({ payment });
+  // Mở modal + gọi refund-preview để lấy số tiền hoàn chính xác
+  const openRefundModal = async (payment) => {
+    setRefundModal({ payment, preview: null });
+    setPreviewLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE}/payments/${payment.PaymentID}/refund-preview`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      setRefundModal({ payment, preview: res.data });
+    } catch (err) {
+      // Nếu preview lỗi (vd xe đang rửa) → hiện lỗi, đóng modal
+      showToast(err.response?.data?.message || "Không thể xem trước thông tin hoàn tiền", "error");
+      setRefundModal(null);
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const handleRefund = async () => {
     if (!refundModal) return;
+    const { preview } = refundModal;
+
+    // Nếu preview cho biết sẽ bị blocked (0% mà có tiền) → hỏi xác nhận thêm
+    if (preview && preview.refundPercent === 0 && preview.originalAmount > 0) {
+      // Vẫn cho gọi API để backend trả về blocked:true và giữ lịch
+    }
+
     setRefunding(true);
     try {
       const res = await axios.post(
@@ -70,12 +87,22 @@ export default function PaymentHistory() {
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
       const data = res.data;
-      const msg = data.refundAmount > 0
-        ? `Hủy thành công! Hoàn tiền ${data.refundAmount.toLocaleString('vi-VN')}đ (${data.refundPercent}%).`
-        : "Đã hủy thành công! Không có tiền hoàn lại do vi phạm chính sách hủy.";
-      showToast(msg, data.refundAmount > 0 ? "success" : "error");
+
+      if (data.blocked) {
+        // Backend giữ lịch, không hủy — chỉ thông báo
+        showToast(
+          `⚠️ Không đủ điều kiện hoàn tiền. Lịch rửa xe của bạn vẫn được giữ nguyên.`,
+          "error"
+        );
+      } else {
+        const msg = data.refundAmount > 0
+          ? `✅ Hủy thành công! Hoàn ${data.refundPercent}% = ${data.refundAmount.toLocaleString("vi-VN")}đ.`
+          : "✅ Đã hủy thành công.";
+        if (data.nextCancelInfo) showToast(`${msg} ${data.nextCancelInfo}`, "success");
+        else showToast(msg, "success");
+        fetchHistory();
+      }
       setRefundModal(null);
-      fetchHistory(); // ✅ Reload lại danh sách sau khi hủy
     } catch (err) {
       showToast(err.response?.data?.message || "Hoàn tiền thất bại", "error");
     } finally {
@@ -84,18 +111,13 @@ export default function PaymentHistory() {
   };
 
   const formatPrice = (price) =>
-    new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-      price || 0
-    );
+    new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price || 0);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "—";
     return new Date(dateStr).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
     });
   };
 
@@ -188,7 +210,7 @@ export default function PaymentHistory() {
                     )}
                     {(p.BookingStatus === 1 || p.BookingStatus === 2) && (
                       <button className="ph-refund-btn" onClick={() => openRefundModal(p)}>
-                        Hoàn tiền
+                        Hoàn tiền / Hủy
                       </button>
                     )}
                   </div>
@@ -200,9 +222,9 @@ export default function PaymentHistory() {
 
         {/* ── Modal xác nhận hoàn tiền ── */}
         {refundModal && (
-          <div className="ph-modal-overlay" onClick={() => setRefundModal(null)}>
+          <div className="ph-modal-overlay" onClick={() => !refunding && setRefundModal(null)}>
             <div className="ph-modal" onClick={e => e.stopPropagation()}>
-              <h3 className="ph-modal-title">Xác nhận hoàn tiền</h3>
+              <h3 className="ph-modal-title">Xác nhận hủy & hoàn tiền</h3>
 
               <div className="ph-modal-info">
                 <p>{refundModal.payment.ServiceName || "Dịch vụ rửa xe"} · {refundModal.payment.LicensePlate}</p>
@@ -252,14 +274,48 @@ export default function PaymentHistory() {
                 </p>
               </div>
 
+              {/* Preview từ backend */}
+              {previewLoading ? (
+                <div style={{ textAlign: "center", padding: "12px 0" }}>
+                  <span className="pay-spinner" style={{ borderTopColor: "#f97316" }} />
+                  <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 8 }}>Đang tính số tiền hoàn...</p>
+                </div>
+              ) : refundModal.preview ? (
+                <div style={{
+                  padding: "12px 16px", borderRadius: 10, marginBottom: 16,
+                  background: refundModal.preview.refundPercent > 0
+                    ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)",
+                  border: `1px solid ${refundModal.preview.refundPercent > 0 ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`,
+                }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 6,
+                    color: refundModal.preview.refundPercent > 0 ? "#10b981" : "#ef4444" }}>
+                    Dự kiến hoàn tiền: {refundModal.preview.refundPercent}%
+                    {refundModal.preview.refundAmount > 0 && ` = ${formatPrice(refundModal.preview.refundAmount)}`}
+                  </p>
+                  <p style={{ fontSize: 12, color: "#94a3b8" }}>
+                    Lần hủy thứ {refundModal.preview.cancelCount + 1} trong 30 ngày
+                    {refundModal.preview.hoursLeft !== null &&
+                      ` · Còn ${Math.max(0, refundModal.preview.hoursLeft).toFixed(1)} tiếng`}
+                  </p>
+                  {refundModal.preview.warning && (
+                    <p style={{ fontSize: 12, color: "#f59e0b", marginTop: 6, whiteSpace: "pre-line" }}>
+                      {refundModal.preview.warning}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
               <div className="ph-modal-note">
-                ⚠️ Số tiền hoàn lại sẽ được tính chính xác dựa vào thời gian còn lại và số lần hủy của bạn. Booking sẽ bị huỷ sau khi xác nhận.
+                ⚠️ Booking sẽ bị huỷ sau khi xác nhận (trừ trường hợp không đủ điều kiện hoàn tiền).
               </div>
 
               <div className="ph-modal-actions">
-                <button className="ph-modal-cancel" onClick={() => setRefundModal(null)}>Quay lại</button>
-                <button className="ph-modal-confirm" onClick={handleRefund} disabled={refunding}>
-                  {refunding ? <span className="pay-spinner" /> : "Xác nhận hoàn tiền"}
+                <button className="ph-modal-cancel" onClick={() => setRefundModal(null)} disabled={refunding}>
+                  Quay lại
+                </button>
+                <button className="ph-modal-confirm" onClick={handleRefund}
+                  disabled={refunding || previewLoading}>
+                  {refunding ? <span className="pay-spinner" /> : "Xác nhận hủy"}
                 </button>
               </div>
             </div>

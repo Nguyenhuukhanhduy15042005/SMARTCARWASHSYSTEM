@@ -4,6 +4,7 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import NotificationBell from "../components/NotificationBell";
 
 const API_BASE = "/api";
 
@@ -267,9 +268,12 @@ export default function UserDashboard() {
     <div className="portal-layout-container">
       <Sidebar />
       <main className="portal-main-content">
-        <section className="welcome-section">
-          <h1>Xin Chào, {profile.FullName}!</h1>
-          <p>Chào mừng quay trở lại. Theo dõi trạng thái đặt lịch và hạng thành viên của bạn.</p>
+        <section className="welcome-section" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <h1>Xin Chào, {profile.FullName}!</h1>
+            <p>Chào mừng quay trở lại. Theo dõi trạng thái đặt lịch và hạng thành viên của bạn.</p>
+          </div>
+          <NotificationBell />
         </section>
 
         <section className="user-profile-grid">
