@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { sql, poolPromise } = require('../db');
+const { createAndSendNotification } = require('../services/notificationService');
 
 const formatLocalDateTime = (dateInput) => {
     if (!dateInput) return { dateStr: '', timeStr: '' };
@@ -82,6 +83,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
             WHERE BookingID = @bookingId
         `);
 
+    //Cập nhật trạng thái máy
     const detailRes = await pool.request()
         .input('bookingId', sql.Int, bookingId)
         .query('SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId');
@@ -97,9 +99,10 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
         }
     }
 
+    //Trigger tích điểm & Tính toán Loyalty
     if (statusInt === 4) {
         const finalPrice = Number(booking.FinalPrice || booking.TotalPrice || 0);
-        const points = Math.floor(finalPrice / 10000);
+        const points = Math.floor(finalPrice / 10000); //tương ứng tỉ lệ 10.000đ = 1 điểm
 
         if (points > 0) {
             const txCheck = await pool.request()
@@ -151,6 +154,18 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
                     .input('userId', sql.Int, customerId)
                     .input('tierId', sql.Int, newTierId)
                     .query('UPDATE MEMBER_PROFILE SET TierID = @tierId WHERE UserID = @userId');
+
+                // Bắn thông báo tích điểm
+                const userRes = await pool.request().input('uid', sql.Int, customerId).query('SELECT Email FROM [USER] WHERE UserID = @uid');
+                const userEmail = userRes.recordset[0]?.Email;
+                createAndSendNotification({
+                    userId: customerId,
+                    bookingId: bookingId,
+                    title: 'Chúc mừng! Bạn vừa tích lũy điểm thưởng mới',
+                    message: `Dịch vụ rửa xe BK-${bookingId} đã hoàn thành. Bạn được cộng ${points} điểm vào tài khoản hội viên!`,
+                    type: 'LOYALTY',
+                    userEmail: userEmail
+                });
             }
         }
 
@@ -198,7 +213,7 @@ router.get('/', async (req, res) => {
             try {
                 const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey_placeholder');
                 if (decoded && decoded.role === 'user') customerId = decoded.userId;
-            } catch (err) {}
+            } catch (err) { }
         }
 
         let query = `
@@ -256,27 +271,36 @@ router.post('/', async (req, res) => {
         const { CustomerID, BookingDate, VehicleType, LicensePlate, TotalPrice, FinalPrice, Status, ServiceIDs } = req.body;
         const machineId = req.body.MachineID || req.body.machineId || null;
 
+        //Kiểm tra các trường bắt buộc và mảng dịch vụ
         if (!CustomerID || !BookingDate || !VehicleType || !LicensePlate || !ServiceIDs || !Array.isArray(ServiceIDs) || ServiceIDs.length === 0)
             return res.status(400).json({ message: 'Thiếu thông tin đặt lịch hoặc gói dịch vụ không hợp lệ!' });
 
+        //Kiểm tra định dạng ngày giờ đặt lịch:
         const scheduledDate = new Date(BookingDate);
         if (isNaN(scheduledDate.getTime())) return res.status(400).json({ message: 'Thời gian đặt lịch không hợp lệ!' });
+
+        //Chặn thời gian đặt lịch trong quá khứ:
         if (scheduledDate < new Date()) return res.status(400).json({ message: 'Thời gian đặt lịch không được ở trong quá khứ!' });
 
+        //ktra máy
         const pool = await poolPromise;
         const assignedMachineId = await getAvailableMachineForBooking(pool, scheduledDate, VehicleType, machineId);
         if (!assignedMachineId) {
-            return res.status(409).json({ message: machineId
-                ? 'Sàn/khoang rửa xe được chọn đã có lịch đặt hoặc đang bảo trì!'
-                : 'Tất cả các sàn/khoang rửa xe đã đầy, vui lòng chọn khung giờ khác!' });
+            return res.status(409).json({
+                message: machineId
+                    ? 'Sàn/khoang rửa xe được chọn đã có lịch đặt hoặc đang bảo trì!'
+                    : 'Tất cả các sàn/khoang rửa xe đã đầy, vui lòng chọn khung giờ khác!'
+            });
         }
 
+        //Chặn spam booking
         const pendingCheck = await pool.request()
             .input('customerId', sql.Int, CustomerID)
             .query('SELECT COUNT(*) AS PendingCount FROM BOOKING WHERE CustomerID = @customerId AND Status IN (1, 2)');
         if (pendingCheck.recordset[0].PendingCount >= 2)
             return res.status(400).json({ message: 'Bạn đã có 2 lịch đặt xe đang chờ xử lý. Vui lòng hoàn tất hoặc hủy lịch cũ trước!' });
 
+        //Chặn trùng lặp khung giờ
         const clashCheck = await pool.request()
             .input('customerId', sql.Int, CustomerID)
             .input('bookingDate', sql.DateTime, scheduledDate)
@@ -306,13 +330,26 @@ router.post('/', async (req, res) => {
                 .input('MachineID', sql.Int, assignedMachineId)
                 .query(`INSERT INTO BOOKING_DETAIL (BookingID, ServiceID, MachineID) VALUES (@BookingID, @ServiceID, @MachineID)`);
         }
+
+        // Bắn thông báo xác nhận đặt lịch
+        const userRes = await pool.request().input('uid', sql.Int, CustomerID).query('SELECT Email FROM [USER] WHERE UserID = @uid');
+        const userEmail = userRes.recordset[0]?.Email;
+        createAndSendNotification({
+            userId: CustomerID,
+            bookingId: newBookingID,
+            title: 'Xác nhận đặt lịch thành công!',
+            message: `Lịch đặt rửa xe của bạn (Mã BK-${newBookingID}) vào lúc ${scheduledDate.toLocaleString('vi-VN')} đã được ghi nhận thành công.`,
+            type: 'CONFIRMATION',
+            userEmail: userEmail
+        });
+
         res.status(201).json({ message: 'Tạo booking thành công', BookingID: newBookingID, MachineID: assignedMachineId });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 });
 
-// ── POST /:id/transition — FSM cập nhật trạng thái ───────────────────────────
+// ── POST /:id/transition — Chặn giá trị trạng thái không nằm trong khoảng [1 - 5] ───────────────────────────
 router.post('/:id/transition', async (req, res) => {
     try {
         const { id } = req.params;

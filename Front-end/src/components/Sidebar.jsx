@@ -40,39 +40,39 @@ export default function Sidebar() {
 
   if (role === "admin") {
     menuItems.push(
-      { path: "/admin/dashboard",  label: "Trang chủ",   icon: "fa-solid fa-chart-line" },
-      // Trọng thêm mới: menu Thống kê Analytics dẫn đến trang /admin/analytics
-      { path: "/admin/analytics",  label: "Thống kê",     icon: "fa-solid fa-chart-pie" },
-      { path: "/timeslots",         label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
-      { path: "/admin/members",     label: "Khách hàng",   icon: "fa-solid fa-users" },
-      { path: "/admin/accounts",    label: "Tài khoản",    icon: "fa-solid fa-user-shield" },
-      { path: "/admin/machines",    label: "Máy móc",      icon: "fa-solid fa-gears" },
-      { path: "/admin/promotions",  label: "Khuyến mãi",   icon: "fa-solid fa-tags" },
-      { path: "/admin/feedbacks",   label: "Đánh giá",     icon: "fa-solid fa-star" },
+      { path: "/admin/dashboard", label: "Trang chủ", icon: "fa-solid fa-chart-line" },
+      // menu Thống kê Analytics dẫn đến trang /admin/analytics
+      { path: "/admin/analytics", label: "Thống kê", icon: "fa-solid fa-chart-pie" },
+      { path: "/timeslots", label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
+      { path: "/admin/members", label: "Khách hàng", icon: "fa-solid fa-users" },
+      { path: "/admin/accounts", label: "Tài khoản", icon: "fa-solid fa-user-shield" },
+      { path: "/admin/machines", label: "Máy móc", icon: "fa-solid fa-gears" },
+      { path: "/admin/promotions", label: "Khuyến mãi", icon: "fa-solid fa-tags" },
+      { path: "/admin/feedbacks", label: "Đánh giá", icon: "fa-solid fa-star" },
     );
   } else if (role === "staff") {
     menuItems.push(
-      { path: "/staff/dashboard",   label: "Trang chủ",   icon: "fa-solid fa-chart-line" },
-      { path: "/staff/timeslots",   label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
-      { path: "/staff/members",     label: "Khách hàng",   icon: "fa-solid fa-users" },
-      { path: "/staff/machines",    label: "Máy móc",      icon: "fa-solid fa-gears" },
-      { path: "/staff/promotions",  label: "Khuyến mãi",   icon: "fa-solid fa-tags" },
-      { path: "/staff/feedbacks",   label: "Đánh giá",     icon: "fa-solid fa-star" },
+      { path: "/staff/dashboard", label: "Trang chủ", icon: "fa-solid fa-chart-line" },
+      { path: "/staff/timeslots", label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
+      { path: "/staff/members", label: "Khách hàng", icon: "fa-solid fa-users" },
+      { path: "/staff/machines", label: "Máy móc", icon: "fa-solid fa-gears" },
+      { path: "/staff/promotions", label: "Khuyến mãi", icon: "fa-solid fa-tags" },
+      { path: "/staff/feedbacks", label: "Đánh giá", icon: "fa-solid fa-star" },
     );
   } else {
     menuItems.push(
-      { path: "/dashboard",         label: "Trang chủ",       icon: "fa-solid fa-chart-line" },
-      { path: "/booking",           label: "Đặt lịch",        icon: "fa-regular fa-calendar-check" },
-      { path: "/vehicles",          label: "Xe của tôi",       icon: "fa-solid fa-car" },
+      { path: "/dashboard", label: "Trang chủ", icon: "fa-solid fa-chart-line" },
+      { path: "/booking", label: "Đặt lịch", icon: "fa-regular fa-calendar-check" },
+      { path: "/vehicles", label: "Xe của tôi", icon: "fa-solid fa-car" },
       { path: "/reward-redemption", label: "Đổi điểm thưởng", icon: "fa-solid fa-gift" },
-      { path: "/loyalty",           label: "Hạng & Lịch sử điểm", icon: "fa-solid fa-award" },
+      { path: "/loyalty", label: "Hạng & Lịch sử điểm", icon: "fa-solid fa-award" },
     );
   }
 
   // Hồ sơ và Cài đặt — tất cả role đều có
   menuItems.push(
-    { path: "/profile",  label: "Hồ sơ cá nhân", icon: "fa-solid fa-user-gear" },
-    { path: "/settings", label: "Cài đặt",         icon: "fa-solid fa-gear" },
+    { path: "/profile", label: "Hồ sơ cá nhân", icon: "fa-solid fa-user-gear" },
+    { path: "/settings", label: "Cài đặt", icon: "fa-solid fa-gear" },
   );
 
   return (
