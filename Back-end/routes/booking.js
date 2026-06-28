@@ -1,4 +1,4 @@
-// Back-end/routes/booking.js
+
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
@@ -81,7 +81,6 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
             WHERE BookingID = @bookingId
         `);
 
-    //Cập nhật trạng thái máy
     const detailRes = await pool.request()
         .input('bookingId', sql.Int, bookingId)
         .query('SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId');
@@ -97,10 +96,9 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
         }
     }
 
-    //Trigger tích điểm & Tính toán Loyalty
     if (statusInt === 4) {
         const finalPrice = Number(booking.FinalPrice || booking.TotalPrice || 0);
-        const points = Math.floor(finalPrice / 10000); //tương ứng tỉ lệ 10.000đ = 1 điểm
+        const points = Math.floor(finalPrice / 10000);
 
         if (points > 0) {
             const txCheck = await pool.request()
@@ -153,7 +151,6 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
                     .input('tierId', sql.Int, newTierId)
                     .query('UPDATE MEMBER_PROFILE SET TierID = @tierId WHERE UserID = @userId');
 
-                // Bắn thông báo tích điểm
                 const userRes = await pool.request().input('uid', sql.Int, customerId).query('SELECT Email FROM [USER] WHERE UserID = @uid');
                 const userEmail = userRes.recordset[0]?.Email;
                 createAndSendNotification({
@@ -200,22 +197,19 @@ function adminAuth(req, res, next) {
     }
 }
 
-// ── GET / — Danh sách booking(Hỗ trợ Tìm kiếm & Lọc đa điều kiện) ─────────────
+// ── GET / ─────────────────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
     try {
         const pool = await poolPromise;
         const token = req.headers.authorization?.split(' ')[1];
         let customerId = req.query.customerId;
-        // 1. Giải mã token nếu có (để xác định nếu là Khách hàng đăng nhập)
         if (token && token !== 'mock-token' && token !== 'null' && token !== 'undefined') {
             try {
                 const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey_placeholder');
                 if (decoded && decoded.role === 'user') customerId = decoded.userId;
             } catch (err) { }
         }
-        // 2. Lấy tất cả các tham số lọc từ URL (Query Parameters)
         const { keyword, status, date, startDate, endDate, paymentStatus } = req.query;
-        // 3. Câu lệnh SQL cơ bản
         let query = `
             SELECT b.*, u.FullName AS CustomerName, u.PhoneNumber AS Phone,
                    p.Amount AS PaidAmount, p.PaymentMethod AS PaymentMethod,
@@ -229,53 +223,33 @@ router.get('/', async (req, res) => {
         `;
         const request = pool.request();
         const conditions = [];
-        // --- NỐI ĐIỀU KIỆN LỌC ĐỘNG (DYNAMIC WHERE) ---
-        // A. Lọc theo CustomerID (Nếu là khách hàng xem lịch sử của mình)
+
         if (customerId) {
             conditions.push(`b.CustomerID = @customerId`);
             request.input('customerId', sql.Int, customerId);
+            // ✅ Ẩn booking đã bị khách hide (soft delete)
+            conditions.push(`(b.IsHiddenByUser IS NULL OR b.IsHiddenByUser = 0)`);
         } else {
-            // Mặc định ẩn các đơn nháp (Status = 1) nếu không lọc cụ thể
-            if (!status) {
-                conditions.push(`b.Status != 1`);
-            }
+            if (!status) conditions.push(`b.Status != 1`);
         }
-        // B. Lọc theo Keyword (Mã đơn, Tên khách, SĐT, Biển số xe)
+
         if (keyword && keyword.trim() !== '') {
-            conditions.push(`(
-                u.FullName LIKE @keyword OR 
-                u.PhoneNumber LIKE @keyword OR 
-                b.LicensePlate LIKE @keyword OR 
-                CAST(b.BookingID AS VARCHAR) LIKE @keyword
-            )`);
+            conditions.push(`(u.FullName LIKE @keyword OR u.PhoneNumber LIKE @keyword OR b.LicensePlate LIKE @keyword OR CAST(b.BookingID AS VARCHAR) LIKE @keyword)`);
             request.input('keyword', sql.NVarChar, `%${keyword.trim()}%`);
         }
-        // C. Lọc theo Trạng thái Booking (Status: 1, 2, 3, 4, 5)
-        if (status) {
-            conditions.push(`b.Status = @status`);
-            request.input('status', sql.TinyInt, status);
-        }
-        // D. Lọc theo Ngày cụ thể hoặc Khoảng ngày (Date Filtering)
-        if (date) {
-            conditions.push(`CAST(b.BookingDate AS DATE) = @date`);
-            request.input('date', sql.Date, date);
-        } else if (startDate && endDate) {
+        if (status) { conditions.push(`b.Status = @status`); request.input('status', sql.TinyInt, status); }
+        if (date) { conditions.push(`CAST(b.BookingDate AS DATE) = @date`); request.input('date', sql.Date, date); }
+        else if (startDate && endDate) {
             conditions.push(`CAST(b.BookingDate AS DATE) BETWEEN @startDate AND @endDate`);
             request.input('startDate', sql.Date, startDate);
             request.input('endDate', sql.Date, endDate);
         }
-        // E. Lọc theo Trạng thái Thanh toán (Payment Status)
-        if (paymentStatus === 'paid') {
-            conditions.push(`p.Amount IS NOT NULL AND p.Amount > 0`);
-        } else if (paymentStatus === 'unpaid') {
-            conditions.push(`(p.Amount IS NULL OR p.Amount = 0)`);
-        }
-        // Gộp tất cả điều kiện vào câu lệnh SQL
-        if (conditions.length > 0) {
-            query += ` WHERE ` + conditions.join(' AND ');
-        }
-        // Sắp xếp đơn mới nhất lên đầu
+        if (paymentStatus === 'paid') conditions.push(`p.Amount IS NOT NULL AND p.Amount > 0`);
+        else if (paymentStatus === 'unpaid') conditions.push(`(p.Amount IS NULL OR p.Amount = 0)`);
+
+        if (conditions.length > 0) query += ` WHERE ` + conditions.join(' AND ');
         query += ` ORDER BY b.BookingDate DESC`;
+
         const result = await request.query(query);
         res.json(result.recordset);
     } catch (err) {
@@ -284,7 +258,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// ── GET /:id — Chi tiết booking ───────────────────────────────────────────────
+// ── GET /:id ──────────────────────────────────────────────────────────────────
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -307,24 +281,19 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// ── POST / — Tạo booking mới ──────────────────────────────────────────────────
+// ── POST / ────────────────────────────────────────────────────────────────────
 router.post('/', async (req, res) => {
     try {
         const { CustomerID, BookingDate, VehicleType, LicensePlate, TotalPrice, FinalPrice, Status, ServiceIDs } = req.body;
         const machineId = req.body.MachineID || req.body.machineId || null;
 
-        //Kiểm tra các trường bắt buộc và mảng dịch vụ
         if (!CustomerID || !BookingDate || !VehicleType || !LicensePlate || !ServiceIDs || !Array.isArray(ServiceIDs) || ServiceIDs.length === 0)
             return res.status(400).json({ message: 'Thiếu thông tin đặt lịch hoặc gói dịch vụ không hợp lệ!' });
 
-        //Kiểm tra định dạng ngày giờ đặt lịch:
         const scheduledDate = new Date(BookingDate);
         if (isNaN(scheduledDate.getTime())) return res.status(400).json({ message: 'Thời gian đặt lịch không hợp lệ!' });
-
-        //Chặn thời gian đặt lịch trong quá khứ:
         if (scheduledDate < new Date()) return res.status(400).json({ message: 'Thời gian đặt lịch không được ở trong quá khứ!' });
 
-        //ktra máy
         const pool = await poolPromise;
         const assignedMachineId = await getAvailableMachineForBooking(pool, scheduledDate, VehicleType, machineId);
         if (!assignedMachineId) {
@@ -335,14 +304,12 @@ router.post('/', async (req, res) => {
             });
         }
 
-        //Chặn spam booking
         const pendingCheck = await pool.request()
             .input('customerId', sql.Int, CustomerID)
             .query('SELECT COUNT(*) AS PendingCount FROM BOOKING WHERE CustomerID = @customerId AND Status IN (1, 2)');
         if (pendingCheck.recordset[0].PendingCount >= 2)
             return res.status(400).json({ message: 'Bạn đã có 2 lịch đặt xe đang chờ xử lý. Vui lòng hoàn tất hoặc hủy lịch cũ trước!' });
 
-        //Chặn trùng lặp khung giờ
         const clashCheck = await pool.request()
             .input('customerId', sql.Int, CustomerID)
             .input('bookingDate', sql.DateTime, scheduledDate)
@@ -373,7 +340,6 @@ router.post('/', async (req, res) => {
                 .query(`INSERT INTO BOOKING_DETAIL (BookingID, ServiceID, MachineID) VALUES (@BookingID, @ServiceID, @MachineID)`);
         }
 
-        // Bắn thông báo xác nhận đặt lịch
         const userRes = await pool.request().input('uid', sql.Int, CustomerID).query('SELECT Email FROM [USER] WHERE UserID = @uid');
         const userEmail = userRes.recordset[0]?.Email;
         createAndSendNotification({
@@ -391,7 +357,7 @@ router.post('/', async (req, res) => {
     }
 });
 
-// ── POST /:id/transition — Chặn giá trị trạng thái không nằm trong khoảng [1 - 5] ───────────────────────────
+// ── POST /:id/transition ──────────────────────────────────────────────────────
 router.post('/:id/transition', async (req, res) => {
     try {
         const { id } = req.params;
@@ -409,7 +375,7 @@ router.post('/:id/transition', async (req, res) => {
     }
 });
 
-// ── GET /customer/:customerId — Lịch sử booking của khách ────────────────────
+// ── GET /customer/:customerId ─────────────────────────────────────────────────
 router.get('/customer/:customerId', async (req, res) => {
     try {
         const { customerId } = req.params;
@@ -424,6 +390,7 @@ router.get('/customer/:customerId', async (req, res) => {
                 FROM BOOKING b
                 LEFT JOIN [USER] u ON b.CustomerID = u.UserID
                 WHERE b.CustomerID = @customerId
+                AND (b.IsHiddenByUser IS NULL OR b.IsHiddenByUser = 0)
                 ORDER BY b.BookingDate DESC
             `);
         res.json(result.recordset);
@@ -432,7 +399,8 @@ router.get('/customer/:customerId', async (req, res) => {
     }
 });
 
-// ── DELETE /:id — Khách xóa booking khỏi lịch sử (xóa thật) ─────────────────
+// ── DELETE /:id — SOFT DELETE (ẩn khỏi lịch sử, giữ lại trong DB) ────────────
+// ✅ Không xóa thật để cancelCount vẫn đếm đúng số lần hủy
 router.delete('/:id', async (req, res) => {
     try {
         const bookingId = parseInt(req.params.id, 10);
@@ -458,30 +426,18 @@ router.delete('/:id', async (req, res) => {
             return res.status(404).json({ message: 'Không tìm thấy lịch đặt xe' });
 
         const booking = checkResult.recordset[0];
-
         if (userId && booking.CustomerID !== userId)
             return res.status(403).json({ message: 'Bạn không có quyền xóa lịch đặt xe này' });
-
         if (booking.Status !== 4 && booking.Status !== 5)
             return res.status(400).json({ message: 'Chỉ có thể xóa lịch đặt xe đã hoàn thành hoặc đã hủy' });
 
-        // ── Xóa thật khỏi DB theo đúng thứ tự FK ────────────────────────────
-        const transaction = new sql.Transaction(pool);
-        await transaction.begin();
-        try {
-            const r = new sql.Request(transaction);
-            r.input('id', sql.Int, bookingId);
-            await r.query("DELETE FROM FEEDBACK WHERE BookingID = @id");
-            await r.query("DELETE FROM LOYALTY_TRANSACTION WHERE BookingID = @id");
-            await r.query("DELETE FROM PAYMENT WHERE BookingID = @id");
-            await r.query("DELETE FROM BOOKING_DETAIL WHERE BookingID = @id");
-            await r.query("DELETE FROM BOOKING WHERE BookingID = @id");
-            await transaction.commit();
-            res.json({ message: 'Xóa lịch đặt khỏi lịch sử thành công' });
-        } catch (innerErr) {
-            await transaction.rollback();
-            throw innerErr;
-        }
+        // ✅ Soft delete — ẩn khỏi lịch sử khách nhưng GIỮ LẠI trong DB
+        // để cancelCount vẫn đếm đúng số lần hủy trong 30 ngày
+        await pool.request()
+            .input('id', sql.Int, bookingId)
+            .query("UPDATE BOOKING SET IsHiddenByUser = 1 WHERE BookingID = @id");
+
+        res.json({ message: 'Xóa lịch đặt khỏi lịch sử thành công' });
     } catch (err) {
         console.error("DELETE /api/bookings/:id error:", err);
         res.status(500).json({ message: err.message });
@@ -561,7 +517,6 @@ router.post('/:id/apply-voucher', async (req, res) => {
 });
 
 // ── ADMIN ROUTES ──────────────────────────────────────────────────────────────
-
 router.get('/admin/all', adminAuth, async (req, res) => {
     try {
         const pool = await poolPromise;

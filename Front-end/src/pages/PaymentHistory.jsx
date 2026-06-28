@@ -1,6 +1,6 @@
 // Front-end/src/pages/PaymentHistory.jsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import "./Payment.css";
 import Sidebar from "../components/Sidebar";
@@ -11,6 +11,7 @@ const METHOD_LABEL = { cash: "💰 Đặt cọc", vnpay: "🏦 VNPay", "Tiền m
 
 export default function PaymentHistory() {
   const navigate = useNavigate();
+  const location = useLocation(); // ✅ Dùng để reload khi navigate về trang này
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refundModal, setRefundModal] = useState(null);
@@ -26,7 +27,8 @@ export default function PaymentHistory() {
   const getToken = () =>
     localStorage.getItem("token") || localStorage.getItem("TOKEN");
 
-  useEffect(() => { fetchHistory(); }, []);
+  // ✅ Reload mỗi khi navigate vào trang này (kể cả từ UserDashboard sau khi hủy)
+  useEffect(() => { fetchHistory(); }, [location.key]);
 
   const fetchHistory = async () => {
     setLoading(true);
@@ -42,40 +44,10 @@ export default function PaymentHistory() {
     }
   };
 
-  // ── Tính thông tin hoàn tiền trước khi hiện modal ────────────────────────
   const openRefundModal = (payment) => {
-    // Tính giờ còn lại đến BookingDate (nếu có)
-    const cancelCount = history.filter(h => h.BookingStatus === 5).length;
-
-    // Tính % hoàn tiền dựa vào số lần hủy
-    // (không có BookingDate trong history nên dùng cancelCount để cảnh báo)
-    let refundPercent = 0;
-    let warning = "";
-    let nextCancelInfo = null;
-    const originalAmount = payment.Amount || 0;
-
-    if (cancelCount >= 4) {
-      refundPercent = 0;
-      warning = "❌ Bạn đã hủy quá nhiều lần trong 30 ngày. Không được hoàn tiền.";
-    } else if (cancelCount === 3) {
-      refundPercent = 50;
-      warning = `🚨 Đây là lần hủy thứ ${cancelCount + 1} trong 30 ngày. Chỉ được hoàn 50%.`;
-      nextCancelInfo = "❌ Lần hủy tiếp theo sẽ không được hoàn tiền";
-    } else if (cancelCount === 2) {
-      refundPercent = 100;
-      warning = `⚠️ Lần hủy thứ ${cancelCount + 1} trong 30 ngày. Hoàn 100%. Lần sau chỉ hoàn 50%.`;
-      nextCancelInfo = "⚠️ Còn 1 lần hủy được hoàn tiền trong 30 ngày";
-    } else {
-      refundPercent = 100;
-      warning = `✅ Hoàn 100% số tiền đã thanh toán.`;
-    }
-
-    const refundAmount = Math.round(originalAmount * refundPercent / 100);
-
-    setRefundModal({ payment, refundPercent, refundAmount, originalAmount, warning, nextCancelInfo, cancelCount });
+    setRefundModal({ payment });
   };
 
-  // ── Thực hiện hoàn tiền ───────────────────────────────────────────────────
   const handleRefund = async () => {
     if (!refundModal) return;
     setRefunding(true);
@@ -88,10 +60,10 @@ export default function PaymentHistory() {
       const data = res.data;
       const msg = data.refundAmount > 0
         ? `Hủy thành công! Hoàn tiền ${data.refundAmount.toLocaleString('vi-VN')}đ (${data.refundPercent}%).`
-        : "Hủy thành công! Không có tiền hoàn lại.";
-      showToast(msg, "success");
+        : "Đã hủy thành công! Không có tiền hoàn lại do vi phạm chính sách hủy.";
+      showToast(msg, data.refundAmount > 0 ? "success" : "error");
       setRefundModal(null);
-      fetchHistory();
+      fetchHistory(); // ✅ Reload lại danh sách sau khi hủy
     } catch (err) {
       showToast(err.response?.data?.message || "Hoàn tiền thất bại", "error");
     } finally {
@@ -209,7 +181,7 @@ export default function PaymentHistory() {
           )}
         </div>
 
-        {/* ── Modal hoàn tiền với thông tin đầy đủ ── */}
+        {/* ── Modal xác nhận hoàn tiền ── */}
         {refundModal && (
           <div className="ph-modal-overlay" onClick={() => setRefundModal(null)}>
             <div className="ph-modal" onClick={e => e.stopPropagation()}>
@@ -217,49 +189,54 @@ export default function PaymentHistory() {
 
               <div className="ph-modal-info">
                 <p>{refundModal.payment.ServiceName || "Dịch vụ rửa xe"} · {refundModal.payment.LicensePlate}</p>
+                <p className="ph-modal-amount">{formatPrice(refundModal.payment.Amount)}</p>
               </div>
 
-              {/* Thông tin hoàn tiền */}
+              {/* Bảng hoàn tiền */}
               <div style={{
-                padding: "16px", borderRadius: 12, marginBottom: 16,
-                background: refundModal.refundAmount > 0 ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)",
-                border: `1px solid ${refundModal.refundAmount > 0 ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`,
+                padding: "14px", borderRadius: 10, marginBottom: 16,
+                background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)"
               }}>
-                <p style={{ fontWeight: 700, marginBottom: 10, color: "var(--text-primary)" }}>
-                  {refundModal.warning}
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8, fontWeight: 700 }}>
+                  Quy tắc hoàn tiền:
                 </p>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Số tiền đã trả:</span>
-                  <span style={{ fontWeight: 700 }}>{refundModal.originalAmount.toLocaleString('vi-VN')}đ</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Tỷ lệ hoàn:</span>
-                  <span style={{ fontWeight: 700, color: refundModal.refundPercent > 0 ? "#10b981" : "#ef4444" }}>
-                    {refundModal.refundPercent}%
-                  </span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-                  <span style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 700 }}>Số tiền hoàn lại:</span>
-                  <span style={{ fontWeight: 800, fontSize: 16, color: refundModal.refundAmount > 0 ? "#10b981" : "#ef4444" }}>
-                    {refundModal.refundAmount.toLocaleString('vi-VN')}đ
-                  </span>
-                </div>
+                <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ color: "var(--text-secondary)" }}>
+                      <th style={{ textAlign: "left", paddingBottom: 4 }}>Thời gian</th>
+                      <th style={{ textAlign: "center" }}>Lần 1-2</th>
+                      <th style={{ textAlign: "center" }}>Lần 3</th>
+                      <th style={{ textAlign: "center" }}>Lần 4+</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Trước 24h</td>
+                      <td style={{ textAlign: "center", color: "#10b981", fontWeight: 700 }}>100%</td>
+                      <td style={{ textAlign: "center", color: "#f59e0b", fontWeight: 700 }}>50%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>2 - 24h</td>
+                      <td style={{ textAlign: "center", color: "#f59e0b", fontWeight: 700 }}>50%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Dưới 2h</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 8 }}>
+                  * Đếm số lần hủy trong 30 ngày gần nhất
+                </p>
               </div>
-
-              {/* Cảnh báo lần tiếp theo */}
-              {refundModal.nextCancelInfo && (
-                <div style={{
-                  padding: "10px 14px", borderRadius: 10, marginBottom: 16,
-                  background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)"
-                }}>
-                  <span style={{ color: "#f59e0b", fontSize: 13, fontWeight: 600 }}>
-                    {refundModal.nextCancelInfo}
-                  </span>
-                </div>
-              )}
 
               <div className="ph-modal-note">
-                ⚠️ Booking sẽ bị huỷ sau khi hoàn tiền. Hành động này không thể hoàn tác.
+                ⚠️ Số tiền hoàn lại sẽ được tính chính xác dựa vào thời gian còn lại và số lần hủy của bạn. Booking sẽ bị huỷ sau khi xác nhận.
               </div>
 
               <div className="ph-modal-actions">

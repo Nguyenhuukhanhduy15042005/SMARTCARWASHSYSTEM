@@ -23,11 +23,8 @@ export default function UserDashboard() {
   const [feedbackBooking, setFeedbackBooking] = useState(null);
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackComment, setFeedbackComment] = useState("");
-
-  // ── THÊM MỚI: State cho popup xác nhận hủy ────────────────────────────────
   const [cancelConfirm, setCancelConfirm] = useState(null);
-  // cancelConfirm = { bookingId, paymentId, warning, refundPercent, refundAmount, originalAmount }
-  // ─────────────────────────────────────────────────────────────────────────────
+  // cancelConfirm = { bookingId, paymentId, originalAmount }
 
   const getCustomerId = () => {
     const token = localStorage.getItem("token");
@@ -45,12 +42,10 @@ export default function UserDashboard() {
     linkFont.href = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap";
     linkFont.rel = "stylesheet";
     document.head.appendChild(linkFont);
-
     const linkIcons = document.createElement("link");
     linkIcons.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
     linkIcons.rel = "stylesheet";
     document.head.appendChild(linkIcons);
-
     fetchData();
   }, []);
 
@@ -64,7 +59,6 @@ export default function UserDashboard() {
     const userId = getCustomerId();
     const token = localStorage.getItem("token") || "mock-token";
     const headers = { Authorization: `Bearer ${token}` };
-
     try {
       const profileRes = await axios.get(`${API_BASE}/users/profile?userId=${userId}`, { headers });
       const rawProfile = profileRes.data;
@@ -99,8 +93,7 @@ export default function UserDashboard() {
           licensePlate: b.licensePlate || b.LicensePlate,
           price: b.price !== undefined ? b.price : (b.FinalPrice || b.TotalPrice || 0),
           status: b.status !== undefined ? b.status : b.Status,
-          date: dateStr,
-          time: timeStr,
+          date: dateStr, time: timeStr,
           servicePackage: b.servicePackage || b.ServiceName || "N/A",
           isHiddenByUser: b.IsHiddenByUser === true || b.IsHiddenByUser === 1 || b.isHiddenByUser === true
         };
@@ -114,26 +107,26 @@ export default function UserDashboard() {
         setPaidBookingMethods(new Map(paymentsData.map(p => [p.BookingID, p.Method])));
       } catch (e) {}
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message;
-      showToast(`Không thể kết nối CSDL: ${errMsg}. Vui lòng chạy Server!`, "error");
+      showToast(`Không thể kết nối CSDL: ${err.response?.data?.message || err.message}`, "error");
     } finally {
       setLoading(false);
     }
   };
 
-  // ── THÊM MỚI: Bước 1 — Bấm hủy → kiểm tra thông tin hoàn tiền trước ───────
+  // ── Bước 1: Bấm hủy → hiện popup xác nhận đơn giản với bảng quy tắc ──────
+  // KHÔNG tính cancelCount ở frontend vì sẽ sai (booking ẩn không được đếm)
+  // Để backend tính chính xác khi bấm "Xác nhận hủy"
   const handleCancelBooking = async (bookingId) => {
     const token = localStorage.getItem("token") || "mock-token";
     const headers = { Authorization: `Bearer ${token}` };
 
-    // Lấy PaymentID của booking này
     try {
       const paymentsRes = await axios.get(`${API_BASE}/payments/history?limit=100`, { headers });
       const paymentsData = paymentsRes.data?.data || [];
       const payment = paymentsData.find(p => p.BookingID === bookingId);
 
       if (!payment) {
-        // Booking chưa thanh toán (Status=1 chưa cọc) → hủy trực tiếp không cần hoàn tiền
+        // Chưa thanh toán → hủy trực tiếp
         if (window.confirm("Bạn có chắc chắn muốn hủy đặt lịch này không?")) {
           await axios.post(`${API_BASE}/bookings/${bookingId}/transition`, { nextStatus: 5 }, { headers });
           showToast("Đã hủy lịch đặt xe thành công!", "success");
@@ -142,70 +135,18 @@ export default function UserDashboard() {
         return;
       }
 
-      // Có payment → gọi API kiểm tra thông tin hoàn tiền
-      // Dùng GET trước để xem thông tin, chưa thực hiện hủy
-      const booking = bookings.find(b => b.id === bookingId);
-      const bookingDate = booking ? new Date(`${booking.date}T${booking.time}`) : new Date();
-      const now = new Date();
-      const hoursLeft = Math.max(0, (bookingDate - now) / (1000 * 60 * 60));
-
-      // Tính cancelCount từ bookings đã có
-      const cancelCount = bookings.filter(b => b.status === 5).length;
-
-      // Tính % hoàn tiền
-      let refundPercent = 0;
-      if (hoursLeft >= 24) {
-        refundPercent = cancelCount >= 4 ? 0 : cancelCount === 3 ? 50 : 100;
-      } else if (hoursLeft >= 2) {
-        refundPercent = cancelCount >= 3 ? 0 : 50;
-      } else {
-        refundPercent = 0;
-      }
-
-      const originalAmount = payment.Amount || 0;
-      const refundAmount = Math.round(originalAmount * refundPercent / 100);
-
-      // Tạo warning message
-      let warning = "";
-      if (hoursLeft < 2) {
-        warning = "⚠️ Bạn đang hủy trong vòng 2 tiếng trước giờ rửa xe. Bạn sẽ không được hoàn tiền.";
-      } else if (cancelCount >= 4) {
-        warning = "❌ Bạn đã hủy quá nhiều lần trong 30 ngày qua. Không được hoàn tiền.";
-      } else if (cancelCount === 3) {
-        warning = hoursLeft >= 24
-          ? `🚨 Đây là lần hủy thứ ${cancelCount + 1} trong 30 ngày. Chỉ được hoàn 50% = ${refundAmount.toLocaleString('vi-VN')}đ.`
-          : `🚨 Hủy trong 2-24 tiếng và đây là lần thứ ${cancelCount + 1}. Không được hoàn tiền.`;
-      } else if (cancelCount === 2) {
-        warning = hoursLeft >= 24
-          ? `⚠️ Lần hủy thứ ${cancelCount + 1} trong 30 ngày. Hoàn 100% = ${refundAmount.toLocaleString('vi-VN')}đ. Lần sau chỉ hoàn 50%.`
-          : `⚠️ Hủy trong 2-24 tiếng (lần ${cancelCount + 1}). Chỉ hoàn 50% = ${refundAmount.toLocaleString('vi-VN')}đ.`;
-      } else {
-        warning = hoursLeft >= 24
-          ? `✅ Được hoàn 100% = ${refundAmount.toLocaleString('vi-VN')}đ.`
-          : `⚠️ Hủy trong 2-24 tiếng. Chỉ hoàn 50% = ${refundAmount.toLocaleString('vi-VN')}đ.`;
-      }
-
-      // Hiển thị popup xác nhận
+      // Có payment → hiện popup với bảng quy tắc, để backend tính % khi xác nhận
       setCancelConfirm({
         bookingId,
         paymentId: payment.PaymentID,
-        warning,
-        refundPercent,
-        refundAmount,
-        originalAmount,
-        cancelCount,
-        nextCancelInfo: cancelCount + 1 >= 4
-          ? "❌ Lần hủy tiếp theo sẽ không được hoàn tiền"
-          : cancelCount + 1 === 3
-            ? "⚠️ Còn 1 lần hủy được hoàn tiền trong 30 ngày"
-            : null
+        originalAmount: payment.Amount || 0,
       });
     } catch (err) {
-      showToast("Không thể kiểm tra thông tin hoàn tiền!", "error");
+      showToast("Không thể kiểm tra thông tin hủy!", "error");
     }
   };
 
-  // ── THÊM MỚI: Bước 2 — Khách xác nhận → thực hiện hủy + hoàn tiền ─────────
+  // ── Bước 2: Xác nhận → gọi refund API → backend tính % chính xác ──────────
   const handleConfirmCancel = async () => {
     if (!cancelConfirm) return;
     const token = localStorage.getItem("token") || "mock-token";
@@ -213,30 +154,25 @@ export default function UserDashboard() {
 
     try {
       if (cancelConfirm.paymentId) {
-        // Có payment → gọi refund API
-        await axios.post(`${API_BASE}/payments/${cancelConfirm.paymentId}/refund`, {}, { headers });
-        const msg = cancelConfirm.refundAmount > 0
-          ? `Đã hủy thành công! Hoàn tiền ${cancelConfirm.refundAmount.toLocaleString('vi-VN')}đ (${cancelConfirm.refundPercent}%).`
-          : "Đã hủy thành công! Không có tiền hoàn lại.";
-        showToast(msg, "success");
+        const res = await axios.post(`${API_BASE}/payments/${cancelConfirm.paymentId}/refund`, {}, { headers });
+        const data = res.data;
+        const msg = data.refundAmount > 0
+          ? `Đã hủy thành công! Hoàn tiền ${data.refundAmount.toLocaleString('vi-VN')}đ (${data.refundPercent}%).`
+          : "Đã hủy thành công! Không có tiền hoàn lại do vi phạm chính sách hủy.";
+        showToast(msg, data.refundAmount > 0 ? "success" : "error");
       } else {
-        // Không có payment → hủy trực tiếp
         await axios.post(`${API_BASE}/bookings/${cancelConfirm.bookingId}/transition`, { nextStatus: 5 }, { headers });
         showToast("Đã hủy lịch đặt xe thành công!", "success");
       }
 
       setCancelConfirm(null);
-      if (selectedBooking && selectedBooking.id === cancelConfirm.bookingId) {
-        setSelectedBooking(null);
-      }
+      if (selectedBooking && selectedBooking.id === cancelConfirm.bookingId) setSelectedBooking(null);
       fetchData();
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message;
-      showToast(`Không thể hủy: ${errMsg}`, "error");
+      showToast(`Không thể hủy: ${err.response?.data?.message || err.message}`, "error");
       setCancelConfirm(null);
     }
   };
-  // ─────────────────────────────────────────────────────────────────────────────
 
   const handleDeleteBooking = async (id) => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa vĩnh viễn lịch đặt xe này khỏi lịch sử không?")) return;
@@ -248,8 +184,7 @@ export default function UserDashboard() {
       if (selectedBooking && selectedBooking.id === id) setSelectedBooking(null);
       fetchData();
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message;
-      showToast(`Không thể xóa: ${errMsg}`, "error");
+      showToast(`Không thể xóa: ${err.response?.data?.message || err.message}`, "error");
     }
   };
 
@@ -261,22 +196,18 @@ export default function UserDashboard() {
     const headers = { Authorization: `Bearer ${token}` };
     try {
       await axios.post(`${API_BASE}/feedbacks`, { bookingId: feedbackBooking.id, rating: feedbackRating, comment: feedbackComment.trim() }, { headers });
-      showToast("Gửi đánh giá thành công! Cảm ơn bạn đã phản hồi.", "success");
-      setFeedbackBooking(null);
-      setFeedbackRating(5);
-      setFeedbackComment("");
+      showToast("Gửi đánh giá thành công!", "success");
+      setFeedbackBooking(null); setFeedbackRating(5); setFeedbackComment("");
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message;
-      showToast(`Không thể gửi đánh giá: ${errMsg}`, "error");
+      showToast(`Không thể gửi đánh giá: ${err.response?.data?.message || err.message}`, "error");
     }
   };
 
   const getStatusPill = (status, bookingId) => {
     if (status === 2 && paidBookingIds.has(bookingId)) {
-      if (paidBookingMethods.get(bookingId) === "cash") {
+      if (paidBookingMethods.get(bookingId) === "cash")
         return <span className="status-pill status-deposit" style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)" }}><i className="fa-solid fa-coins"></i> Đã đặt cọc</span>;
-      }
-      return <span className="status-pill status-paid" style={{ background: "rgba(168, 85, 247, 0.15)", color: "#c084fc", border: "1px solid rgba(168, 85, 247, 0.3)" }}><i className="fa-solid fa-circle-check"></i> Đã thanh toán</span>;
+      return <span className="status-pill status-paid" style={{ background: "rgba(168,85,247,0.15)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.3)" }}><i className="fa-solid fa-circle-check"></i> Đã thanh toán</span>;
     }
     switch (status) {
       case 1: return <span className="status-pill status-pending" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}><i className="fa-regular fa-clock"></i> Chờ cọc/thanh toán</span>;
@@ -290,8 +221,7 @@ export default function UserDashboard() {
 
   const getVehicleIcon = (type) => {
     switch (type?.toLowerCase()) {
-      case "xe máy": case "motorcycle": case "bike": case "moto":
-        return <i className="fa-solid fa-motorcycle"></i>;
+      case "xe máy": case "motorcycle": case "bike": case "moto": return <i className="fa-solid fa-motorcycle"></i>;
       default: return <i className="fa-solid fa-car"></i>;
     }
   };
@@ -355,10 +285,7 @@ export default function UserDashboard() {
               </div>
             </div>
             <div className="card-bottom">
-              <div className="member-info">
-                <h4>{profile.FullName}</h4>
-                <p>ID tài khoản: #{profile.UserID}</p>
-              </div>
+              <div className="member-info"><h4>{profile.FullName}</h4><p>ID tài khoản: #{profile.UserID}</p></div>
               <span className="member-tier-badge">{profile.TierName}</span>
             </div>
           </div>
@@ -370,9 +297,7 @@ export default function UserDashboard() {
                 <span>Số điện thoại:</span>
                 <strong>
                   {!profile.PhoneNumber || profile.PhoneNumber.startsWith("G-") ? (
-                    <Link to="/profile" style={{ color: "var(--color-danger)", fontWeight: "bold", textDecoration: "underline" }}>
-                      Cần cập nhật số điện thoại
-                    </Link>
+                    <Link to="/profile" style={{ color: "var(--color-danger)", fontWeight: "bold", textDecoration: "underline" }}>Cần cập nhật số điện thoại</Link>
                   ) : profile.PhoneNumber}
                 </strong>
               </div>
@@ -437,10 +362,7 @@ export default function UserDashboard() {
             <div className="admin-table-wrapper">
               <table className="admin-table">
                 <thead>
-                  <tr>
-                    <th>Mã Đơn</th><th>Biển Số Xe</th><th>Gói Dịch Vụ</th>
-                    <th>Thời Gian</th><th>Chi Phí</th><th>Trạng Thái</th><th>Hành Động</th>
-                  </tr>
+                  <tr><th>Mã Đơn</th><th>Biển Số Xe</th><th>Gói Dịch Vụ</th><th>Thời Gian</th><th>Chi Phí</th><th>Trạng Thái</th><th>Hành Động</th></tr>
                 </thead>
                 <tbody>
                   {filteredBookings.map((b) => (
@@ -506,48 +428,72 @@ export default function UserDashboard() {
         </section>
       </main>
 
-      {/* ── THÊM MỚI: Popup xác nhận hủy + thông tin hoàn tiền ─────────────── */}
+      {/* ── Popup xác nhận hủy — hiện bảng quy tắc, backend tính % chính xác ── */}
       {cancelConfirm && (
         <div className="admin-modal-overlay" onClick={() => setCancelConfirm(null)}>
           <div className="admin-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
             <div className="admin-modal-header">
               <h3>Xác nhận hủy đơn</h3>
-              <button className="close-modal-btn" onClick={() => setCancelConfirm(null)}>
-                <i className="fa-solid fa-xmark"></i>
-              </button>
+              <button className="close-modal-btn" onClick={() => setCancelConfirm(null)}><i className="fa-solid fa-xmark"></i></button>
             </div>
             <div className="admin-modal-body">
 
-              {/* Thông tin hoàn tiền */}
-              <div style={{ padding: "16px", borderRadius: 12, marginBottom: 16,
-                background: cancelConfirm.refundAmount > 0 ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)",
-                border: `1px solid ${cancelConfirm.refundAmount > 0 ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}` }}>
-                <p style={{ color: "var(--text-primary)", fontWeight: 700, marginBottom: 8 }}>
-                  {cancelConfirm.warning}
+              <div style={{ padding: "14px", borderRadius: 10, marginBottom: 16,
+                background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                <p style={{ fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
+                  ⚠️ Số tiền hoàn lại phụ thuộc vào thời gian hủy và số lần hủy trong 30 ngày.
                 </p>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                   <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Số tiền đã trả:</span>
-                  <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{cancelConfirm.originalAmount.toLocaleString('vi-VN')}đ</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-                  <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Tỷ lệ hoàn:</span>
-                  <span style={{ fontWeight: 700, color: cancelConfirm.refundPercent > 0 ? "#10b981" : "#ef4444" }}>{cancelConfirm.refundPercent}%</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-                  <span style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 700 }}>Số tiền hoàn lại:</span>
-                  <span style={{ fontWeight: 800, fontSize: 16, color: cancelConfirm.refundAmount > 0 ? "#10b981" : "#ef4444" }}>
-                    {cancelConfirm.refundAmount.toLocaleString('vi-VN')}đ
-                  </span>
+                  <span style={{ fontWeight: 700 }}>{cancelConfirm.originalAmount.toLocaleString('vi-VN')}đ</span>
                 </div>
               </div>
 
-              {/* Cảnh báo lần hủy tiếp theo */}
-              {cancelConfirm.nextCancelInfo && (
-                <div style={{ padding: "10px 14px", borderRadius: 10, marginBottom: 16,
-                  background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)" }}>
-                  <span style={{ color: "#f59e0b", fontSize: 13, fontWeight: 600 }}>{cancelConfirm.nextCancelInfo}</span>
-                </div>
-              )}
+              {/* Bảng quy tắc hoàn tiền */}
+              <div style={{ padding: "14px", borderRadius: 10, marginBottom: 16,
+                background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)" }}>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8, fontWeight: 700 }}>Quy tắc hoàn tiền:</p>
+                <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ color: "var(--text-secondary)" }}>
+                      <th style={{ textAlign: "left", paddingBottom: 4 }}>Thời gian</th>
+                      <th style={{ textAlign: "center" }}>Lần 1-2</th>
+                      <th style={{ textAlign: "center" }}>Lần 3</th>
+                      <th style={{ textAlign: "center" }}>Lần 4+</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Trước 24h</td>
+                      <td style={{ textAlign: "center", color: "#10b981", fontWeight: 700 }}>100%</td>
+                      <td style={{ textAlign: "center", color: "#f59e0b", fontWeight: 700 }}>50%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>2 - 24h</td>
+                      <td style={{ textAlign: "center", color: "#f59e0b", fontWeight: 700 }}>50%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Dưới 2h</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 8 }}>
+                  * Đếm số lần hủy trong 30 ngày gần nhất
+                </p>
+              </div>
+
+              <div style={{ padding: "10px 14px", borderRadius: 10, marginBottom: 16,
+                background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                <span style={{ color: "#ef4444", fontSize: 13 }}>
+                  ⚠️ Sau khi xác nhận, lịch sẽ bị hủy. Số tiền hoàn (nếu có) sẽ được thông báo ngay.
+                </span>
+              </div>
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button onClick={() => setCancelConfirm(null)}
@@ -566,7 +512,6 @@ export default function UserDashboard() {
           </div>
         </div>
       )}
-      {/* ─────────────────────────────────────────────────────────────────────── */}
 
       {/* Booking Details Modal */}
       {selectedBooking && (
