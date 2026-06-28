@@ -55,10 +55,9 @@ const getRefundPreview = async (req, res) => {
   } catch (err) { res.status(400).json({ message: err.message }); }
 };
 
-//hoàn tiền
 const refundPayment = async (req, res) => {
   try {
-    const result = await service.refundPayment(Number(req.params.id), req.body.reason);
+    const result = await service.refundPayment(Number(req.params.id), req.body.forceCancel === true);
     res.json(result);
   } catch (err) { res.status(400).json({ message: err.message }); }
 };

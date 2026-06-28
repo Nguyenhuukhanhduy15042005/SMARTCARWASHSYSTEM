@@ -317,7 +317,7 @@ const getWarningMessage = (hoursLeft, cancelCount, refundPercent, refundAmount) 
 };
  
 // POST /api/payments/:id/refund
-const refundPayment = async (paymentId) => {
+const refundPayment = async (paymentId, forceCancel = false) => {
   const pool = await poolPromise;
  
   // 1. Lấy thông tin payment + booking
@@ -360,9 +360,8 @@ const refundPayment = async (paymentId) => {
   const refundAmount = Math.round(originalAmount * refundPercent / 100);
   const warning = getWarningMessage(hoursLeftSafe, cancelCount, refundPercent, refundAmount);
  
-  // 6. Nếu hoàn 0% và có tiền → KHÔNG hủy booking, trả về cảnh báo
-  //    Khách vẫn giữ lịch rửa xe
-  if (refundPercent === 0 && originalAmount > 0) {
+  // 6. Nếu hoàn 0% và có tiền → lần đầu trả blocked, lần sau forceCancel thì hủy hẳn
+  if (refundPercent === 0 && originalAmount > 0 && !forceCancel) {
     return {
       paymentId,
       refunded: false,
@@ -371,7 +370,7 @@ const refundPayment = async (paymentId) => {
       refundPercent: 0,
       refundAmount: 0,
       cancelCount: cancelCount + 1,
-      warning: warning + '\n\n📌 Lịch rửa xe của bạn vẫn được giữ nguyên. Nếu muốn hủy và chấp nhận mất tiền, vui lòng liên hệ nhân viên.',
+      warning,
       nextCancelInfo: null
     };
   }

@@ -45,6 +45,16 @@ export default function StaffDashboard() {
       const data = await res.json();
       // Bỏ các lịch đặt chưa cọc/thanh toán (Status = 1)
       const validData = data.filter(b => String(b.Status) !== "1");
+      
+      // Sắp xếp ưu tiên: Đã nhận (2) và Đang rửa (3) lên ĐẦU BẢNG để Nhân viên dễ thao tác, Đã hủy (5) xuống CUỐI
+      const statusPriority = { "2": 1, "3": 2, "4": 3, "5": 4 };
+      validData.sort((a, b) => {
+        const pA = statusPriority[String(a.Status)] || 99;
+        const pB = statusPriority[String(b.Status)] || 99;
+        if (pA !== pB) return pA - pB;
+        return new Date(b.BookingDate) - new Date(a.BookingDate);
+      });
+
       setBookings(validData);
       setFilteredBookings(validData);
       calculateStats(validData);

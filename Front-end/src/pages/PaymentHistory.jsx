@@ -5,7 +5,7 @@ import axios from "axios";
 import "./Payment.css";
 import Sidebar from "../components/Sidebar";
 
-const API_BASE = "/api";
+const API_BASE = "http://localhost:5000/api";
 
 const METHOD_LABEL = {
   cash: "💰 Đặt cọc",
@@ -70,39 +70,30 @@ export default function PaymentHistory() {
     }
   };
 
-  const handleRefund = async () => {
+  const handleRefund = async (forceCancel = false) => {
     if (!refundModal) return;
-    const { preview } = refundModal;
-
-    // Nếu preview cho biết sẽ bị blocked (0% mà có tiền) → hỏi xác nhận thêm
-    if (preview && preview.refundPercent === 0 && preview.originalAmount > 0) {
-      // Vẫn cho gọi API để backend trả về blocked:true và giữ lịch
-    }
 
     setRefunding(true);
     try {
       const res = await axios.post(
         `${API_BASE}/payments/${refundModal.payment.PaymentID}/refund`,
-        {},
+        { forceCancel },
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
       const data = res.data;
 
       if (data.blocked) {
-        // Backend giữ lịch, không hủy — chỉ thông báo
-        showToast(
-          `⚠️ Không đủ điều kiện hoàn tiền. Lịch rửa xe của bạn vẫn được giữ nguyên.`,
-          "error"
-        );
+        // Lần 1: Backend trả blocked → hiện xác nhận lần 2
+        setRefundModal((prev) => ({ ...prev, blocked: true, blockedWarning: data.warning }));
       } else {
         const msg = data.refundAmount > 0
           ? `✅ Hủy thành công! Hoàn ${data.refundPercent}% = ${data.refundAmount.toLocaleString("vi-VN")}đ.`
-          : "✅ Đã hủy thành công.";
+          : "✅ Đã hủy thành công (không hoàn tiền).";
         if (data.nextCancelInfo) showToast(`${msg} ${data.nextCancelInfo}`, "success");
         else showToast(msg, "success");
         fetchHistory();
+        setRefundModal(null);
       }
-      setRefundModal(null);
     } catch (err) {
       showToast(err.response?.data?.message || "Hoàn tiền thất bại", "error");
     } finally {
@@ -305,17 +296,43 @@ export default function PaymentHistory() {
                 </div>
               ) : null}
 
-              <div className="ph-modal-note">
-                ⚠️ Booking sẽ bị huỷ sau khi xác nhận (trừ trường hợp không đủ điều kiện hoàn tiền).
-              </div>
+              {/* Bước xác nhận lần 2: khi blocked (0% hoàn tiền) */}
+              {refundModal.blocked ? (
+                <div style={{
+                  padding: "16px", borderRadius: 12, marginBottom: 16,
+                  background: "rgba(239,68,68,0.1)",
+                  border: "1px solid rgba(239,68,68,0.4)",
+                }}>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: "#ef4444", marginBottom: 8 }}>
+                    ⚠️ Cảnh báo: Không được hoàn tiền!
+                  </p>
+                  <p style={{ fontSize: 13, color: "#f87171", marginBottom: 10, whiteSpace: "pre-line" }}>
+                    {refundModal.blockedWarning}
+                  </p>
+                  <p style={{ fontSize: 13, color: "#fbbf24", fontWeight: 600 }}>
+                    Nếu vẫn tiếp tục hủy, bạn sẽ <strong style={{ color: "#ef4444" }}>mất toàn bộ số tiền đã đặt cọc ({formatPrice(refundModal.preview?.originalAmount || refundModal.payment.Amount)})</strong>.
+                  </p>
+                  <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 8 }}>
+                    Bạn có chắc chắn muốn hủy đơn này không?
+                  </p>
+                </div>
+              ) : (
+                <div className="ph-modal-note">
+                  ⚠️ Booking sẽ bị huỷ sau khi xác nhận.
+                </div>
+              )}
 
               <div className="ph-modal-actions">
                 <button className="ph-modal-cancel" onClick={() => setRefundModal(null)} disabled={refunding}>
-                  Quay lại
+                  {refundModal.blocked ? "Giữ lịch" : "Quay lại"}
                 </button>
-                <button className="ph-modal-confirm" onClick={handleRefund}
-                  disabled={refunding || previewLoading}>
-                  {refunding ? <span className="pay-spinner" /> : "Xác nhận hủy"}
+                <button
+                  className="ph-modal-confirm"
+                  onClick={() => refundModal.blocked ? handleRefund(true) : handleRefund(false)}
+                  disabled={refunding || previewLoading}
+                  style={refundModal.blocked ? { background: "#dc2626" } : {}}
+                >
+                  {refunding ? <span className="pay-spinner" /> : refundModal.blocked ? "🗑️ Đồng ý hủy — Mất tiền cọc" : "Xác nhận hủy"}
                 </button>
               </div>
             </div>

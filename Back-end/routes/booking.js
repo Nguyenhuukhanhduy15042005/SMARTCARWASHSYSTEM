@@ -469,6 +469,7 @@ router.post("/", async (req, res) => {
                     `INSERT INTO BOOKING_DETAIL (BookingID, ServiceID, MachineID) VALUES (@BookingID, @ServiceID, @MachineID)`,
                 );
         }
+
         //Thông báo đặt lịch rửa xe thành công
         const userRes = await pool.request()
             .input("userId", sql.Int, CustomerID)

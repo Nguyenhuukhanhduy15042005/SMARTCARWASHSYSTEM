@@ -5,7 +5,7 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import "./Payment.css";
 
-const API_BASE = "/api";
+const API_BASE = "http://localhost:5000/api";
 
 const PAYMENT_METHODS = [
   { id: "cash",  label: "Tiền mặt", desc: "Thanh toán tại quầy khi đến", icon: "💵" },

@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import NotificationBell from "../components/NotificationBell";
 
-const API_BASE = "/api";
+const API_BASE = "http://localhost:5000/api";
 
 export default function UserDashboard() {
   const navigate = useNavigate();
@@ -148,15 +148,22 @@ export default function UserDashboard() {
   };
 
   // ── Bước 2: Xác nhận → gọi refund API → backend tính % chính xác ──────────
-  const handleConfirmCancel = async () => {
+  const handleConfirmCancel = async (forceCancel = false) => {
     if (!cancelConfirm) return;
     const token = localStorage.getItem("token") || "mock-token";
     const headers = { Authorization: `Bearer ${token}` };
 
     try {
       if (cancelConfirm.paymentId) {
-        const res = await axios.post(`${API_BASE}/payments/${cancelConfirm.paymentId}/refund`, {}, { headers });
+        const res = await axios.post(`${API_BASE}/payments/${cancelConfirm.paymentId}/refund`, { forceCancel }, { headers });
         const data = res.data;
+
+        if (data.blocked) {
+          // Lần 1: Backend trả blocked → chuyển sang xác nhận lần 2
+          setCancelConfirm(prev => ({ ...prev, blocked: true, blockedWarning: data.warning }));
+          return; // Không đóng modal, chờ user xác nhận lần 2
+        }
+
         const msg = data.refundAmount > 0
           ? `Đã hủy thành công! Hoàn tiền ${data.refundAmount.toLocaleString('vi-VN')}đ (${data.refundPercent}%).`
           : "Đã hủy thành công! Không có tiền hoàn lại do vi phạm chính sách hủy.";
@@ -492,24 +499,43 @@ export default function UserDashboard() {
                 </p>
               </div>
 
-              <div style={{ padding: "10px 14px", borderRadius: 10, marginBottom: 16,
-                background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                <span style={{ color: "#ef4444", fontSize: 13 }}>
-                  ⚠️ Sau khi xác nhận, lịch sẽ bị hủy. Số tiền hoàn (nếu có) sẽ được thông báo ngay.
-                </span>
-              </div>
+              {/* Xác nhận lần 2: khi blocked (0% hoàn tiền) */}
+              {cancelConfirm.blocked ? (
+                <div style={{ padding: "16px", borderRadius: 12, marginBottom: 16,
+                  background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.4)" }}>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: "#ef4444", marginBottom: 8 }}>
+                    ⚠️ Cảnh báo: Không được hoàn tiền!
+                  </p>
+                  <p style={{ fontSize: 13, color: "#f87171", marginBottom: 10, whiteSpace: "pre-line" }}>
+                    {cancelConfirm.blockedWarning}
+                  </p>
+                  <p style={{ fontSize: 13, color: "#fbbf24", fontWeight: 600 }}>
+                    Nếu vẫn tiếp tục hủy, bạn sẽ <strong style={{ color: "#ef4444" }}>mất toàn bộ số tiền đã đặt cọc ({cancelConfirm.originalAmount.toLocaleString('vi-VN')}đ)</strong>.
+                  </p>
+                  <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 8 }}>
+                    Bạn có chắc chắn muốn hủy đơn này không?
+                  </p>
+                </div>
+              ) : (
+                <div style={{ padding: "10px 14px", borderRadius: 10, marginBottom: 16,
+                  background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                  <span style={{ color: "#ef4444", fontSize: 13 }}>
+                    ⚠️ Sau khi xác nhận, lịch sẽ bị hủy. Số tiền hoàn (nếu có) sẽ được thông báo ngay.
+                  </span>
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button onClick={() => setCancelConfirm(null)}
                   style={{ padding: "10px 20px", border: "1px solid var(--border)", borderRadius: 10,
                     background: "transparent", color: "var(--text-secondary)", cursor: "pointer", fontWeight: 700 }}>
-                  Quay lại
+                  {cancelConfirm.blocked ? "Giữ lịch" : "Quay lại"}
                 </button>
-                <button onClick={handleConfirmCancel}
+                <button onClick={() => cancelConfirm.blocked ? handleConfirmCancel(true) : handleConfirmCancel(false)}
                   style={{ padding: "10px 20px", border: "none", borderRadius: 10,
-                    background: "#ef4444", color: "#fff", cursor: "pointer", fontWeight: 700 }}>
+                    background: cancelConfirm.blocked ? "#dc2626" : "#ef4444", color: "#fff", cursor: "pointer", fontWeight: 700 }}>
                   <i className="fa-solid fa-ban" style={{ marginRight: 6 }}></i>
-                  Xác nhận hủy
+                  {cancelConfirm.blocked ? "🗑️ Đồng ý hủy — Mất tiền cọc" : "Xác nhận hủy"}
                 </button>
               </div>
             </div>
