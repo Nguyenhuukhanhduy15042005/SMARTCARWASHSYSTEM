@@ -12,9 +12,8 @@ const ROLE_MAP = {
   3: "user",
 };
 
-// ==========================================
 // CẤU HÌNH GỬI MAIL (NODEMAILER)
-// ==========================================
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -26,9 +25,8 @@ const transporter = nodemailer.createTransport({
 // Nơi lưu trữ OTP tạm thời trong RAM (Key: Email, Value: { otp, expiresAt })
 const otpStore = new Map();
 
-// ==========================================
-// 1A. ĐĂNG KÝ BƯỚC 1: KIỂM TRA & GỬI OTP
-// ==========================================
+//ĐĂNG KÝ BƯỚC 1: KIỂM TRA & GỬI OTP
+
 router.post("/register-step1", async (req, res) => {
   const { fullName, phone, email } = req.body;
   if (!fullName || !phone || !email) {
@@ -86,9 +84,8 @@ router.post("/register-step1", async (req, res) => {
   }
 });
 
-// ==========================================
-// 1B. ĐĂNG KÝ BƯỚC 2: XÁC THỰC OTP & LƯU DB
-// ==========================================
+//ĐĂNG KÝ BƯỚC 2: XÁC THỰC OTP & LƯU DB
+
 router.post("/register-step2", async (req, res) => {
   const { fullName, phone, email, password, otp } = req.body;
 
@@ -138,9 +135,8 @@ router.post("/register-step2", async (req, res) => {
   }
 });
 
-// ================================================================
-// 1C. Đăng ký thông thường (Trực tiếp không qua OTP - giữ lại làm fallback)
-// ================================================================
+// Đăng ký thông thường
+
 router.post("/register", async (req, res) => {
   const { fullName, phone, email, password } = req.body;
 
@@ -166,7 +162,7 @@ router.post("/register", async (req, res) => {
         .json({ message: "Email hoặc Số điện thoại đã được sử dụng!" });
     }
 
-    // [FIX] Hash mật khẩu trước khi lưu DB
+    //Hash mật khẩu trước khi lưu DB
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await pool
@@ -185,9 +181,8 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// ================================================================
-// 2. Đăng nhập thông thường
-// ================================================================
+//Đăng nhập thông thường
+
 router.post("/login", async (req, res) => {
   const { account, password } = req.body;
 
@@ -200,7 +195,7 @@ router.post("/login", async (req, res) => {
   try {
     const pool = await poolPromise;
 
-    // [FIX] Chỉ query theo account, KHÔNG so sánh password trong SQL nữa
+    //Chỉ query theo account, KHÔNG so sánh password trong SQL nữa
     const result = await pool.request().input("account", sql.VarChar, account)
       .query(`
         SELECT UserID, FullName, RoleID, Password
@@ -229,7 +224,7 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Sai tài khoản hoặc mật khẩu!" });
     }
 
-    // [FIX] Thêm field "role" (string) vào JWT payload
+    //Thêm field "role" (string) vào JWT payload
     const role = ROLE_MAP[user.RoleID] || "user";
     const token = jwt.sign(
       { userId: user.UserID, roleId: user.RoleID, role: role },
@@ -247,9 +242,8 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ================================================================
 // 3. Đăng nhập bằng Google
-// ================================================================
+
 router.post("/google-login", async (req, res) => {
   const { email, fullName } = req.body;
 
@@ -276,7 +270,7 @@ router.post("/google-login", async (req, res) => {
     } else {
       // Tạo user mới từ Google — dùng phone giả và password giả đã hash
       const dummyPhone = "G-" + Math.floor(10000000 + Math.random() * 90000000);
-      // [FIX] Hash dummyPassword thay vì lưu plaintext
+      //Hash dummyPassword thay vì lưu plaintext
       const dummyPassword = await bcrypt.hash("GOOGLE_LOGIN_" + Date.now(), 10);
 
       const insertResult = await pool
@@ -293,7 +287,7 @@ router.post("/google-login", async (req, res) => {
       user = insertResult.recordset[0];
     }
 
-    // [FIX] Thêm field "role" (string) vào JWT payload
+    //Thêm field "role" (string) vào JWT payload
     const role = ROLE_MAP[user.RoleID] || "user";
     const token = jwt.sign(
       { userId: user.UserID, roleId: user.RoleID, role: role },

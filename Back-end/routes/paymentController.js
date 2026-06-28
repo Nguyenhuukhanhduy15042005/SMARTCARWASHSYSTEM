@@ -31,6 +31,9 @@ const vnpayReturn = async (req, res) => {
     const redirectUrl = isValid
       ? `http://localhost:5173/payments/result?status=success&paymentId=${paymentId}`
       : `http://localhost:5173/payments/result?status=failed&paymentId=${paymentId}`;
+
+    // ✅ Bypass ngrok browser warning page
+    res.setHeader('ngrok-skip-browser-warning', 'true');
     res.redirect(redirectUrl);
   } catch (err) {
     res.redirect('http://localhost:5173/payments/result?status=failed');

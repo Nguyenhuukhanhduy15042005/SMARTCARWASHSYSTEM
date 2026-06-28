@@ -16,8 +16,6 @@ const requireStaff = (req, res, next) => {
 // ================================================================
 // MACHINE APIs
 // ================================================================
-
-// GET /api/machines — Lấy danh sách tất cả máy + lịch bảo trì gần nhất
 // GET /api/machines — Lấy danh sách tất cả máy + lịch bảo trì gần nhất
 router.get("/", verifyToken, requireStaff, async (req, res) => {
   try {
