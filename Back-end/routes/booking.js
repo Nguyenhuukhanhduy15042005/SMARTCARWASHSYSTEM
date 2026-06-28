@@ -202,20 +202,22 @@ function adminAuth(req, res, next) {
     }
 }
 
-// ── GET / — Danh sách booking ─────────────────────────────────────────────────
+// ── GET / — Danh sách booking(Hỗ trợ Tìm kiếm & Lọc đa điều kiện) ─────────────
 router.get('/', async (req, res) => {
     try {
         const pool = await poolPromise;
         const token = req.headers.authorization?.split(' ')[1];
         let customerId = req.query.customerId;
-
+        // 1. Giải mã token nếu có (để xác định nếu là Khách hàng đăng nhập)
         if (token && token !== 'mock-token' && token !== 'null' && token !== 'undefined') {
             try {
                 const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey_placeholder');
                 if (decoded && decoded.role === 'user') customerId = decoded.userId;
             } catch (err) { }
         }
-
+        // 2. Lấy tất cả các tham số lọc từ URL (Query Parameters)
+        const { keyword, status, date, startDate, endDate, paymentStatus } = req.query;
+        // 3. Câu lệnh SQL cơ bản
         let query = `
             SELECT b.*, u.FullName AS CustomerName, u.PhoneNumber AS Phone,
                    p.Amount AS PaidAmount, p.PaymentMethod AS PaymentMethod,
@@ -228,16 +230,58 @@ router.get('/', async (req, res) => {
                        FROM PAYMENT GROUP BY BookingID) p ON b.BookingID = p.BookingID
         `;
         const request = pool.request();
+        const conditions = [];
+        // --- NỐI ĐIỀU KIỆN LỌC ĐỘNG (DYNAMIC WHERE) ---
+        // A. Lọc theo CustomerID (Nếu là khách hàng xem lịch sử của mình)
         if (customerId) {
-            query += ` WHERE b.CustomerID = @customerId`;
+            conditions.push(`b.CustomerID = @customerId`);
             request.input('customerId', sql.Int, customerId);
         } else {
-            query += ` WHERE b.Status != 1`;
+            // Mặc định ẩn các đơn nháp (Status = 1) nếu không lọc cụ thể
+            if (!status) {
+                conditions.push(`b.Status != 1`);
+            }
         }
+        // B. Lọc theo Keyword (Mã đơn, Tên khách, SĐT, Biển số xe)
+        if (keyword && keyword.trim() !== '') {
+            conditions.push(`(
+                u.FullName LIKE @keyword OR 
+                u.PhoneNumber LIKE @keyword OR 
+                b.LicensePlate LIKE @keyword OR 
+                CAST(b.BookingID AS VARCHAR) LIKE @keyword
+            )`);
+            request.input('keyword', sql.NVarChar, `%${keyword.trim()}%`);
+        }
+        // C. Lọc theo Trạng thái Booking (Status: 1, 2, 3, 4, 5)
+        if (status) {
+            conditions.push(`b.Status = @status`);
+            request.input('status', sql.TinyInt, status);
+        }
+        // D. Lọc theo Ngày cụ thể hoặc Khoảng ngày (Date Filtering)
+        if (date) {
+            conditions.push(`CAST(b.BookingDate AS DATE) = @date`);
+            request.input('date', sql.Date, date);
+        } else if (startDate && endDate) {
+            conditions.push(`CAST(b.BookingDate AS DATE) BETWEEN @startDate AND @endDate`);
+            request.input('startDate', sql.Date, startDate);
+            request.input('endDate', sql.Date, endDate);
+        }
+        // E. Lọc theo Trạng thái Thanh toán (Payment Status)
+        if (paymentStatus === 'paid') {
+            conditions.push(`p.Amount IS NOT NULL AND p.Amount > 0`);
+        } else if (paymentStatus === 'unpaid') {
+            conditions.push(`(p.Amount IS NULL OR p.Amount = 0)`);
+        }
+        // Gộp tất cả điều kiện vào câu lệnh SQL
+        if (conditions.length > 0) {
+            query += ` WHERE ` + conditions.join(' AND ');
+        }
+        // Sắp xếp đơn mới nhất lên đầu
         query += ` ORDER BY b.BookingDate DESC`;
         const result = await request.query(query);
         res.json(result.recordset);
     } catch (err) {
+        console.error("GET /api/bookings filter error:", err);
         res.status(500).json({ message: err.message });
     }
 });
