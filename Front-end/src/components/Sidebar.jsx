@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
 import ThemePanel from "./ThemePanel";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 export default function Sidebar() {
   const location = useLocation();
@@ -52,27 +53,27 @@ export default function Sidebar() {
     );
   } else if (role === "staff") {
     menuItems.push(
-      { path: "/staff/dashboard",   label: "Trang chủ",   icon: "fa-solid fa-chart-line" },
-      { path: "/staff/timeslots",   label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
-      { path: "/staff/members",     label: "Khách hàng",   icon: "fa-solid fa-users" },
-      { path: "/staff/machines",    label: "Máy móc",      icon: "fa-solid fa-gears" },
-      { path: "/staff/promotions",  label: "Khuyến mãi",   icon: "fa-solid fa-tags" },
-      { path: "/staff/feedbacks",   label: "Đánh giá",     icon: "fa-solid fa-star" },
+      { path: "/staff/dashboard", label: "Trang chủ", icon: "fa-solid fa-chart-line" },
+      { path: "/staff/timeslots", label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
+      { path: "/staff/members", label: "Khách hàng", icon: "fa-solid fa-users" },
+      { path: "/staff/machines", label: "Máy móc", icon: "fa-solid fa-gears" },
+      { path: "/staff/promotions", label: "Khuyến mãi", icon: "fa-solid fa-tags" },
+      { path: "/staff/feedbacks", label: "Đánh giá", icon: "fa-solid fa-star" },
     );
   } else {
     menuItems.push(
-      { path: "/dashboard",         label: "Trang chủ",       icon: "fa-solid fa-chart-line" },
-      { path: "/booking",           label: "Đặt lịch",        icon: "fa-regular fa-calendar-check" },
-      { path: "/vehicles",          label: "Xe của tôi",       icon: "fa-solid fa-car" },
+      { path: "/dashboard", label: "Trang chủ", icon: "fa-solid fa-chart-line" },
+      { path: "/booking", label: "Đặt lịch", icon: "fa-regular fa-calendar-check" },
+      { path: "/vehicles", label: "Xe của tôi", icon: "fa-solid fa-car" },
       { path: "/reward-redemption", label: "Đổi điểm thưởng", icon: "fa-solid fa-gift" },
-      { path: "/loyalty",           label: "Hạng & Lịch sử điểm", icon: "fa-solid fa-award" },
+      { path: "/loyalty", label: "Hạng & Lịch sử điểm", icon: "fa-solid fa-award" },
     );
   }
 
   // Hồ sơ và Cài đặt — tất cả role đều có
   menuItems.push(
-    { path: "/profile",  label: "Hồ sơ cá nhân", icon: "fa-solid fa-user-gear" },
-    { path: "/settings", label: "Cài đặt",         icon: "fa-solid fa-gear" },
+    { path: "/profile", label: "Hồ sơ cá nhân", icon: "fa-solid fa-user-gear" },
+    { path: "/settings", label: "Cài đặt", icon: "fa-solid fa-gear" },
   );
 
   return (
@@ -91,6 +92,21 @@ export default function Sidebar() {
           </span>
         </div>
       </Link>
+
+      {/* Notification Bell */}
+      <div style={{
+        padding: "0 16px 12px",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        marginBottom: 8,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}>
+        <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>
+          <i className="fa-solid fa-bell" style={{ marginRight: 6 }}></i>Thông báo
+        </span>
+        <NotificationBell />
+      </div>
 
       <ul className="portal-sidebar-menu">
         {menuItems.map((item) => {

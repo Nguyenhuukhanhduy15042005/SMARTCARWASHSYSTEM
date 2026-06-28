@@ -2,9 +2,9 @@ const service = require('./paymentService');
 
 const getUserTier = async (req, res) => {
   try {
-    const tierID = await service.getUserTier(req.user.userId);
+    const tierID = await service.getUserTier(req.user.userId); // userId thay vì id
     const needDeposit = tierID === 1 || tierID === 2;
-    const tierName = { 1:'Bronze', 2:'Silver', 3:'Gold', 4:'Platinum' }[tierID] || 'Bronze';
+    const tierName = { 1: 'Bronze', 2: 'Silver', 3: 'Gold', 4: 'Platinum' }[tierID] || 'Bronze';
     res.json({ tierID, tierName, needDeposit });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
@@ -16,7 +16,7 @@ const createPayment = async (req, res) => {
     const ipAddr = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
     const result = await service.createPayment({
       bookingId, method, amount,
-      userId: req.user.userId,
+      userId: req.user.userId, //  userId thay vì id
       ipAddr
     });
     console.log('PaymentURL:', result.paymentUrl);
@@ -42,11 +42,12 @@ const vnpayReturn = async (req, res) => {
 
 const getPaymentHistory = async (req, res) => {
   try {
-    const result = await service.getPaymentHistory(req.user.userId, req.query);
+    const result = await service.getPaymentHistory(req.user.userId, req.query); //  userId
     res.json(result);
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
+//hoàn tiền
 const refundPayment = async (req, res) => {
   try {
     const result = await service.refundPayment(Number(req.params.id));
