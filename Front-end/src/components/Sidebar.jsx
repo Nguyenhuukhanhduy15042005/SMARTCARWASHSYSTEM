@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
 import ThemePanel from "./ThemePanel";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 export default function Sidebar() {
   const location = useLocation();
@@ -40,13 +41,15 @@ export default function Sidebar() {
 
   if (role === "admin") {
     menuItems.push(
-      { path: "/admin/dashboard", label: "Trang chủ", icon: "fa-solid fa-chart-line" },
-      { path: "/timeslots", label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
-      { path: "/admin/members", label: "Khách hàng", icon: "fa-solid fa-users" },
-      { path: "/admin/accounts", label: "Tài khoản", icon: "fa-solid fa-user-shield" },
-      { path: "/admin/machines", label: "Máy móc", icon: "fa-solid fa-gears" },
-      { path: "/admin/promotions", label: "Khuyến mãi", icon: "fa-solid fa-tags" },
-      { path: "/admin/feedbacks", label: "Đánh giá", icon: "fa-solid fa-star" },
+      { path: "/admin/dashboard",  label: "Trang chủ",   icon: "fa-solid fa-chart-line" },
+      // Trọng thêm mới: menu Thống kê Analytics dẫn đến trang /admin/analytics
+      { path: "/admin/analytics",  label: "Thống kê",     icon: "fa-solid fa-chart-pie" },
+      { path: "/timeslots",         label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
+      { path: "/admin/members",     label: "Khách hàng",   icon: "fa-solid fa-users" },
+      { path: "/admin/accounts",    label: "Tài khoản",    icon: "fa-solid fa-user-shield" },
+      { path: "/admin/machines",    label: "Máy móc",      icon: "fa-solid fa-gears" },
+      { path: "/admin/promotions",  label: "Khuyến mãi",   icon: "fa-solid fa-tags" },
+      { path: "/admin/feedbacks",   label: "Đánh giá",     icon: "fa-solid fa-star" },
     );
   } else if (role === "staff") {
     menuItems.push(
@@ -89,6 +92,21 @@ export default function Sidebar() {
           </span>
         </div>
       </Link>
+
+      {/* Notification Bell */}
+      <div style={{
+        padding: "0 16px 12px",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        marginBottom: 8,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}>
+        <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>
+          <i className="fa-solid fa-bell" style={{ marginRight: 6 }}></i>Thông báo
+        </span>
+        <NotificationBell />
+      </div>
 
       <ul className="portal-sidebar-menu">
         {menuItems.map((item) => {

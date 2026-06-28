@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import "./MemberHeader.css";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 // Thành phần Header dùng chung cho phần Member Portal
 export default function MemberHeader() {
@@ -41,6 +42,7 @@ export default function MemberHeader() {
           Hồ sơ cá nhân
         </Link>
         <div className="user-header-actions">
+          <NotificationBell />
           <button className="btn-logout" onClick={handleLogout}>
             <i className="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất
           </button>
