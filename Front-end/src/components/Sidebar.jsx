@@ -41,8 +41,6 @@ export default function Sidebar() {
   if (role === "admin") {
     menuItems.push(
       { path: "/admin/dashboard", label: "Trang chủ", icon: "fa-solid fa-chart-line" },
-      // menu Thống kê Analytics dẫn đến trang /admin/analytics
-      { path: "/admin/analytics", label: "Thống kê", icon: "fa-solid fa-chart-pie" },
       { path: "/timeslots", label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
       { path: "/admin/members", label: "Khách hàng", icon: "fa-solid fa-users" },
       { path: "/admin/accounts", label: "Tài khoản", icon: "fa-solid fa-user-shield" },
