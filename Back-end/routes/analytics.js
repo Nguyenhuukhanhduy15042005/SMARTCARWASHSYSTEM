@@ -84,7 +84,7 @@ async function querySummary(pool, range) {
       (SELECT COUNT(*) FROM BOOKING b WHERE 1 = 1 ${bookingFilter} AND b.Status = 5) AS CancelledBookings,
       (SELECT COUNT(*) FROM BOOKING b WHERE 1 = 1 ${bookingFilter} AND b.Status NOT IN (4, 5)) AS OtherBookings,
       (SELECT COUNT(*) FROM PAYMENT p WHERE 1 = 1 ${paymentFilter}) AS TotalPayments,
-      (SELECT ISNULL(SUM(p.Amount), 0) FROM PAYMENT p WHERE 1 = 1 ${paymentFilter}) AS TotalRevenue,
+      (SELECT ISNULL(SUM(COALESCE(b.FinalPrice, b.TotalPrice, 0)), 0) FROM BOOKING b WHERE 1 = 1 ${bookingFilter} AND b.Status = 4) AS TotalRevenue,
       (SELECT ISNULL(AVG(CAST(f.Rating AS FLOAT)), 0) FROM FEEDBACK f WHERE 1 = 1 ${feedbackFilter}) AS AverageRating,
       (SELECT COUNT(*) FROM FEEDBACK f WHERE 1 = 1 ${feedbackFilter}) AS TotalFeedbacks,
       (SELECT ISNULL(SUM(CASE WHEN lt.TransactionType = 'Accumulate' THEN lt.Points ELSE 0 END), 0) FROM LOYALTY_TRANSACTION lt WHERE 1 = 1 ${loyaltyFilter}) AS PointsEarned,
@@ -108,16 +108,18 @@ async function querySummary(pool, range) {
 }
 
 async function queryRevenueTrend(pool, range, groupBy) {
-  const paymentFilter = buildDateFilter("p", "PaidAt", range);
-  const period = periodSelect("p", "PaidAt", groupBy);
+  const bookingFilter = buildDateFilter("b", "BookingDate", range);
+  const period = periodSelect("b", "BookingDate", groupBy);
 
   const result = await pool.request().query(`
     SELECT
       ${period} AS Period,
-      COUNT(p.PaymentID) AS PaymentCount,
-      ISNULL(SUM(p.Amount), 0) AS Revenue
-    FROM PAYMENT p
-    WHERE p.PaidAt IS NOT NULL ${paymentFilter}
+      COUNT(b.BookingID) AS PaymentCount,
+      ISNULL(SUM(COALESCE(b.FinalPrice, b.TotalPrice, 0)), 0) AS Revenue
+    FROM BOOKING b
+    WHERE b.BookingDate IS NOT NULL
+      ${bookingFilter}
+      AND b.Status = 4
     GROUP BY ${period}
     ORDER BY Period ASC
   `);
