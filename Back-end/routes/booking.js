@@ -287,6 +287,9 @@ router.get('/', async (req, res) => {
         if (customerId) {
             conditions.push(`b.CustomerID = @customerId`);
             request.input('customerId', sql.Int, customerId);
+
+            // Ẩn booking đã bị khách xóa khỏi lịch sử
+            conditions.push(`(b.IsHiddenByUser IS NULL OR b.IsHiddenByUser = 0)`);
         } else {
             // Mặc định ẩn các đơn nháp (Status = 1) nếu không lọc cụ thể
             if (!status) {
@@ -531,6 +534,7 @@ router.get("/customer/:customerId", async (req, res) => {
                 FROM BOOKING b
                 LEFT JOIN [USER] u ON b.CustomerID = u.UserID
                 WHERE b.CustomerID = @customerId
+                AND (b.IsHiddenByUser IS NULL OR b.IsHiddenByUser = 0)
                 ORDER BY b.BookingDate DESC
 `);
         res.json(result.recordset);
@@ -591,23 +595,12 @@ router.delete("/:id", async (req, res) => {
                 message: "Chỉ có thể xóa lịch đặt xe đã hoàn thành hoặc đã hủy",
             });
 
-        // ── Xóa thật khỏi DB theo đúng thứ tự FK ────────────────────────────
-        const transaction = new sql.Transaction(pool);
-        await transaction.begin();
-        try {
-            const r = new sql.Request(transaction);
-            r.input("id", sql.Int, bookingId);
-            await r.query("DELETE FROM FEEDBACK WHERE BookingID = @id");
-            await r.query("DELETE FROM LOYALTY_TRANSACTION WHERE BookingID = @id");
-            await r.query("DELETE FROM PAYMENT WHERE BookingID = @id");
-            await r.query("DELETE FROM BOOKING_DETAIL WHERE BookingID = @id");
-            await r.query("DELETE FROM BOOKING WHERE BookingID = @id");
-            await transaction.commit();
-            res.json({ message: "Xóa lịch đặt khỏi lịch sử thành công" });
-        } catch (innerErr) {
-            await transaction.rollback();
-            throw innerErr;
-        }
+        // Soft delete — chỉ ẩn khỏi lịch sử khách, không xóa khỏi DB
+        await pool.request()
+            .input("id", sql.Int, bookingId)
+            .query("UPDATE BOOKING SET IsHiddenByUser = 1 WHERE BookingID = @id");
+
+        res.json({ message: "Xóa lịch đặt khỏi lịch sử thành công" });
     } catch (err) {
         console.error("DELETE /api/bookings/:id error:", err);
         res.status(500).json({ message: err.message });

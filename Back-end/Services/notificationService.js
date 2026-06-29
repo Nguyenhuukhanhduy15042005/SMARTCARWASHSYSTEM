@@ -33,6 +33,7 @@ const buildEmailHtml = ({ title, message, type, bookingId }) => {
   const colorMap = {
     REMINDER: { accent: '#f59e0b', bg: '#fffbeb', icon: '⏰' },
     BOOKING: { accent: '#3b82f6', bg: '#eff6ff', icon: '📅' },
+    CONFIRMATION: { accent: '#3b82f6', bg: '#eff6ff', icon: '✅' },
     PAYMENT: { accent: '#10b981', bg: '#f0fdf4', icon: '💳' },
     CANCEL: { accent: '#ef4444', bg: '#fef2f2', icon: '❌' },
     LOYALTY: { accent: '#8b5cf6', bg: '#f5f3ff', icon: '⭐' },
@@ -123,9 +124,9 @@ const createAndSendNotification = async ({
     console.log(`[Notification] ✓ In-App lưu thành công | User: ${userId} | Type: ${type} | ID: ${notificationId}`);
 
     // ── B. Gửi Email (bất đồng bộ, không block luồng chính) ──────────────
-    if (userEmail && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    if (userEmail) {
       const mailOptions = {
-        from: `"Smart Car Wash" <${process.env.EMAIL_USER}>`,
+        from: `"Smart Car Wash" <binbintrongkt@gmail.com>`,
         to: userEmail,
         subject: `[Smart Car Wash] ${title}`,
         html: buildEmailHtml({ title, message, type, bookingId }),
