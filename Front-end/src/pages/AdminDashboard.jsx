@@ -9,8 +9,7 @@ export default function AdminDashboard() {
   const [bookings, setBookings] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, active: 0, completed: 0, revenue: 0 });
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("All");
+
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [toast, setToast] = useState(null);
   const [currentUser, setCurrentUser] = useState(() => {
@@ -188,19 +187,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Filtering list
-  const filteredBookings = bookings.filter(b => {
-    const matchesSearch = 
-      b.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.licensePlate?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.phone?.includes(searchQuery);
 
-    const matchesStatus = 
-      selectedStatus === "All" || 
-      b.status.toString() === selectedStatus;
-
-    return matchesSearch && matchesStatus;
-  });
 
   return (
     <div className="admin-dashboard-container portal-layout-container">
@@ -263,38 +250,9 @@ export default function AdminDashboard() {
               <i className="fa-regular fa-circle-check"></i>
             </div>
           </div>
-
-          <div className="admin-metric-card metric-revenue">
-            <div className="admin-metric-info">
-              <h3>Doanh thu hoàn tất</h3>
-              <p className="admin-metric-value">{stats.revenue.toLocaleString("vi-VN")} đ</p>
-            </div>
-            <div className="admin-metric-icon">
-              <i className="fa-solid fa-coins"></i>
-            </div>
-          </div>
         </section>
 
-        {/* Search and Filters Bar */}
-        <section className="admin-filters-bar">
-          <div className="admin-search-wrapper">
-            <i className="fa-solid fa-magnifying-glass"></i>
-            <input
-              type="text"
-              className="admin-search-input"
-              placeholder="Tìm khách hàng, biển số xe..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <div className="admin-status-tabs">
-            <button className={`admin-tab ${selectedStatus === "All" ? "active" : ""}`} onClick={() => setSelectedStatus("All")}>Tất cả</button>
-            <button className={`admin-tab ${selectedStatus === "2" ? "active" : ""}`} onClick={() => setSelectedStatus("2")}>Đã xác nhận</button>
-            <button className={`admin-tab ${selectedStatus === "3" ? "active" : ""}`} onClick={() => setSelectedStatus("3")}>Đang làm</button>
-            <button className={`admin-tab ${selectedStatus === "4" ? "active" : ""}`} onClick={() => setSelectedStatus("4")}>Hoàn tất</button>
-            <button className={`admin-tab ${selectedStatus === "5" ? "active" : ""}`} onClick={() => setSelectedStatus("5")}>Đã hủy</button>
-          </div>
-        </section>
+
 
         {/* Table list card */}
         <section className="admin-table-card">
@@ -310,7 +268,7 @@ export default function AdminDashboard() {
               <div className="spinner"></div>
               <span>Đang tải danh sách đặt lịch...</span>
             </div>
-          ) : filteredBookings.length === 0 ? (
+          ) : bookings.length === 0 ? (
             <div className="admin-empty-state">
               <i className="fa-regular fa-folder-open"></i>
               <p>Không tìm thấy bản ghi đặt lịch nào khớp với bộ lọc.</p>
@@ -330,7 +288,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBookings.map((b) => (
+                  {bookings.map((b) => (
                     <tr key={b.id}>
                       <td>
                         <div className="customer-cell-info">
