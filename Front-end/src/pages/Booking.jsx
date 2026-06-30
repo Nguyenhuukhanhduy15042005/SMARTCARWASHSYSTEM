@@ -529,7 +529,7 @@ export default function Booking() {
         "Đặt lịch thành công! Đang chuyển đến thanh toán...",
         "success",
       );
-
+      window.dispatchEvent(new Event("noti:refresh"));
       setTimeout(() => {
         navigate("/payments", {
           state: {

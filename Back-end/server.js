@@ -103,3 +103,7 @@ initReminderJob(); // Khởi chạy cron job khi server bật
 // Đăng kí notification.js
 const notificationRouter = require('./routes/notification');
 app.use('/api/notifications', notificationRouter);
+
+// đăng kí tracking-Huy
+const behaviorAnalyticsRouter = require("./routes/behaviorAnalytics");
+app.use("/api/analytics/behavior", behaviorAnalyticsRouter);

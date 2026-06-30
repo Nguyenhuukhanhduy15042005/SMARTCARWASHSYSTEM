@@ -131,6 +131,7 @@ export default function UserDashboard() {
         if (window.confirm("Bạn có chắc chắn muốn hủy đặt lịch này không?")) {
           await axios.post(`${API_BASE}/bookings/${bookingId}/transition`, { nextStatus: 5 }, { headers });
           showToast("Đã hủy lịch đặt xe thành công!", "success");
+          window.dispatchEvent(new Event("noti:refresh"));
           fetchData();
         }
         return;
@@ -168,9 +169,11 @@ export default function UserDashboard() {
           ? `Đã hủy thành công! Hoàn tiền ${data.refundAmount.toLocaleString('vi-VN')}đ (${data.refundPercent}%).`
           : "Đã hủy thành công! Không có tiền hoàn lại do vi phạm chính sách hủy.";
         showToast(msg, data.refundAmount > 0 ? "success" : "error");
+        window.dispatchEvent(new Event("noti:refresh"));
       } else {
         await axios.post(`${API_BASE}/bookings/${cancelConfirm.bookingId}/transition`, { nextStatus: 5 }, { headers });
         showToast("Đã hủy lịch đặt xe thành công!", "success");
+        window.dispatchEvent(new Event("noti:refresh"));
       }
 
       setCancelConfirm(null);
