@@ -93,6 +93,14 @@ export default function NotificationBell() {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
+  // Lắng nghe sự kiện noti:refresh để cập nhật ngay lập tức
+  // (bắn ra từ các trang đặt lịch / hủy lịch / thanh toán khi thao tác thành công)
+  useEffect(() => {
+    const handleRefresh = () => fetchNotifications();
+    window.addEventListener("noti:refresh", handleRefresh);
+    return () => window.removeEventListener("noti:refresh", handleRefresh);
+  }, [fetchNotifications]);
+
   const unreadCount = notifications.filter((n) => !n.IsRead).length;
 
   // Format thời gian tiếng Việt

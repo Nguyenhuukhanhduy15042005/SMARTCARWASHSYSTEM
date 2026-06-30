@@ -11,8 +11,17 @@ const getAuthHeaders = () => {
 
 // ── CSS ──────────────────────────────────────────────────────────────────────
 const css = `
-.survey-page { display: flex; min-height: 100vh; background: #0f172a; font-family: 'Plus Jakarta Sans', sans-serif; color: #e2e8f0; }
-.survey-content { flex: 1; padding: 36px 40px; max-width: 1300px; overflow-y: auto; }
+.survey-page { min-height: 100vh; background: #0f172a; font-family: 'Plus Jakarta Sans', sans-serif; color: #e2e8f0; }
+.survey-content {
+  margin-left: var(--sidebar-collapsed-width, 76px);
+  min-height: 100vh;
+  padding: 36px 40px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  overflow-y: auto;
+}
+.survey-content-inner { width: 100%; max-width: 1300px; }
 
 /* Header */
 .survey-eyebrow {
@@ -233,6 +242,36 @@ const css = `
 }
 `;
 
+// Đọc field theo nhiều kiểu tên (PascalCase / camelCase) để không phụ thuộc convention backend
+const pick = (obj, ...keys) => {
+  for (const k of keys) {
+    if (obj && obj[k] !== undefined && obj[k] !== null) return obj[k];
+  }
+  return undefined;
+};
+
+function normalizeStats(raw) {
+  if (!raw) return null;
+  const ratingDistribution = [5, 4, 3, 2, 1].map(star => {
+    const starKey = ["FiveStar", "FourStar", "ThreeStar", "TwoStar", "OneStar"][5 - star];
+    const camelKey = ["fiveStar", "fourStar", "threeStar", "twoStar", "oneStar"][5 - star];
+    const count = pick(raw, starKey, camelKey, `Star${star}`, `star${star}`) ?? 0;
+    return { rating: star, total: Number(count) || 0 };
+  });
+
+  const totalFromDist = ratingDistribution.reduce((sum, r) => sum + r.total, 0);
+  const rawTotal = Number(pick(raw, "TotalFeedback", "TotalFeedbacks", "totalFeedback", "totalFeedbacks") ?? 0);
+
+  return {
+    averageRating: Number(pick(raw, "AverageRating", "averageRating") ?? 0),
+    totalFeedbacks: rawTotal || totalFromDist,
+    satisfactionRate: Number(pick(raw, "SatisfactionRate", "satisfactionRate") ?? 0),
+    issueRate: Number(pick(raw, "IssueRate", "issueRate") ?? 0),
+    withComment: Number(pick(raw, "WithComment", "HasComment", "CommentCount", "TotalComment", "CommentedCount", "withComment", "hasComment", "commentCount") ?? 0),
+    ratingDistribution,
+  };
+}
+
 const PAGE_SIZE = 10;
 
 const STAR_OPTIONS = [
@@ -282,7 +321,7 @@ export default function SurveyDashboard() {
     setStatsLoading(true);
     try {
       const res = await axios.get(`${API_BASE}/surveys/stats`, { headers: getAuthHeaders() });
-      setStats(res.data);
+      setStats(normalizeStats(res.data));
     } catch (err) {
       console.error("Stats fetch error:", err);
     } finally {
@@ -376,11 +415,17 @@ export default function SurveyDashboard() {
   const ratingDist = stats?.ratingDistribution || [];
   const maxDist = Math.max(...ratingDist.map(r => Number(r.total || r.count || 0)), 1);
 
+  const withCommentCount = stats?.withComment || surveys.filter(sv => {
+    const c = sv.comment || sv.Comment || sv.content;
+    return c && String(c).trim().length > 0;
+  }).length;
+
   return (
     <div className="survey-page">
       <Sidebar />
 
       <main className="survey-content">
+       <div className="survey-content-inner">
 
         {/* Header */}
         <div className="survey-eyebrow">
@@ -420,7 +465,7 @@ export default function SurveyDashboard() {
           <div className="survey-stat-card purple">
             <div className="survey-stat-icon"><i className="fa-solid fa-message"></i></div>
             <p className="survey-stat-label">Có bình luận</p>
-            <p className="survey-stat-value">{statsLoading ? "—" : Number(stats?.withComment || 0).toLocaleString("vi-VN")}</p>
+            <p className="survey-stat-value">{statsLoading ? "—" : Number(withCommentCount || 0).toLocaleString("vi-VN")}</p>
             <p className="survey-stat-sub">trong tổng phản hồi</p>
           </div>
         </div>
@@ -522,7 +567,7 @@ export default function SurveyDashboard() {
                   <tbody>
                     {paged.map((sv, idx) => {
                       const date = sv.createdDate || sv.CreatedDate || sv.date;
-                      const name = sv.fullName || sv.FullName || sv.customerName || "Ẩn danh";
+                      const name = sv.CustomerName || sv.fullName || sv.FullName || sv.customerName || "Ẩn danh";
                       const bookingId = sv.bookingId || sv.BookingID || sv.bookingID;
                       const comment = sv.comment || sv.Comment || sv.content || "";
                       const ratingVal = sv.rating || sv.Rating || 0;
@@ -585,6 +630,7 @@ export default function SurveyDashboard() {
             </>
           )}
         </div>
+       </div>
       </main>
 
       {/* Toast */}

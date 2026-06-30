@@ -4,7 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 async function apiFetch(path) {
-  const res = await fetch(`${BASE}${path}`);
+  const token = localStorage.getItem("TOKEN");
+  const res = await fetch(`${BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
   if (!res.ok) throw new Error(`API error ${res.status}`);
   return res.json();
 }

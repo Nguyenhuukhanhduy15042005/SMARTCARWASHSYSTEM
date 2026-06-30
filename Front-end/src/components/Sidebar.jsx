@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
 import ThemePanel from "./ThemePanel";
@@ -7,13 +7,8 @@ import { useAuth } from "../context/AuthContext";
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user: currentUser, logout } = useAuth();
   const currentPath = location.pathname;
-
-  const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem("LOGIN_USER");
-    return saved ? JSON.parse(saved) : null;
-  });
 
   useEffect(() => {
     const linkFont = document.createElement("link");
@@ -34,7 +29,8 @@ export default function Sidebar() {
     navigate("/");
   };
 
-  const role = currentUser?.role || "user";
+  const ROLE_MAP = { 1: "admin", 2: "staff", 3: "user" };
+  const role = ROLE_MAP[currentUser?.roleId] || "user";
   const fullName = currentUser?.fullName || "Người dùng";
   const userInitials = fullName ? fullName.substring(0, 2).toUpperCase() : "US";
 
@@ -44,6 +40,7 @@ export default function Sidebar() {
     menuItems.push(
       { path: "/admin/dashboard",  label: "Trang chủ",    icon: "fa-solid fa-chart-line" },
       { path: "/admin/analytics",  label: "Thống kê",     icon: "fa-solid fa-chart-pie" },
+      { path: "/admin/surveys",    label: "Khảo sát",     icon: "fa-solid fa-clipboard-list" },
       { path: "/timeslots",        label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
       { path: "/admin/members",    label: "Khách hàng",   icon: "fa-solid fa-users" },
       { path: "/admin/accounts",   label: "Tài khoản",    icon: "fa-solid fa-user-shield" },
