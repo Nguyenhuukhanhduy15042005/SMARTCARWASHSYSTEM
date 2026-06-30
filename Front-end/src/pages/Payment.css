@@ -4,16 +4,16 @@
 /* ── SHARED ── */
 .payment-page-container {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: radial-gradient(circle at 50% 0%, #1e1e38 0%, #0b0f19 100%);
+  background: var(--bg-primary);
   min-height: 100vh;
-  color: #f8fafc;
+  color: var(--text-primary);
   padding: 40px 20px;
 }
 
 .payment-back-btn {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #94a3b8;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
   padding: 8px 16px;
@@ -38,13 +38,11 @@
 .payment-title {
   font-size: 36px;
   font-weight: 800;
-  background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 .payment-subtitle {
-  color: #94a3b8;
+  color: var(--text-secondary);
   font-size: 16px;
   margin-bottom: 32px;
 }
@@ -242,12 +240,12 @@
   gap: 1rem; margin-bottom: 28px;
 }
 .ph-stat-card {
-  background: rgba(30, 41, 59, 0.4);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 16px; padding: 16px 24px;
   text-align: right;
 }
-.ph-stat-label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+.ph-stat-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
 .ph-stat-value { font-size: 22px; font-weight: 800; color: #f97316; }
 
 /* Filter tabs */
@@ -257,12 +255,12 @@
 }
 .ph-tab {
   padding: 7px 18px; border-radius: 50px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(15,23,42,0.4);
-  color: #94a3b8; font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary); font-size: 13px; font-weight: 500;
   cursor: pointer; transition: all 0.2s;
 }
-.ph-tab:hover { border-color: rgba(255,255,255,0.2); color: #fff; }
+.ph-tab:hover { border-color: var(--accent); color: var(--text-primary); }
 .ph-tab.active { background: #f97316; border-color: #f97316; color: #fff; }
 
 /* Loading / Empty */
@@ -271,7 +269,7 @@
 }
 .ph-empty {
   text-align: center; padding: 60px 0;
-  color: #475569; font-size: 15px;
+  color: var(--text-secondary); font-size: 15px;
 }
 .ph-empty p:first-child { font-size: 40px; margin-bottom: 8px; }
 
@@ -280,14 +278,14 @@
 
 .ph-item {
   display: flex; justify-content: space-between; align-items: center;
-  background: rgba(17, 24, 39, 0.6);
+  background: var(--bg-card);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 1px solid var(--border);
   border-radius: 16px; padding: 18px 20px;
   transition: border-color 0.2s;
   flex-wrap: wrap; gap: 12px;
 }
-.ph-item:hover { border-color: rgba(255,255,255,0.15); }
+.ph-item:hover { border-color: var(--accent); }
 
 .ph-item-left { display: flex; gap: 14px; align-items: center; }
 .ph-item-icon {
@@ -296,8 +294,8 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 20px; flex-shrink: 0;
 }
-.ph-item-service { font-size: 15px; font-weight: 700; color: #f8fafc; margin-bottom: 4px; }
-.ph-item-meta { font-size: 12px; color: #64748b; }
+.ph-item-service { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.ph-item-meta { font-size: 12px; color: var(--text-secondary); }
 
 .ph-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .ph-item-amount { font-size: 16px; font-weight: 800; color: #f97316; }
@@ -332,27 +330,27 @@
   padding: 20px;
 }
 .ph-modal {
-  background: #0f172a;
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-radius: 24px; padding: 32px;
   width: 100%; max-width: 440px;
-  box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+  box-shadow: 0 25px 50px rgba(0,0,0,0.3);
 }
-.ph-modal-title { font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 16px; }
+.ph-modal-title { font-size: 20px; font-weight: 800; color: var(--text-primary); margin-bottom: 16px; }
 .ph-modal-info {
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-card);
   border-radius: 12px; padding: 14px 16px;
   margin-bottom: 20px;
 }
-.ph-modal-info p:first-child { font-size: 14px; color: #94a3b8; margin-bottom: 4px; }
+.ph-modal-info p:first-child { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
 .ph-modal-amount { font-size: 22px; font-weight: 800; color: #f97316; }
-.ph-modal-label { font-size: 13px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.ph-modal-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
 .ph-modal-textarea {
   width: 100%;
-  background: rgba(15,23,42,0.6);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 12px; padding: 12px 16px;
-  color: #fff; font-size: 14px; outline: none;
+  color: var(--text-primary); font-size: 14px; outline: none;
   resize: none; margin-bottom: 16px;
   font-family: inherit; transition: border-color 0.2s;
 }
@@ -367,13 +365,13 @@
 .ph-modal-actions { display: flex; gap: 12px; }
 .ph-modal-cancel {
   flex: 1; padding: 13px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 50px; color: #94a3b8;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 50px; color: var(--text-secondary);
   font-size: 14px; font-weight: 600;
   cursor: pointer; transition: all 0.2s;
 }
-.ph-modal-cancel:hover { border-color: rgba(255,255,255,0.2); color: #fff; }
+.ph-modal-cancel:hover { border-color: var(--accent); color: var(--text-primary); }
 .ph-modal-confirm {
   flex: 1; padding: 13px;
   background: #ef4444; border: none;
@@ -725,3 +723,4 @@
   box-shadow: none !important;
   cursor: not-allowed;
 }
+ 

@@ -13,6 +13,7 @@ export default function PaymentResult() {
     const statusParam = searchParams.get("status");
     if (statusParam === "success") {
       setStatus("success");
+      window.dispatchEvent(new Event("noti:refresh"));
     } else if (statusParam === "failed") {
       setStatus("failed");
     } else {

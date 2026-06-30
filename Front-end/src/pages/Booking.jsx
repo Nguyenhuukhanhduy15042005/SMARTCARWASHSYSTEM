@@ -314,6 +314,7 @@ export default function Booking() {
       const res = await axios.post("http://127.0.0.1:5000/api/bookings", body, { headers });
       const newBooking = res.data;
       showToast("Đặt lịch thành công! Đang chuyển đến thanh toán...", "success");
+      window.dispatchEvent(new Event("noti:refresh"));
       setTimeout(() => {
         navigate("/payments", {
           state: {
