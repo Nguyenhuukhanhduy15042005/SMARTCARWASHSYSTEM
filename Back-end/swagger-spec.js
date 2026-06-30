@@ -669,17 +669,7 @@ const swaggerSpec = {
       post: {
         tags: ["Payments"],
         summary: "Hủy booking và hoàn tiền theo % dựa vào thời gian + số lần hủy trong 30 ngày",
-        description: `
-**Bảng hoàn tiền:**
-
-| Thời gian còn lại | Lần 1, 2 | Lần 3 | Lần 4+ |
-|---|---|---|---|
-| Trước 24 tiếng | 100% | 50% | 0% |
-| 2 - 24 tiếng | 50% | 0% | 0% |
-| Dưới 2 tiếng | 0% | 0% | 0% |
-
-**Lưu ý:** Đếm số lần hủy trong 30 ngày gần nhất từ bảng BOOKING (Status=5)
-        `,
+        description: "Bảng hoàn tiền: Trước 24 tiếng - Lần 1,2: 100%, Lần 3: 50%, Lần 4+: 0%. 2-24 tiếng - Lần 1,2: 50%, Lần 3+: 0%. Dưới 2 tiếng: luôn 0%. Đếm số lần hủy trong 30 ngày gần nhất từ bảng BOOKING (Status=5).",
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" }, description: "PaymentID" }],
         responses: {
@@ -880,6 +870,133 @@ const swaggerSpec = {
         summary: "Thống kê tổng quan doanh thu và số lượt rửa xe (Admin)",
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "Thành công" } },
+      },
+    },
+
+    // ── BEHAVIOR ANALYTICS (Tracking hành vi khách hàng) ─────────────────────
+    "/api/analytics/behavior/frequency": {
+      get: {
+        tags: ["Behavior Analytics"],
+        summary: "Tần suất đặt lịch của từng khách hàng (Admin)",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "range", in: "query", schema: { type: "string", enum: ["7d", "30d", "90d", "month", "year", "all"], default: "30d" },
+            description: "Khoảng thời gian thống kê" },
+        ],
+        responses: {
+          200: {
+            description: "Thành công",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    meta: { type: "object", properties: { range: { type: "string" }, generatedAt: { type: "string" } } },
+                    data: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          userId: { type: "integer", example: 15 },
+                          fullName: { type: "string", example: "Trần Hùng Vinh" },
+                          phone: { type: "string", example: "0901234567" },
+                          totalBookings: { type: "integer", example: 8 },
+                          completedBookings: { type: "integer", example: 5 },
+                          cancelledBookings: { type: "integer", example: 3 },
+                          cancelRate: { type: "integer", example: 38, description: "% hủy trên tổng số booking" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/analytics/behavior/spending": {
+      get: {
+        tags: ["Behavior Analytics"],
+        summary: "Tổng chi tiêu của từng khách hàng - chỉ tính booking hoàn thành (Admin)",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "range", in: "query", schema: { type: "string", enum: ["7d", "30d", "90d", "month", "year", "all"], default: "30d" },
+            description: "Khoảng thời gian thống kê" },
+        ],
+        responses: {
+          200: {
+            description: "Thành công",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    meta: { type: "object", properties: { range: { type: "string" }, generatedAt: { type: "string" } } },
+                    data: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          userId: { type: "integer", example: 15 },
+                          fullName: { type: "string", example: "Trần Hùng Vinh" },
+                          phone: { type: "string", example: "0901234567" },
+                          tierName: { type: "string", example: "Gold" },
+                          paidBookingsCount: { type: "integer", example: 5 },
+                          totalSpent: { type: "number", example: 2500000 },
+                          avgSpentPerBooking: { type: "number", example: 500000 },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/analytics/behavior/promotion": {
+      get: {
+        tags: ["Behavior Analytics"],
+        summary: "Mức độ sử dụng khuyến mãi của từng khách hàng (Admin)",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "range", in: "query", schema: { type: "string", enum: ["7d", "30d", "90d", "month", "year", "all"], default: "30d" },
+            description: "Khoảng thời gian thống kê" },
+        ],
+        responses: {
+          200: {
+            description: "Thành công",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    meta: { type: "object", properties: { range: { type: "string" }, generatedAt: { type: "string" } } },
+                    data: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          userId: { type: "integer", example: 15 },
+                          fullName: { type: "string", example: "Trần Hùng Vinh" },
+                          phone: { type: "string", example: "0901234567" },
+                          totalBookings: { type: "integer", example: 8 },
+                          bookingsWithVoucher: { type: "integer", example: 3 },
+                          voucherUsageRate: { type: "integer", example: 38, description: "% booking có dùng voucher" },
+                          totalDiscountAmount: { type: "number", example: 150000 },
+                          pointsRedeemedCount: { type: "integer", example: 1 },
+                          totalPointsRedeemed: { type: "integer", example: 100 },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     },
   },
