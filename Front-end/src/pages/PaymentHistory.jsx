@@ -27,9 +27,9 @@ export default function PaymentHistory() {
   const [toast, setToast] = useState(null);
   const [filter, setFilter] = useState("all");
 
-  const showToast = (msg, type = "success") => {
+  const showToast = (msg, type = "success", duration = 3500) => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+    setTimeout(() => setToast(null), duration);
   };
 
   const getToken = () =>
@@ -60,7 +60,13 @@ export default function PaymentHistory() {
       const res = await axios.get(`${API_BASE}/payments/${payment.PaymentID}/refund-preview`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
-      setRefundModal({ payment, preview: res.data });
+      const preview = res.data;
+      // ✅ Nếu hoàn 0% → tự chặn ở FE, yêu cầu xác nhận lần 2 trước khi gọi API hủy thật
+      if (preview.refundPercent === 0) {
+        setRefundModal({ payment, preview, blocked: true, blockedWarning: preview.warning });
+      } else {
+        setRefundModal({ payment, preview });
+      }
     } catch (err) {
       // Nếu preview lỗi (vd xe đang rửa) → hiện lỗi, đóng modal
       showToast(err.response?.data?.message || "Không thể xem trước thông tin hoàn tiền", "error");
@@ -70,30 +76,24 @@ export default function PaymentHistory() {
     }
   };
 
-  const handleRefund = async (forceCancel = false) => {
+  const handleRefund = async () => {
     if (!refundModal) return;
 
     setRefunding(true);
     try {
       const res = await axios.post(
         `${API_BASE}/payments/${refundModal.payment.PaymentID}/refund`,
-        { forceCancel },
+        {},
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
       const data = res.data;
-
-      if (data.blocked) {
-        // Lần 1: Backend trả blocked → hiện xác nhận lần 2
-        setRefundModal((prev) => ({ ...prev, blocked: true, blockedWarning: data.warning }));
-      } else {
-        const msg = data.refundAmount > 0
-          ? `✅ Hủy thành công! Hoàn ${data.refundPercent}% = ${data.refundAmount.toLocaleString("vi-VN")}đ.`
-          : "✅ Đã hủy thành công (không hoàn tiền).";
-        if (data.nextCancelInfo) showToast(`${msg} ${data.nextCancelInfo}`, "success");
-        else showToast(msg, "success");
-        fetchHistory();
-        setRefundModal(null);
-      }
+      const msg = data.refundAmount > 0
+        ? `✅ Hủy thành công! Hoàn ${data.refundPercent}% = ${data.refundAmount.toLocaleString("vi-VN")}đ.`
+        : "✅ Đã hủy thành công (không hoàn tiền).";
+      const extra = [data.nextCancelInfo, data.forceDepositWarning].filter(Boolean).join(" ");
+      showToast(extra ? `${msg} ${extra}` : msg, "success", extra ? 7000 : 3500);
+      fetchHistory();
+      setRefundModal(null);
     } catch (err) {
       showToast(err.response?.data?.message || "Hoàn tiền thất bại", "error");
     } finally {
@@ -328,7 +328,7 @@ export default function PaymentHistory() {
                 </button>
                 <button
                   className="ph-modal-confirm"
-                  onClick={() => refundModal.blocked ? handleRefund(true) : handleRefund(false)}
+                  onClick={handleRefund}
                   disabled={refunding || previewLoading}
                   style={refundModal.blocked ? { background: "#dc2626" } : {}}
                 >
