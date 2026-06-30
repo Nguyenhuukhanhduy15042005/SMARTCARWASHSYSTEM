@@ -931,56 +931,109 @@ const swaggerSpec = {
         },
       },
     },
-    "/api/surveys": {
+    // ── SURVEYS ───────────────────────────────────────────────────────────────
+    "/api/surveys/form": {
       get: {
         tags: ["Surveys"],
-        summary: "Lấy danh sách dữ liệu khảo sát",
+        summary: "Lấy thông tin Google Form khảo sát hiện tại",
+        description: "Trả về link Google Form/Response Sheet dùng để thu thập external survey dataset.",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: "Lấy thông tin survey form thành công" },
+          500: { description: "Lỗi khi lấy thông tin form khảo sát" },
+        },
+      },
+      post: {
+        tags: ["Surveys"],
+        summary: "Tạo/lưu Google Form khảo sát mới",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["title", "formUrl"],
+                properties: {
+                  title: { type: "string", example: "Khảo Sát Khách Hàng Dịch Vụ Rửa Xe" },
+                  description: { type: "string", example: "Khảo sát người dùng ngoài hệ thống để bổ sung external research dataset." },
+                  formUrl: { type: "string", example: "https://docs.google.com/forms/d/e/xxx/viewform" },
+                  responseSheetUrl: { type: "string", example: "https://docs.google.com/spreadsheets/d/xxx" },
+                  targetAudience: { type: "string", example: "Sinh viên FPT, nhân viên FPT, chủ xe" },
+                  status: { type: "boolean", example: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: "Tạo survey form thành công" },
+          400: { description: "Dữ liệu form không hợp lệ" },
+          500: { description: "Lỗi khi tạo survey form" },
+        },
+      },
+    },
+
+    "/api/surveys/form/{id}": {
+      put: {
+        tags: ["Surveys"],
+        summary: "Cập nhật Google Form khảo sát",
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "rating", in: "query", schema: { type: "integer", minimum: 1, maximum: 5 } },
-          { name: "search", in: "query", schema: { type: "string" } },
-          { name: "fromDate", in: "query", schema: { type: "string", format: "date" } },
-          { name: "toDate", in: "query", schema: { type: "string", format: "date" } }
+          { name: "id", in: "path", required: true, schema: { type: "integer" }, description: "SurveyFormID" },
         ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["title", "formUrl"],
+                properties: {
+                  title: { type: "string", example: "Khảo Sát Khách Hàng Dịch Vụ Rửa Xe" },
+                  description: { type: "string", example: "Khảo sát người dùng ngoài hệ thống để bổ sung external research dataset." },
+                  formUrl: { type: "string", example: "https://docs.google.com/forms/d/e/xxx/viewform" },
+                  responseSheetUrl: { type: "string", example: "https://docs.google.com/spreadsheets/d/xxx" },
+                  targetAudience: { type: "string", example: "Sinh viên FPT, nhân viên FPT, chủ xe" },
+                  status: { type: "boolean", example: true },
+                },
+              },
+            },
+          },
+        },
         responses: {
-          200: { description: "Lấy dữ liệu khảo sát thành công" }
-        }
-      }
+          200: { description: "Cập nhật survey form thành công" },
+          400: { description: "Dữ liệu form không hợp lệ" },
+          404: { description: "Không tìm thấy survey form" },
+          500: { description: "Lỗi khi cập nhật survey form" },
+        },
+      },
     },
 
-    "/api/surveys/stats": {
+    "/api/surveys/internal-summary": {
       get: {
         tags: ["Surveys"],
-        summary: "Lấy thống kê khảo sát",
+        summary: "Lấy thống kê feedback nội bộ phục vụ survey",
+        description: "Summary nhỏ từ FEEDBACK sau booking, dùng như internal signal bên cạnh external Google Form.",
         security: [{ bearerAuth: [] }],
         responses: {
-          200: { description: "Lấy thống kê thành công" }
-        }
-      }
-    },
-
-    "/api/surveys/export": {
-      get: {
-        tags: ["Surveys"],
-        summary: "Export dữ liệu khảo sát",
-        security: [{ bearerAuth: [] }],
-        responses: {
-          200: { description: "Export thành công" }
-        }
-      }
+          200: { description: "Lấy internal summary thành công" },
+          500: { description: "Lỗi khi lấy internal survey summary" },
+        },
+      },
     },
 
     "/api/surveys/research-dataset": {
       get: {
         tags: ["Surveys"],
-        summary: "Export research dataset cho loyalty tier progression",
-        description: "Tổng hợp dữ liệu nội bộ từ user, booking, feedback, loyalty transaction và reward usage để phục vụ phân tích/research dataset.",
+        summary: "Export internal research dataset cho loyalty tier progression",
+        description: "Tổng hợp dữ liệu user, booking behavior, spending, feedback, loyalty transaction và reward usage để phục vụ research/ML.",
         security: [{ bearerAuth: [] }],
         responses: {
           200: { description: "Lấy research dataset thành công" },
-          500: { description: "Lỗi khi lấy research dataset" }
-        }
-      }
+          500: { description: "Lỗi khi lấy research dataset" },
+        },
+      },
     },
   },
 };
