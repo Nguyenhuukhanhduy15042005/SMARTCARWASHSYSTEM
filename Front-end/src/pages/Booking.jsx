@@ -259,6 +259,23 @@ export default function Booking() {
     }
   };
 
+  // Tính toán ngày đặt trước tối đa dựa theo hạng thành viên (BR-05)
+  const getMaxDate = () => {
+    let maxDays = 7; // Mặc định Member (Bronze) là 7 ngày
+    const tier = (profile.TierName || "Standard").toLowerCase();
+
+    if (tier.includes("silver")) {
+      maxDays = 10;
+    } else if (tier.includes("gold")) {
+      maxDays = 12;
+    } else if (tier.includes("platinum")) {
+      maxDays = 14;
+    }
+    const maxDateObj = new Date();
+    maxDateObj.setDate(maxDateObj.getDate() + maxDays); // Cộng thêm số ngày giới hạn
+    return maxDateObj.toLocaleDateString("en-CA"); // Trả về định dạng YYYY-MM-DD
+  };
+
   const fetchTier = async () => {
     const token = localStorage.getItem("TOKEN") || localStorage.getItem("token");
     if (!token) return;
@@ -842,6 +859,7 @@ export default function Booking() {
                       required
                       className="form-input"
                       min={new Date().toLocaleDateString("en-CA")}
+                      max={getMaxDate()}
                     />
                   </div>
 

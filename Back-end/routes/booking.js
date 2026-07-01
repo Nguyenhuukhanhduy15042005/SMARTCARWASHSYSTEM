@@ -404,8 +404,47 @@ router.post("/", async (req, res) => {
                 .status(400)
                 .json({ message: "Thời gian đặt lịch không được ở trong quá khứ!" });
 
-        //ktra máy
+
+        // --- BẮT ĐẦU THÊM KIỂM TRA GIỚI HẠN NGÀY ĐẶT TRƯỚC (BR-05) ---
         const pool = await poolPromise;
+
+        // 1. Truy vấn tên hạng thành viên của khách hàng
+        const tierRes = await pool.request()
+            .input("customerId", sql.Int, CustomerID)
+            .query(`
+                SELECT lt.TierName 
+                FROM MEMBER_PROFILE mp 
+                LEFT JOIN LOYALTY_TIER lt ON mp.TierID = lt.TierID 
+                WHERE mp.UserID = @customerId
+            `);
+        const tierName = tierRes.recordset[0]?.TierName || "Member";
+        // 2. Định nghĩa số ngày giới hạn ứng với từng hạng
+        let maxAdvanceDays = 7; // Mặc định là Member (Bronze) được 7 ngày
+        const normalizedTier = tierName.toLowerCase();
+        if (normalizedTier.includes("silver")) {
+            maxAdvanceDays = 10;
+        } else if (normalizedTier.includes("gold")) {
+            maxAdvanceDays = 12;
+        } else if (normalizedTier.includes("platinum")) {
+            maxAdvanceDays = 14;
+        }
+        // 3. Tính khoảng cách số ngày giữa Ngày hẹn và Ngày hôm nay
+        const scheduledDateOnly = new Date(scheduledDate);
+        scheduledDateOnly.setHours(0, 0, 0, 0); // Đặt về 00:00 để so sánh chính xác số ngày
+
+        const todayOnly = new Date();
+        todayOnly.setHours(0, 0, 0, 0);
+        const diffTime = scheduledDateOnly.getTime() - todayOnly.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        // 4. Nếu số ngày vượt quá giới hạn -> Từ chối đặt lịch
+        if (diffDays > maxAdvanceDays) {
+            return res.status(400).json({
+                message: `Hạng thành viên của bạn (${tierName}) chỉ được đặt lịch trước tối đa ${maxAdvanceDays} ngày!`
+            });
+        }
+        // --- KẾT THÚC KIỂM TRA GIỚI HẠN NGÀY ĐẶT TRƯỚC ---
+
+        //ktra máy
         const assignedMachineId = await getAvailableMachineForBooking(
             pool,
             scheduledDate,
