@@ -140,6 +140,10 @@ export default function Booking() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [forceDeposit, setForceDeposit] = useState(false);
+
+  const [forceDepositWarning, setForceDepositWarning] = useState(null);
+
   const getCustomerId = () => {
     const token =
       localStorage.getItem("TOKEN") || localStorage.getItem("token");
@@ -201,6 +205,8 @@ export default function Booking() {
     fetchUserProfile();
 
     fetchUserVehicles();
+
+    fetchTier();
   }, []);
 
   useEffect(() => {
@@ -250,6 +256,20 @@ export default function Booking() {
       }
     } catch (err) {
       console.error("Lỗi fetch profile:", err);
+    }
+  };
+
+  const fetchTier = async () => {
+    const token = localStorage.getItem("TOKEN") || localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await axios.get("http://127.0.0.1:5000/api/payments/tier", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setForceDeposit(!!res.data.forceDeposit);
+      setForceDepositWarning(res.data.forceDepositWarning || null);
+    } catch (err) {
+      console.error("Lỗi fetch tier:", err);
     }
   };
 
@@ -467,7 +487,7 @@ export default function Booking() {
 
   const finalPrice = Math.max(0, basePrice - discountAmount);
 
-  const isHighTier = ["Gold", "Platinum"].includes(profile.TierName);
+  const isHighTier = ["Gold", "Platinum"].includes(profile.TierName) && !forceDeposit;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -775,7 +795,7 @@ export default function Booking() {
                               {s.serviceName.includes("VIP")
                                 ? "Vệ sinh toàn diện, phủ nano sơn và khử mùi nội thất cao cấp"
                                 : s.serviceName.includes("cơ bản") ||
-                                    s.serviceName.includes("tiêu chuẩn")
+                                  s.serviceName.includes("tiêu chuẩn")
                                   ? "Rửa bọt tuyết siêu sạch, xịt gầm và lau khô xe chuyên nghiệp"
                                   : "Rửa xe bọt tuyết nâng cao kết hợp phủ wax bóng láng bề mặt"}
                             </span>
@@ -1018,6 +1038,16 @@ export default function Booking() {
                       <span>🎖️ Miễn phí đặt chỗ</span>
 
                       <span>✓</span>
+                    </div>
+                  )}
+
+                  {forceDeposit && forceDepositWarning && (
+                    <div style={{
+                      marginTop: 8, padding: "10px 12px", borderRadius: 8,
+                      background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)",
+                      fontSize: "12px", color: "#fca5a5", lineHeight: 1.5,
+                    }}>
+                      {forceDepositWarning}
                     </div>
                   )}
                 </div>
