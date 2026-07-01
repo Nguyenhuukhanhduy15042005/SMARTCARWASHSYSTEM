@@ -38,53 +38,135 @@ export default function Sidebar() {
 
   if (role === "admin") {
     menuItems.push(
-      { path: "/admin/dashboard",  label: "Trang chủ",    icon: "fa-solid fa-chart-line" },
-      { path: "/admin/analytics",  label: "Thống kê",     icon: "fa-solid fa-chart-pie" },
-      { path: "/admin/surveys",    label: "Khảo sát",     icon: "fa-solid fa-clipboard-list" },
-      { path: "/timeslots",        label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
-      { path: "/admin/members",    label: "Khách hàng",   icon: "fa-solid fa-users" },
-      { path: "/admin/accounts",   label: "Tài khoản",    icon: "fa-solid fa-user-shield" },
-      { path: "/admin/machines",   label: "Máy móc",      icon: "fa-solid fa-gears" },
-      { path: "/admin/promotions", label: "Khuyến mãi",   icon: "fa-solid fa-tags" },
-      { path: "/admin/feedbacks",  label: "Đánh giá",     icon: "fa-solid fa-star" },
+      {
+        path: "/admin/dashboard",
+        label: "Trang chủ",
+        icon: "fa-solid fa-chart-line",
+      },
+      {
+        path: "/admin/analytics",
+        label: "Thống kê",
+        icon: "fa-solid fa-chart-pie",
+      },
+      {
+        path: "/admin/behavior-analytics",
+        label: "Phân Tích Hành Vi",
+        icon: "fa-solid fa-users-viewfinder",
+      }, // <-- Thêm vào đây
+      {
+        path: "/admin/surveys",
+        label: "Khảo sát",
+        icon: "fa-solid fa-clipboard-list",
+      },
+      {
+        path: "/timeslots",
+        label: "Bàn làm việc",
+        icon: "fa-solid fa-car-side",
+      },
+      {
+        path: "/admin/members",
+        label: "Khách hàng",
+        icon: "fa-solid fa-users",
+      },
+      {
+        path: "/admin/accounts",
+        label: "Tài khoản",
+        icon: "fa-solid fa-user-shield",
+      },
+      { path: "/admin/machines", label: "Máy móc", icon: "fa-solid fa-gears" },
+      {
+        path: "/admin/promotions",
+        label: "Khuyến mãi",
+        icon: "fa-solid fa-tags",
+      },
+      { path: "/admin/feedbacks", label: "Đánh giá", icon: "fa-solid fa-star" },
     );
   } else if (role === "staff") {
     menuItems.push(
-      { path: "/staff/dashboard",  label: "Trang chủ",    icon: "fa-solid fa-chart-line" },
-      { path: "/staff/timeslots",  label: "Bàn làm việc", icon: "fa-solid fa-car-side" },
-      { path: "/staff/members",    label: "Khách hàng",   icon: "fa-solid fa-users" },
-      { path: "/staff/machines",   label: "Máy móc",      icon: "fa-solid fa-gears" },
-      { path: "/staff/promotions", label: "Khuyến mãi",   icon: "fa-solid fa-tags" },
-      { path: "/staff/feedbacks",  label: "Đánh giá",     icon: "fa-solid fa-star" },
+      {
+        path: "/staff/dashboard",
+        label: "Trang chủ",
+        icon: "fa-solid fa-chart-line",
+      },
+      {
+        path: "/staff/behavior-analytics",
+        label: "Phân Tích Hành Vi",
+        icon: "fa-solid fa-users-viewfinder",
+      }, // <-- THÊM DÒNG NÀY VÀO ĐÂY
+      {
+        path: "/staff/timeslots",
+        label: "Bàn làm việc",
+        icon: "fa-solid fa-car-side",
+      },
+      {
+        path: "/staff/members",
+        label: "Khách hàng",
+        icon: "fa-solid fa-users",
+      },
+      { path: "/staff/machines", label: "Máy móc", icon: "fa-solid fa-gears" },
+      {
+        path: "/staff/promotions",
+        label: "Khuyến mãi",
+        icon: "fa-solid fa-tags",
+      },
+      { path: "/staff/feedbacks", label: "Đánh giá", icon: "fa-solid fa-star" },
     );
   } else {
     menuItems.push(
-      { path: "/dashboard",         label: "Trang chủ",        icon: "fa-solid fa-chart-line" },
-      { path: "/booking",           label: "Đặt lịch",         icon: "fa-regular fa-calendar-check" },
-      { path: "/vehicles",          label: "Xe của tôi",       icon: "fa-solid fa-car" },
-      { path: "/reward-redemption", label: "Đổi điểm thưởng",  icon: "fa-solid fa-gift" },
-      { path: "/loyalty",           label: "Hạng & Lịch sử điểm", icon: "fa-solid fa-award" },
+      {
+        path: "/dashboard",
+        label: "Trang chủ",
+        icon: "fa-solid fa-chart-line",
+      },
+      {
+        path: "/booking",
+        label: "Đặt lịch",
+        icon: "fa-regular fa-calendar-check",
+      },
+      { path: "/vehicles", label: "Xe của tôi", icon: "fa-solid fa-car" },
+      {
+        path: "/reward-redemption",
+        label: "Đổi điểm thưởng",
+        icon: "fa-solid fa-gift",
+      },
+      {
+        path: "/loyalty",
+        label: "Hạng & Lịch sử điểm",
+        icon: "fa-solid fa-award",
+      },
     );
   }
 
   menuItems.push(
-    { path: "/profile",  label: "Hồ sơ cá nhân", icon: "fa-solid fa-user-gear" },
-    { path: "/settings", label: "Cài đặt",        icon: "fa-solid fa-gear" },
+    { path: "/profile", label: "Hồ sơ cá nhân", icon: "fa-solid fa-user-gear" },
+    { path: "/settings", label: "Cài đặt", icon: "fa-solid fa-gear" },
   );
 
   return (
     <aside className="portal-sidebar">
       <Link to="/" className="portal-sidebar-brand">
-        <img src="/logo.png" alt="Moto Shine Logo" className="sidebar-logo-img" />
+        <img
+          src="/logo.png"
+          alt="Moto Shine Logo"
+          className="sidebar-logo-img"
+        />
         <span>Moto Shine</span>
       </Link>
 
-      <Link to="/profile" className="sidebar-user-info" title="Xem hồ sơ cá nhân">
+      <Link
+        to="/profile"
+        className="sidebar-user-info"
+        title="Xem hồ sơ cá nhân"
+      >
         <div className="sidebar-avatar">{userInitials}</div>
         <div className="sidebar-user-details">
           <span className="sidebar-username">{fullName}</span>
           <span className="sidebar-userrole">
-            {role === "admin" ? "Quản trị viên" : role === "staff" ? "Nhân viên" : "Thành viên"}
+            {role === "admin"
+              ? "Quản trị viên"
+              : role === "staff"
+                ? "Nhân viên"
+                : "Thành viên"}
           </span>
         </div>
       </Link>
@@ -108,8 +190,9 @@ export default function Sidebar() {
 
       {/* ── Khu vực bottom: Giao diện → Đăng xuất ── */}
       <div className="portal-sidebar-bottom">
-
-        <div style={{ padding: "0 12px", marginTop: "4px", marginBottom: "8px" }}>
+        <div
+          style={{ padding: "0 12px", marginTop: "4px", marginBottom: "8px" }}
+        >
           <ThemePanel />
         </div>
 
@@ -117,7 +200,12 @@ export default function Sidebar() {
           <button
             onClick={handleLogout}
             className="portal-menu-item portal-logout-btn-sidebar"
-            style={{ width: "100%", border: "none", background: "none", textAlign: "left" }}
+            style={{
+              width: "100%",
+              border: "none",
+              background: "none",
+              textAlign: "left",
+            }}
           >
             <i className="fa-solid fa-arrow-right-from-bracket"></i>
             <span>Đăng xuất</span>

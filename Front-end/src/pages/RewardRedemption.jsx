@@ -72,7 +72,7 @@ export default function RewardRedemption() {
       RewardCode: `PR-${promotion.PromotionID}`,
       RewardName:
         promotion.PromoName || `Khuyến mãi PR-${promotion.PromotionID}`,
-      PointsRequired: Math.max(1, Math.round(discountPercent * 10)),
+      PointsRequired: Number(promotion.RequiredPoints || promotion.requiredPoints || 0),
       DiscountPercent: discountPercent,
       Description: `Voucher giảm ${discountPercent}% khi thanh toán booking.`,
       RawPromotion: promotion,
@@ -491,7 +491,6 @@ export default function RewardRedemption() {
   );
 }
 
-// Trọng thêm: Cập nhật CSS sử dụng CSS Variables để đồng bộ giao diện sáng tối
 const rewardRedemptionCss = `
 .reward-page{
   min-height:100vh;
