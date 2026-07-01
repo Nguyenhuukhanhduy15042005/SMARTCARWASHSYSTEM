@@ -5,12 +5,12 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger-spec");
 require("dotenv").config();
 const { sql, poolPromise } = require("./db");
- 
+
 if (!process.env.JWT_SECRET) {
   console.error("FATAL: Thiếu JWT_SECRET trong file .env. Dừng server.");
   process.exit(1);
 }
- 
+
 const app = express();
 app.use((req, res, next) => {
   console.log(`[REQUEST] ${req.method} ${req.url}`);
@@ -23,7 +23,7 @@ app.use(
     credentials: true,
   }),
 );
- 
+
 // IMPORT ROUTERS
 const authRouter = require("./routes/auth");
 const userRouter = require("./routes/user");
@@ -56,7 +56,7 @@ app.use("/api/surveys", surveyRouter);
 app.get("/api/test", (req, res) => {
   res.json({ message: "API Car Wash System hoạt động tốt!" });
 });
- 
+
 // ================================================================
 // CRON JOB: TỰ ĐỘNG KHÓA MÁY VÀO NGÀY BẢO TRÌ
 // Đang set chạy mỗi phút để bạn test (* * * * *).
@@ -75,7 +75,7 @@ cron.schedule("* * * * *", async () => {
         WHERE CAST(MaintenanceDate AS DATE) = CAST(GETDATE() AS DATE)
       ) AND Status <> 3
     `);
- 
+
     if (result.rowsAffected[0] > 0) {
       console.log(
         `[CRON] Đã tự động khóa ${result.rowsAffected[0]} máy đến hạn bảo trì.`,
@@ -87,9 +87,9 @@ cron.schedule("* * * * *", async () => {
     console.error("[CRON] Lỗi khi chạy tự động khóa máy:", err.message);
   }
 });
- 
+
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
- 
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server đang chạy tại http://localhost:${PORT}`);
@@ -97,8 +97,12 @@ app.listen(PORT, () => {
 
 //v3
 
-const initReminderJob = require('./jobs/reminderJob');
+const initReminderJob = require('./Jobs/reminderJob');
 initReminderJob(); // Khởi chạy cron job khi server bật
+
+//import và khởi chạy cron job hủy booking quá 15 phút chưa thanh toán
+const initPaymentTimeoutJob = require('./Jobs/paymentTimeoutJob');
+initPaymentTimeoutJob();
 
 // Đăng kí notification.js
 const notificationRouter = require('./routes/notification');

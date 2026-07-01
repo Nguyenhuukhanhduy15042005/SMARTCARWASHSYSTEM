@@ -152,6 +152,7 @@ export default function UserDashboard() {
             b.isHiddenByUser === true,
         };
       });
+      normalizedBookings.sort((a, b) => b.id - a.id);
       setBookings(normalizedBookings);
 
       try {

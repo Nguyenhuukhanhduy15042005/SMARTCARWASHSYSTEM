@@ -191,6 +191,32 @@ const confirmVNPay = async (query) => {
       UPDATE BOOKING SET Status = 2 WHERE BookingID = @bookingId;
       UPDATE MEMBER_PROMOTION SET IsUsed = 1 WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
     `);
+
+    try {
+      // 1. Lấy thông tin CustomerID và Email của User từ BookingID
+      const userRes = await pool.request()
+        .input('bookingId', sql.Int, bookingId)
+        .query('SELECT b.CustomerID, u.Email FROM BOOKING b JOIN [USER] u ON b.CustomerID = u.UserID WHERE b.BookingID = @bookingId');
+
+      const user = userRes.recordset[0];
+      if (user) {
+        // 2. Import động service gửi mail & in-app notification
+        const { createAndSendNotification } = require('../Services/notificationService');
+
+        // 3. Gửi thông báo đặt lịch thành công
+        await createAndSendNotification({
+          userId: user.CustomerID,
+          bookingId: bookingId,
+          title: "Xác nhận đặt lịch rửa xe thành công",
+          message: `Lịch đặt rửa xe của bạn (Mã đơn BK-${bookingId}) đã được xác nhận thanh toán thành công và chuyển sang trạng thái Đã nhận.`,
+          type: "CONFIRMATION",
+          userEmail: user.Email
+        });
+      }
+    } catch (notiErr) {
+      console.error(`[PaymentNotification] Lỗi khi gửi thông báo thành công cho BK-${bookingId}:`, notiErr.message);
+    }
+
   } else {
     await pool.request().input('bookingId', sql.Int, bookingId).query(`
       UPDATE BOOKING SET Status = 5 WHERE BookingID = @bookingId;

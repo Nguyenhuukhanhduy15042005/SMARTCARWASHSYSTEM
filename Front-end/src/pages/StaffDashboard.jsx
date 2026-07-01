@@ -93,13 +93,8 @@ export default function StaffDashboard() {
         validData = validData.filter((b) => b.VehicleType === vehicleFilter);
       }
 
-      const statusPriority = { 2: 1, 3: 2, 4: 3, 5: 4 };
-      validData.sort((a, b) => {
-        const pA = statusPriority[String(a.Status)] || 99;
-        const pB = statusPriority[String(b.Status)] || 99;
-        if (pA !== pB) return pA - pB;
-        return new Date(b.BookingDate) - new Date(a.BookingDate);
-      });
+      // Sắp xếp theo BookingID giảm dần (giống Admin)
+      validData.sort((a, b) => (b.BookingID || 0) - (a.BookingID || 0));
 
       setBookings(validData);
       calculateStats(validData);
@@ -141,9 +136,9 @@ export default function StaffDashboard() {
           );
           const price = Number(
             freshBooking.FinalPrice ||
-              freshBooking.TotalPrice ||
-              freshBooking.price ||
-              0,
+            freshBooking.TotalPrice ||
+            freshBooking.price ||
+            0,
           );
           const remaining = price - paid;
           if (remaining > 0) {
@@ -615,15 +610,15 @@ export default function StaffDashboard() {
                             )}
                             {(String(booking.Status) === "1" ||
                               String(booking.Status) === "2") && (
-                              <button
-                                style={styles.btnCancel}
-                                onClick={() =>
-                                  handleTransition(booking.BookingID, 5)
-                                }
-                              >
-                                <i className="fa-solid fa-ban"></i> Hủy
-                              </button>
-                            )}
+                                <button
+                                  style={styles.btnCancel}
+                                  onClick={() =>
+                                    handleTransition(booking.BookingID, 5)
+                                  }
+                                >
+                                  <i className="fa-solid fa-ban"></i> Hủy
+                                </button>
+                              )}
                           </div>
                         </td>
                       </tr>

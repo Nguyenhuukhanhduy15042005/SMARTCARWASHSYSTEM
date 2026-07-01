@@ -8,15 +8,15 @@ import "./Payment.css";
 const API_BASE = "http://localhost:5000/api";
 
 const PAYMENT_METHODS = [
-  { id: "cash",  label: "Tiền mặt", desc: "Thanh toán tại quầy khi đến", icon: "💵" },
-  { id: "vnpay", label: "VNPay",    desc: "Thanh toán qua cổng VNPay",   icon: "🏦" },
+  { id: "cash", label: "Tiền mặt", desc: "Thanh toán tại quầy khi đến", icon: "💵" },
+  { id: "vnpay", label: "VNPay", desc: "Thanh toán qua cổng VNPay", icon: "🏦" },
 ];
 
 const TIER_INFO = {
-  1: { name: "Bronze", color: "#cd7f32", needDeposit: true  },
-  2: { name: "Silver", color: "#9ca3af", needDeposit: true  },
-  3: { name: "Gold",   color: "#f59e0b", needDeposit: false },
-  4: { name: "Platinum",color:"#7c3aed", needDeposit: false },
+  1: { name: "Bronze", color: "#cd7f32", needDeposit: true },
+  2: { name: "Silver", color: "#9ca3af", needDeposit: true },
+  3: { name: "Gold", color: "#f59e0b", needDeposit: false },
+  4: { name: "Platinum", color: "#7c3aed", needDeposit: false },
 };
 
 export default function Payment() {
@@ -29,12 +29,13 @@ export default function Payment() {
   };
 
   const [bookingData, setBookingData] = useState(booking);
-  const [method, setMethod]     = useState("cash");
-  const [loading, setLoading]   = useState(false);
-  const [tierID, setTierID]     = useState(null);
+  const [method, setMethod] = useState("cash");
+  const [loading, setLoading] = useState(false);
+  const [tierID, setTierID] = useState(null);
   const [loadingTier, setLoadingTier] = useState(true);
-  const [toast, setToast]       = useState(null);
-  const [qrModal, setQrModal]   = useState(null);
+  const [toast, setToast] = useState(null);
+  const [qrModal, setQrModal] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(null); // State lưu giây còn lại
 
   const [vouchers, setVouchers] = useState([]);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
@@ -61,6 +62,44 @@ export default function Payment() {
 
   const formatPrice = (price) =>
     new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price || 0);
+
+  //time
+  const formatTimeLeft = (seconds) => {
+    if (seconds === null) return "--:--";
+    if (seconds <= 0) return "Đã hết hạn";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+
+  // Tính toán thời gian đếm ngược 15 phút dựa trên CreatedAt của booking
+  useEffect(() => {
+    if (!bookingData?.CreatedAt) return;
+
+    //Ở Việt Nam (GMT+7, nhanh hơn giờ quốc tế 7 tiếng)
+    const calculateTimeLeft = () => {
+      // Lấy thời gian gốc
+      const createdTime = new Date(bookingData.CreatedAt).getTime();
+      // Lấy khoảng thời gian lệch múi giờ của trình duyệt (ví dụ Việt Nam là -420 phút = 7 tiếng)
+      const timezoneOffsetMs = new Date().getTimezoneOffset() * 60 * 1000;
+      // Trừ đi múi giờ lệch để đưa về đúng giờ thực tế
+      const localCreatedTime = createdTime + timezoneOffsetMs;
+
+      const limitTime = localCreatedTime + 15 * 60 * 1000; // 15 phút
+      const diff = Math.floor((limitTime - Date.now()) / 1000); // Chuyển sang giây
+      return diff > 0 ? diff : 0;
+    };
+    // Khởi tạo giây ban đầu
+    setTimeLeft(calculateTimeLeft());
+    const intervalId = setInterval(() => {
+      const remaining = calculateTimeLeft();
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(intervalId); // Dừng đếm ngược khi về 0
+      }
+    }, 1000);
+    return () => clearInterval(intervalId);
+  }, [bookingData]);
 
   // Lấy thông tin khi load trang
   useEffect(() => {
@@ -112,7 +151,7 @@ export default function Payment() {
 
   // Tính số tiền hiển thị theo method + tier
   const tier = TIER_INFO[tierID] || TIER_INFO[1];
-  const depositAmount  = Math.min(currentFinalPrice, Math.max(10000, Math.round(currentFinalPrice * 0.1)));
+  const depositAmount = Math.min(currentFinalPrice, Math.max(10000, Math.round(currentFinalPrice * 0.1)));
   const remainingAmount = currentFinalPrice - depositAmount;
 
   const getPaymentNote = () => {
@@ -249,6 +288,30 @@ export default function Payment() {
             </div>
           </div>
 
+          {/* Cảnh báo đếm ngược thời gian thanh toán 15 phút */}
+          {timeLeft !== null && (
+            <div style={{
+              background: timeLeft <= 0 ? "#fef2f2" : "#fffbeb",
+              color: timeLeft <= 0 ? "#ef4444" : "#b45309",
+              border: timeLeft <= 0 ? "1px solid #fee2e2" : "1px solid #fef3c7",
+              padding: "12px 16px",
+              borderRadius: "8px",
+              marginBottom: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontWeight: 600,
+              fontSize: "14px"
+            }}>
+              <i className="fa-regular fa-clock" style={{ fontSize: "16px" }}></i>
+              <span>
+                {timeLeft <= 0
+                  ? "Lịch đặt của bạn đã quá 15 phút chưa thanh toán nên đã bị hủy."
+                  : `Vui lòng hoàn tất thanh toán trong: ${formatTimeLeft(timeLeft)}`}
+              </span>
+            </div>
+          )}
+
           {/* Phương thức */}
           <p className="payment-section-label">Phương thức thanh toán</p>
           <div className="payment-methods">
@@ -256,7 +319,7 @@ export default function Payment() {
               <button key={m.id}
                 className={`payment-method-option ${method === m.id ? "active" : ""}`}
                 onClick={() => setMethod(m.id)}>
-                <span className="pmo-icon">{m.icon}</span>
+                <span className="pmo-icon">{m.icon}</span>s
                 <div className="pmo-body">
                   <span className="pmo-label">{m.label}</span>
                   <span className="pmo-desc">{m.desc}</span>
@@ -278,8 +341,8 @@ export default function Payment() {
                     <p className="avc-discount">Giảm {Math.round(activeVoucher.DiscountPercent)}% dịch vụ</p>
                   </div>
                 </div>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn-remove-voucher"
                   onClick={() => handleApplyVoucher(null)}
                   disabled={loading}
@@ -296,8 +359,8 @@ export default function Payment() {
                     <p className="avc-discount">Ưu đãi giảm giá từ voucher</p>
                   </div>
                 </div>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn-remove-voucher"
                   onClick={() => handleApplyVoucher(null)}
                   disabled={loading}
@@ -306,8 +369,8 @@ export default function Payment() {
                 </button>
               </div>
             ) : (
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="btn-apply-voucher-trigger"
                 onClick={() => setShowVoucherModal(true)}
                 disabled={loading}
@@ -330,7 +393,7 @@ export default function Payment() {
           )}
 
           <button className="btn-pay-submit" onClick={handleSubmit}
-            disabled={loading || loadingTier}>
+            disabled={loading || loadingTier || timeLeft <= 0}>
             {loading ? <span className="pay-spinner" /> : getButtonLabel()}
           </button>
         </div>
@@ -417,8 +480,8 @@ export default function Payment() {
                   {vouchers.map((v) => {
                     const isExpired = v.EndDate && new Date(v.EndDate) < new Date();
                     return (
-                      <div 
-                        key={v.MemberPromoID} 
+                      <div
+                        key={v.MemberPromoID}
                         className={`voucher-item-card ${isExpired ? "expired" : ""}`}
                         onClick={() => {
                           if (!isExpired) {

@@ -1,6 +1,6 @@
 const cron = require('node-cron');
 const { sql, poolPromise } = require('../db');
-const { createAndSendNotification } = require('../services/notificationService');
+const { createAndSendNotification } = require('../Services/notificationService');
 
 // ─── Cờ chống chạy đè (tránh overlap khi query DB chậm) ──────────────────────
 let isRunning = false;

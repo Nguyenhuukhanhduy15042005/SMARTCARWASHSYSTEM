@@ -482,9 +482,9 @@ router.post("/", async (req, res) => {
         createAndSendNotification({
             userId: CustomerID,
             bookingId: newBookingID,
-            title: "Xác nhận đặt lịch rửa xe thành công",
-            message: `Lịch đặt rửa xe của bạn (Mã đơn BK-${newBookingID}) đã được khởi tạo thành công trên hệ thống.`,
-            type: "CONFIRMATION",
+            title: "Lịch đặt xe đang chờ thanh toán",
+            message: `Yêu cầu đặt lịch rửa xe của bạn (Mã đơn BK-${newBookingID}) đã được ghi nhận. Vui lòng hoàn tất thanh toán/đặt cọc trong vòng 15 phút để xác nhận lịch hẹn.`,
+            type: "BOOKING", // đổi màu giao diện email sang màu xanh lam chờ thanh toán
             userEmail: userEmail
         });
 
