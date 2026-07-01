@@ -410,8 +410,8 @@ export default function AdminDashboard() {
               }}
             >
               <option value="All">Loại xe: Tất cả</option>
-              <option value="Ô tô">Ô tô</option>
-              <option value="Xe máy">Xe máy</option>
+              <option value="CAR">Ô tô</option>
+              <option value="BIKE">Xe máy</option>
             </select>
           </div>
           <div className="filter-item" style={{ flex: 1, minWidth: "150px" }}>

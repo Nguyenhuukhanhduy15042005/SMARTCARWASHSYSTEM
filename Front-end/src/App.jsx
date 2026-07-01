@@ -28,7 +28,7 @@ import MachineDashboard from "./pages/MachineDashboard";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 // Duy thêm mới: trang Khảo sát Survey dành cho Admin
 import SurveyDashboard from "./pages/SurveyDashboard";
-
+import BehaviorAnalytics from "./pages/BehaviorAnalytics";
 const getStoredRole = () => {
   try {
     const savedUser = JSON.parse(localStorage.getItem("LOGIN_USER") || "null");
@@ -169,6 +169,22 @@ function App() {
           element={
             <ProtectedRoute requiredRole="admin">
               <AnalyticsDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/behavior-analytics"
+          element={
+            <ProtectedRoute requiredRole={["admin", "staff"]}>
+              <BehaviorAnalytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/behavior-analytics"
+          element={
+            <ProtectedRoute requiredRole="staff">
+              <BehaviorAnalytics />
             </ProtectedRoute>
           }
         />
