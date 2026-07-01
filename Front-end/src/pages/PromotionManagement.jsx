@@ -3,7 +3,7 @@ import axios from "axios";
 import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
-const emptyForm = { PromoName: "", DiscountPercent: 10, EndDate: "" };
+const emptyForm = { PromoName: "", DiscountPercent: 10, RequiredPoints: 0, EndDate: "" };
 
 export default function PromotionManagement() {
   const [promotions, setPromotions] = useState([]);
@@ -87,6 +87,7 @@ export default function PromotionManagement() {
     setForm({
       PromoName: promotion.PromoName || "",
       DiscountPercent: Number(promotion.DiscountPercent || 0),
+      RequiredPoints: Number(promotion.RequiredPoints || 0),
       EndDate: promotion.EndDate
         ? new Date(promotion.EndDate).toISOString().slice(0, 10)
         : "",
@@ -111,6 +112,11 @@ export default function PromotionManagement() {
       showToast("Phần trăm giảm phải từ 0 đến 100", "error");
       return false;
     }
+    const points = Number(form.RequiredPoints);
+    if (Number.isNaN(points) || points < 0 || !Number.isInteger(points)) {
+      showToast("Điểm cần đổi phải là số nguyên >= 0", "error");
+      return false;
+    }
     return true;
   };
 
@@ -121,6 +127,7 @@ export default function PromotionManagement() {
     const payload = {
       PromoName: form.PromoName.trim(),
       DiscountPercent: Number(form.DiscountPercent),
+      RequiredPoints: Number(form.RequiredPoints),
       EndDate: form.EndDate || null,
     };
 
@@ -300,6 +307,7 @@ export default function PromotionManagement() {
                     <th>ID</th>
                     <th>Tên khuyến mãi</th>
                     <th>Giảm giá</th>
+                    <th>Điểm đổi</th>
                     <th>Ngày hết hạn</th>
                     <th>Trạng thái</th>
                     <th>Ví member</th>
@@ -324,6 +332,7 @@ export default function PromotionManagement() {
                           -{Number(item.DiscountPercent || 0)}%
                         </span>
                       </td>
+                      <td>{Number(item.RequiredPoints || 0).toLocaleString("vi-VN")}</td>
                       <td>{formatDate(item.EndDate)}</td>
                       <td>
                         <span
@@ -414,6 +423,19 @@ export default function PromotionManagement() {
                 value={form.DiscountPercent}
                 onChange={(e) =>
                   setForm({ ...form, DiscountPercent: e.target.value })
+                }
+              />
+            </label>
+
+            <label className="pm-form-group">
+              <span>Điểm cần đổi</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={form.RequiredPoints}
+                onChange={(e) =>
+                  setForm({ ...form, RequiredPoints: e.target.value })
                 }
               />
             </label>

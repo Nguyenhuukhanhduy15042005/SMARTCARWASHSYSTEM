@@ -18,6 +18,12 @@ function normalizeEndDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function normalizeRequiredPoints(value) {
+  const numberValue = Number(value ?? 0);
+  if (Number.isNaN(numberValue) || numberValue < 0) return null;
+  return Math.floor(numberValue);
+}
+
 function mapPromotion(row) {
   const endDate = row.EndDate ? new Date(row.EndDate) : null;
   const isActive = endDate ? endDate >= new Date() : true;
@@ -25,6 +31,7 @@ function mapPromotion(row) {
     PromotionID: row.PromotionID,
     PromoName: row.PromoName,
     DiscountPercent: Number(row.DiscountPercent || 0),
+    RequiredPoints: Number(row.RequiredPoints || 0),
     EndDate: row.EndDate,
     Status: isActive ? "Active" : "Expired",
     UsedCount: Number(row.UsedCount || 0),
@@ -61,13 +68,14 @@ router.get("/", async (req, res) => {
         p.PromotionID,
         p.PromoName,
         p.DiscountPercent,
+        p.RequiredPoints,
         p.EndDate,
         COUNT(mp.MemberPromoID) AS WalletCount,
         SUM(CASE WHEN mp.IsUsed = 1 THEN 1 ELSE 0 END) AS UsedCount
       FROM PROMOTION p
       LEFT JOIN MEMBER_PROMOTION mp ON p.PromotionID = mp.PromotionID
       ${where}
-      GROUP BY p.PromotionID, p.PromoName, p.DiscountPercent, p.EndDate
+      GROUP BY p.PromotionID, p.PromoName, p.DiscountPercent, p.RequiredPoints, p.EndDate
       ORDER BY p.PromotionID DESC
     `);
 
@@ -92,13 +100,14 @@ router.get("/:id", async (req, res) => {
           p.PromotionID,
           p.PromoName,
           p.DiscountPercent,
+          p.RequiredPoints,
           p.EndDate,
           COUNT(mp.MemberPromoID) AS WalletCount,
           SUM(CASE WHEN mp.IsUsed = 1 THEN 1 ELSE 0 END) AS UsedCount
         FROM PROMOTION p
         LEFT JOIN MEMBER_PROMOTION mp ON p.PromotionID = mp.PromotionID
         WHERE p.PromotionID = @promotionId
-        GROUP BY p.PromotionID, p.PromoName, p.DiscountPercent, p.EndDate
+        GROUP BY p.PromotionID, p.PromoName, p.DiscountPercent, p.RequiredPoints, p.EndDate
       `);
 
     if (!result.recordset.length) {
@@ -117,20 +126,23 @@ router.post("/", async (req, res) => {
   const promoName = normalizeText(req.body.PromoName || req.body.promoName, 255);
   const discountPercent = normalizeDiscount(req.body.DiscountPercent ?? req.body.discountPercent);
   const endDate = normalizeEndDate(req.body.EndDate || req.body.endDate);
+  const requiredPoints = normalizeRequiredPoints(req.body.RequiredPoints ?? req.body.requiredPoints);
 
   if (!promoName) return res.status(400).json({ message: "Tên khuyến mãi không được để trống" });
   if (discountPercent === null) return res.status(400).json({ message: "Phần trăm giảm phải từ 0 đến 100" });
+  if (requiredPoints === null) return res.status(400).json({ message: "Điểm cần đổi phải là số nguyên >= 0" });
 
   try {
     const pool = await poolPromise;
     const result = await pool.request()
       .input("promoName", sql.NVarChar(255), promoName)
       .input("discountPercent", sql.Decimal(5, 2), discountPercent)
+      .input("requiredPoints", sql.Int, requiredPoints)
       .input("endDate", sql.DateTime, endDate)
       .query(`
-        INSERT INTO PROMOTION (PromoName, DiscountPercent, EndDate)
-        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.EndDate
-        VALUES (@promoName, @discountPercent, @endDate)
+        INSERT INTO PROMOTION (PromoName, DiscountPercent, RequiredPoints, EndDate)
+        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.RequiredPoints, INSERTED.EndDate
+        VALUES (@promoName, @discountPercent, @requiredPoints, @endDate)
       `);
 
     res.status(201).json({
@@ -149,10 +161,12 @@ router.put("/:id", async (req, res) => {
   const promoName = normalizeText(req.body.PromoName || req.body.promoName, 255);
   const discountPercent = normalizeDiscount(req.body.DiscountPercent ?? req.body.discountPercent);
   const endDate = normalizeEndDate(req.body.EndDate || req.body.endDate);
+  const requiredPoints = normalizeRequiredPoints(req.body.RequiredPoints ?? req.body.requiredPoints);
 
   if (!promotionId) return res.status(400).json({ message: "PromotionID không hợp lệ" });
   if (!promoName) return res.status(400).json({ message: "Tên khuyến mãi không được để trống" });
   if (discountPercent === null) return res.status(400).json({ message: "Phần trăm giảm phải từ 0 đến 100" });
+  if (requiredPoints === null) return res.status(400).json({ message: "Điểm cần đổi phải là số nguyên >= 0" });
 
   try {
     const pool = await poolPromise;
@@ -160,13 +174,15 @@ router.put("/:id", async (req, res) => {
       .input("promotionId", sql.Int, promotionId)
       .input("promoName", sql.NVarChar(255), promoName)
       .input("discountPercent", sql.Decimal(5, 2), discountPercent)
+      .input("requiredPoints", sql.Int, requiredPoints)
       .input("endDate", sql.DateTime, endDate)
       .query(`
         UPDATE PROMOTION
         SET PromoName = @promoName,
             DiscountPercent = @discountPercent,
+            RequiredPoints = @requiredPoints,
             EndDate = @endDate
-        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.EndDate
+        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.RequiredPoints, INSERTED.EndDate
         WHERE PromotionID = @promotionId
       `);
 
@@ -196,7 +212,7 @@ router.patch("/:id/expire", async (req, res) => {
       .query(`
         UPDATE PROMOTION
         SET EndDate = DATEADD(DAY, -1, GETDATE())
-        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.EndDate
+        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.RequiredPoints, INSERTED.EndDate
         WHERE PromotionID = @promotionId
       `);
 
@@ -214,10 +230,7 @@ router.patch("/:id/expire", async (req, res) => {
   }
 });
 
-
 // DELETE /api/promotions/:id
-// Hard delete dùng cho dữ liệu demo/test:
-// xóa các bản ghi liên quan trong MEMBER_PROMOTION trước rồi mới xóa PROMOTION.
 router.delete("/:id", async (req, res) => {
   const promotionId = Number(req.params.id);
   if (!promotionId) return res.status(400).json({ message: "PromotionID không hợp lệ" });
