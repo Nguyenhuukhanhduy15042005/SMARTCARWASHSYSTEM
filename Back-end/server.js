@@ -88,6 +88,7 @@ cron.schedule("* * * * *", async () => {
   }
 });
 
+// đăng kí swagger
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const PORT = process.env.PORT || 5000;

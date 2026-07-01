@@ -412,7 +412,7 @@ export default function LoyaltyHistory() {
                   </li>
                   <li>
                     <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
-                    Hạn đặt trước: 1 ngày
+                    Hạn đặt trước: 7 ngày
                   </li>
                   <li>
                     <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
@@ -440,7 +440,7 @@ export default function LoyaltyHistory() {
                   </li>
                   <li>
                     <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
-                    Hạn đặt trước: 3 ngày
+                    Hạn đặt trước: 10 ngày
                   </li>
                   <li>
                     <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
@@ -468,7 +468,7 @@ export default function LoyaltyHistory() {
                   </li>
                   <li>
                     <i className="fa-solid fa-circle-check text-green-500"></i>{" "}
-                    Hạn đặt trước: 7 ngày
+                    Hạn đặt trước: 12 ngày
                   </li>
                   <li>
                     <i className="fa-solid fa-circle-check text-green-500"></i>{" "}

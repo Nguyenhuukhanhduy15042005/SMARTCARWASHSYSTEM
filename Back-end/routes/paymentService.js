@@ -218,13 +218,37 @@ const confirmVNPay = async (query) => {
     }
 
   } else {
+    // 1. Cập nhật Hủy đơn + nhả voucher + giải phóng máy rửa xe
     await pool.request().input('bookingId', sql.Int, bookingId).query(`
       UPDATE BOOKING SET Status = 5 WHERE BookingID = @bookingId;
       UPDATE MEMBER_PROMOTION SET IsUsed = 0 WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
+      UPDATE MACHINE SET Status = 1 WHERE MachineID = (SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId);
     `);
+    // 2. Gửi thông báo và email hủy đơn do thanh toán thất bại
+    try {
+      const userRes = await pool.request()
+        .input('bookingId', sql.Int, bookingId)
+        .query('SELECT b.CustomerID, u.Email FROM BOOKING b JOIN [USER] u ON b.CustomerID = u.UserID WHERE b.BookingID = @bookingId');
+
+      const user = userRes.recordset[0];
+      if (user) {
+        const { createAndSendNotification } = require('../Services/notificationService');
+        await createAndSendNotification({
+          userId: user.CustomerID,
+          bookingId: bookingId,
+          title: "Đơn đặt lịch bị hủy (Thanh toán không thành công)",
+          message: `Đơn đặt lịch rửa xe BK-${bookingId} của bạn đã bị hủy tự động do giao dịch thanh toán qua VNPay không thành công hoặc đã bị hủy từ phía bạn.`,
+          type: "CANCEL",
+          userEmail: user.Email || null
+        });
+      }
+    } catch (notiErr) {
+      console.error(`[VNPayCancelNotification] Lỗi gửi thông báo hủy cho BK-${bookingId}:`, notiErr.message);
+    }
   }
   return { isValid, paymentId };
 };
+
 
 const getPaymentHistory = async (userId, { page = 1, limit = 10 } = {}) => {
   const pool = await poolPromise;
@@ -357,18 +381,36 @@ const refundPayment = async (paymentId) => {
   const refundAmount = Math.round(originalAmount * refundPercent / 100);
   const warning = getWarningMessage(hoursLeftSafe, cancelCount, refundPercent, refundAmount);
 
-  // Hủy booking + nhả voucher
+  // Hủy booking + nhả voucher + GIẢI PHÓNG MÁY RỬA XE (Fix bug của hệ thống)
   await pool.request().input('bookingId', sql.Int, payment.BookingID).query(`
     UPDATE BOOKING SET Status = 5 WHERE BookingID = @bookingId;
     UPDATE MEMBER_PROMOTION SET IsUsed = 0
     WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
+    UPDATE MACHINE SET Status = 1 
+    WHERE MachineID = (SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId);
   `);
-
   // Soft delete payment
   await pool.request().input('paymentId', sql.Int, paymentId)
     .query(`UPDATE PAYMENT SET IsHiddenByUser = 1 WHERE PaymentID = @paymentId`);
-
-  // ✅ Cảnh báo Gold/Platinum sẽ bị bắt cọc từ lần sau nếu cancelCount+1 >= 3
+  // === THÊM ĐOẠN GỬI THÔNG BÁO HỦY HOÀN TIỀN VÀO ĐÂY ===
+  try {
+    const userRes = await pool.request()
+      .input("userId", sql.Int, payment.CustomerID)
+      .query("SELECT Email FROM [USER] WHERE UserID = @userId");
+    const userEmail = userRes.recordset[0]?.Email;
+    const { createAndSendNotification } = require('../Services/notificationService');
+    await createAndSendNotification({
+      userId: payment.CustomerID,
+      bookingId: payment.BookingID,
+      title: "Hủy lịch đặt xe thành công",
+      message: `Lịch đặt rửa xe của bạn (Mã đơn BK-${payment.BookingID}) đã được hủy thành công. Số tiền hoàn trả dự kiến: ${refundAmount.toLocaleString('vi-VN')}đ (${refundPercent}%).`,
+      type: "CANCEL",
+      userEmail: userEmail || null
+    });
+  } catch (notiErr) {
+    console.error(`[RefundCancelNotification] Lỗi gửi thông báo cho BK-${payment.BookingID}:`, notiErr.message);
+  }
+  //  Cảnh báo Gold/Platinum sẽ bị bắt cọc từ lần sau nếu cancelCount+1 >= 3
   const newCancelCount = cancelCount + 1;
   let nextCancelInfo = null;
   if (newCancelCount >= 4) {

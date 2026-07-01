@@ -226,6 +226,29 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
                 `);
         }
     }
+
+    // Gửi thông báo hủy đơn nếu Hủy (Status = 5)
+    if (statusInt === 5) {
+        try {
+            // 1. Lấy email của khách hàng
+            const userRes = await pool.request()
+                .input("userId", sql.Int, customerId)
+                .query("SELECT Email FROM [USER] WHERE UserID = @userId");
+            const userEmail = userRes.recordset[0]?.Email;
+
+            // 2. Gửi thông báo In-App và Email xác nhận hủy đơn
+            await createAndSendNotification({
+                userId: customerId,
+                bookingId: bookingId,
+                title: "Hủy lịch đặt xe thành công",
+                message: `Lịch đặt rửa xe của bạn (Mã đơn BK-${bookingId}) đã được hủy thành công trên hệ thống.`,
+                type: "CANCEL",
+                userEmail: userEmail || null
+            });
+        } catch (notiErr) {
+            console.error(`[CancelNotification] Lỗi khi gửi thông báo hủy đơn cho BK-${bookingId}:`, notiErr.message);
+        }
+    }
 };
 
 function adminAuth(req, res, next) {

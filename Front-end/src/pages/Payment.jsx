@@ -135,7 +135,11 @@ export default function Payment() {
         const vouchersRes = await axios.get(`${API_BASE}/loyalty/my-vouchers?userId=${userId}`, {
           headers: { Authorization: `Bearer ${getToken()}` },
         });
-        setVouchers(vouchersRes.data);
+        // Lọc chỉ giữ lại các voucher chưa được sử dụng (IsUsed bằng 0 hoặc false hoặc null)
+        const unusedVouchers = (vouchersRes.data || []).filter(
+          (v) => !v.IsUsed && v.IsUsed !== 1 && v.IsUsed !== true
+        );
+        setVouchers(unusedVouchers);
       } catch (err) {
         console.error("Lỗi khi tải danh sách voucher của bạn:", err);
       }
