@@ -23,6 +23,7 @@ export default function StaffDashboard() {
   const [keyword, setKeyword] = useState("");
   const [debouncedKeyword, setDebouncedKeyword] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("All");
+  const [vehicleFilter, setVehicleFilter] = useState("All"); // Đã thêm bộ lọc loại xe
   const [dateFilter, setDateFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
 
@@ -59,7 +60,13 @@ export default function StaffDashboard() {
   useEffect(() => {
     fetchBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStatus, debouncedKeyword, dateFilter, paymentFilter]);
+  }, [
+    selectedStatus,
+    debouncedKeyword,
+    dateFilter,
+    paymentFilter,
+    vehicleFilter,
+  ]);
 
   const fetchBookings = async () => {
     try {
@@ -79,7 +86,12 @@ export default function StaffDashboard() {
       const data = await res.json();
 
       // Bỏ các lịch đặt chưa cọc/thanh toán (Status = 1)
-      const validData = data.filter((b) => String(b.Status) !== "1");
+      let validData = data.filter((b) => String(b.Status) !== "1");
+
+      // Lọc local cho loại xe
+      if (vehicleFilter !== "All") {
+        validData = validData.filter((b) => b.VehicleType === vehicleFilter);
+      }
 
       const statusPriority = { 2: 1, 3: 2, 4: 3, 5: 4 };
       validData.sort((a, b) => {
@@ -113,6 +125,7 @@ export default function StaffDashboard() {
     setKeyword("");
     setDebouncedKeyword("");
     setSelectedStatus("All");
+    setVehicleFilter("All");
     setDateFilter("");
     setPaymentFilter("");
   };
@@ -346,6 +359,17 @@ export default function StaffDashboard() {
                 <option value="3">Đang rửa</option>
                 <option value="4">Hoàn tất</option>
                 <option value="5">Đã hủy</option>
+              </select>
+            </div>
+            <div style={{ flex: 1, minWidth: "150px" }}>
+              <select
+                className="staff-filter-input"
+                value={vehicleFilter}
+                onChange={(e) => setVehicleFilter(e.target.value)}
+              >
+                <option value="All">Loại xe: Tất cả</option>
+                <option value="CAR">Ô tô</option>
+                <option value="BIKE">Xe máy</option>
               </select>
             </div>
             <div style={{ flex: 1, minWidth: "150px" }}>
@@ -626,7 +650,7 @@ export default function StaffDashboard() {
           )}
         </div>
 
-        {/* Modal remains mostly unchanged */}
+        {/* Modal chi tiết */}
         {selectedBooking && (
           <div
             style={styles.modalOverlay}

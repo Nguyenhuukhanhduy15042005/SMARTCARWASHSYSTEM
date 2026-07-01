@@ -13,19 +13,32 @@ const { sql, poolPromise } = require("../db");
 
 // ── Middleware xác thực Admin (giống pattern trong booking.js) ──────────────
 function adminAuth(req, res, next) {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token || token === 'mock-token' || token === 'null' || token === 'undefined') {
-        req.user = { roleId: 1 };
-        return next();
+  const token = req.headers.authorization?.split(" ")[1];
+  if (
+    !token ||
+    token === "mock-token" ||
+    token === "null" ||
+    token === "undefined"
+  ) {
+    req.user = { roleId: 1 };
+    return next();
+  }
+  try {
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "secretkey_placeholder",
+    );
+    if (decoded.roleId !== 1 && decoded.roleId !== 2) {
+      return res.status(403).json({
+        message: "Chỉ Admin và Staff mới có quyền truy cập báo cáo này",
+      });
     }
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey_placeholder');
-        if (decoded.roleId !== 1) return res.status(403).json({ message: 'Chỉ ADMIN mới được truy cập' });
-        req.user = decoded;
-        next();
-    } catch (err) {
-        return res.status(401).json({ message: 'Token không hợp lệ' });
-    }
+
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: "Token không hợp lệ" });
+  }
 }
 
 const VALID_RANGES = new Set(["7d", "30d", "90d", "month", "year", "all"]);
@@ -83,16 +96,17 @@ async function queryFrequency(pool, range) {
     ORDER BY TotalBookings DESC
   `);
 
-  return result.recordset.map(r => ({
+  return result.recordset.map((r) => ({
     userId: r.UserID,
     fullName: r.FullName,
     phone: r.PhoneNumber,
     totalBookings: toNumber(r.TotalBookings),
     completedBookings: toNumber(r.CompletedBookings),
     cancelledBookings: toNumber(r.CancelledBookings),
-    cancelRate: r.TotalBookings > 0
-      ? Math.round((r.CancelledBookings / r.TotalBookings) * 100)
-      : 0
+    cancelRate:
+      r.TotalBookings > 0
+        ? Math.round((r.CancelledBookings / r.TotalBookings) * 100)
+        : 0,
   }));
 }
 
@@ -122,14 +136,14 @@ async function querySpending(pool, range) {
     ORDER BY TotalSpent DESC
   `);
 
-  return result.recordset.map(r => ({
+  return result.recordset.map((r) => ({
     userId: r.UserID,
     fullName: r.FullName,
     phone: r.PhoneNumber,
-    tierName: r.TierName || 'Bronze',
+    tierName: r.TierName || "Bronze",
     paidBookingsCount: toNumber(r.PaidBookingsCount),
     totalSpent: toNumber(r.TotalSpent),
-    avgSpentPerBooking: Math.round(toNumber(r.AvgSpentPerBooking))
+    avgSpentPerBooking: Math.round(toNumber(r.AvgSpentPerBooking)),
   }));
 }
 
@@ -169,9 +183,9 @@ async function queryPromotionByUser(pool, range) {
     GROUP BY UserID
   `);
 
-  const redeemMap = new Map(pointsRedeemed.recordset.map(r => [r.UserID, r]));
+  const redeemMap = new Map(pointsRedeemed.recordset.map((r) => [r.UserID, r]));
 
-  const data = voucherUsage.recordset.map(r => {
+  const data = voucherUsage.recordset.map((r) => {
     const redeem = redeemMap.get(r.UserID);
     return {
       userId: r.UserID,
@@ -179,12 +193,13 @@ async function queryPromotionByUser(pool, range) {
       phone: r.PhoneNumber,
       totalBookings: toNumber(r.TotalBookings),
       bookingsWithVoucher: toNumber(r.BookingsWithVoucher),
-      voucherUsageRate: r.TotalBookings > 0
-        ? Math.round((r.BookingsWithVoucher / r.TotalBookings) * 100)
-        : 0,
+      voucherUsageRate:
+        r.TotalBookings > 0
+          ? Math.round((r.BookingsWithVoucher / r.TotalBookings) * 100)
+          : 0,
       totalDiscountAmount: toNumber(r.TotalDiscountAmount),
       pointsRedeemedCount: redeem ? toNumber(redeem.RedeemCount) : 0,
-      totalPointsRedeemed: redeem ? toNumber(redeem.TotalPointsRedeemed) : 0
+      totalPointsRedeemed: redeem ? toNumber(redeem.TotalPointsRedeemed) : 0,
     };
   });
 
@@ -203,11 +218,14 @@ router.get("/frequency", adminAuth, async (req, res) => {
 
     return res.json({
       meta: { range, generatedAt: new Date().toISOString() },
-      data
+      data,
     });
   } catch (err) {
     console.error("GET /api/analytics/behavior/frequency error:", err);
-    return res.status(500).json({ message: "Lỗi khi tải dữ liệu tần suất đặt lịch", error: err.message });
+    return res.status(500).json({
+      message: "Lỗi khi tải dữ liệu tần suất đặt lịch",
+      error: err.message,
+    });
   }
 });
 
@@ -222,11 +240,13 @@ router.get("/spending", adminAuth, async (req, res) => {
 
     return res.json({
       meta: { range, generatedAt: new Date().toISOString() },
-      data
+      data,
     });
   } catch (err) {
     console.error("GET /api/analytics/behavior/spending error:", err);
-    return res.status(500).json({ message: "Lỗi khi tải dữ liệu chi tiêu", error: err.message });
+    return res
+      .status(500)
+      .json({ message: "Lỗi khi tải dữ liệu chi tiêu", error: err.message });
   }
 });
 
@@ -241,11 +261,14 @@ router.get("/promotion", adminAuth, async (req, res) => {
 
     return res.json({
       meta: { range, generatedAt: new Date().toISOString() },
-      data
+      data,
     });
   } catch (err) {
     console.error("GET /api/analytics/behavior/promotion error:", err);
-    return res.status(500).json({ message: "Lỗi khi tải dữ liệu sử dụng khuyến mãi", error: err.message });
+    return res.status(500).json({
+      message: "Lỗi khi tải dữ liệu sử dụng khuyến mãi",
+      error: err.message,
+    });
   }
 });
 

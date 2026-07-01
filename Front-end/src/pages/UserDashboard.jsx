@@ -36,6 +36,7 @@ export default function UserDashboard() {
   // --- FILTER STATES ---
   const [keyword, setKeyword] = useState("");
   const [debouncedKeyword, setDebouncedKeyword] = useState("");
+  const [vehicleFilter, setVehicleFilter] = useState("All"); // Đã thêm bộ lọc loại xe
   const [dateFilter, setDateFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
 
@@ -118,7 +119,6 @@ export default function UserDashboard() {
         });
       }
 
-      // Fetch all bookings for the user once, filter locally for speed
       const bookingsRes = await axios.get(
         `${API_BASE}/bookings?customerId=${userId}`,
         { headers },
@@ -321,6 +321,7 @@ export default function UserDashboard() {
     setKeyword("");
     setDebouncedKeyword("");
     setSelectedStatus("All");
+    setVehicleFilter("All");
     setDateFilter("");
     setPaymentFilter("");
   };
@@ -432,6 +433,10 @@ export default function UserDashboard() {
       return false;
     if (selectedStatus === "Completed" && b.status !== 4) return false;
     if (selectedStatus === "Cancelled" && b.status !== 5) return false;
+
+    // Vehicle Type Filter
+    if (vehicleFilter !== "All" && b.vehicleType !== vehicleFilter)
+      return false;
 
     // Search Box
     if (debouncedKeyword) {
@@ -682,6 +687,26 @@ export default function UserDashboard() {
                 outline: "none",
               }}
             />
+          </div>
+          <div style={{ flex: 1, minWidth: "150px" }}>
+            <select
+              value={vehicleFilter}
+              onChange={(e) => setVehicleFilter(e.target.value)}
+              style={{
+                width: "100%",
+                height: "42px",
+                padding: "0 16px",
+                borderRadius: "10px",
+                border: "1px solid var(--border)",
+                background: "var(--bg-primary)",
+                color: "var(--text-primary)",
+                outline: "none",
+              }}
+            >
+              <option value="All">Loại xe: Tất cả</option>
+              <option value="CAR">Ô tô</option>
+              <option value="BIKE">Xe máy</option>
+            </select>
           </div>
           <div style={{ flex: 1, minWidth: "150px" }}>
             <input
