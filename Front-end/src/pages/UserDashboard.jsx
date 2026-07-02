@@ -32,6 +32,8 @@ export default function UserDashboard() {
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackComment, setFeedbackComment] = useState("");
   const [cancelConfirm, setCancelConfirm] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [refunding, setRefunding] = useState(false);
 
   // --- FILTER STATES ---
   const [keyword, setKeyword] = useState("");
@@ -201,37 +203,55 @@ export default function UserDashboard() {
         }
         return;
       }
-      setCancelConfirm({
-        bookingId,
-        paymentId: payment.PaymentID,
-        originalAmount: payment.Amount || 0,
-      });
+      // Có payment gắn với booking → mở modal + gọi refund-preview để lấy số tiền hoàn chính xác
+      setCancelConfirm({ bookingId, payment });
+      setPreviewLoading(true);
+      try {
+        const previewRes = await axios.get(
+          `${API_BASE}/payments/${payment.PaymentID}/refund-preview`,
+          { headers },
+        );
+        const preview = previewRes.data;
+        if (preview.refundPercent === 0) {
+          setCancelConfirm({
+            bookingId,
+            payment,
+            preview,
+            blocked: true,
+            blockedWarning: preview.warning,
+          });
+        } else {
+          setCancelConfirm({ bookingId, payment, preview });
+        }
+      } catch (previewErr) {
+        showToast(
+          previewErr.response?.data?.message ||
+            "Không thể xem trước thông tin hoàn tiền",
+          "error",
+        );
+        setCancelConfirm(null);
+      } finally {
+        setPreviewLoading(false);
+      }
     } catch (err) {
       showToast("Không thể kiểm tra thông tin hủy!", "error");
     }
   };
 
-  const handleConfirmCancel = async (forceCancel = false) => {
+  const handleConfirmCancel = async () => {
     if (!cancelConfirm) return;
     const token = localStorage.getItem("token") || "mock-token";
     const headers = { Authorization: `Bearer ${token}` };
 
+    setRefunding(true);
     try {
-      if (cancelConfirm.paymentId) {
+      if (cancelConfirm.payment) {
         const res = await axios.post(
-          `${API_BASE}/payments/${cancelConfirm.paymentId}/refund`,
-          { forceCancel },
+          `${API_BASE}/payments/${cancelConfirm.payment.PaymentID}/refund`,
+          {},
           { headers },
         );
         const data = res.data;
-        if (data.blocked) {
-          setCancelConfirm((prev) => ({
-            ...prev,
-            blocked: true,
-            blockedWarning: data.warning,
-          }));
-          return;
-        }
         const msg =
           data.refundAmount > 0
             ? `Đã hủy thành công! Hoàn tiền ${data.refundAmount.toLocaleString("vi-VN")}đ (${data.refundPercent}%).`
@@ -257,7 +277,8 @@ export default function UserDashboard() {
         `Không thể hủy: ${err.response?.data?.message || err.message}`,
         "error",
       );
-      setCancelConfirm(null);
+    } finally {
+      setRefunding(false);
     }
   };
 
@@ -944,41 +965,125 @@ export default function UserDashboard() {
               </button>
             </div>
             <div className="admin-modal-body">
+              {cancelConfirm.payment && (
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 4 }}>
+                    {cancelConfirm.payment.ServiceName || "Dịch vụ rửa xe"}
+                    {cancelConfirm.payment.LicensePlate
+                      ? ` · ${cancelConfirm.payment.LicensePlate}`
+                      : ""}
+                  </p>
+                  <p style={{ fontSize: 22, fontWeight: 800, color: "#f97316" }}>
+                    {(cancelConfirm.payment.Amount || 0).toLocaleString("vi-VN")}đ
+                  </p>
+                </div>
+              )}
+
+              {/* Bảng quy tắc hoàn tiền */}
               <div
                 style={{
                   padding: "14px",
                   borderRadius: 10,
                   marginBottom: 16,
-                  background: "rgba(239,68,68,0.06)",
-                  border: "1px solid rgba(239,68,68,0.2)",
+                  background: "rgba(99,102,241,0.06)",
+                  border: "1px solid rgba(99,102,241,0.2)",
                 }}
               >
                 <p
                   style={{
-                    fontWeight: 700,
-                    color: "var(--text-primary)",
+                    fontSize: 13,
+                    color: "var(--text-secondary)",
                     marginBottom: 8,
+                    fontWeight: 700,
                   }}
                 >
-                  ⚠️ Số tiền hoàn lại phụ thuộc vào thời gian hủy.
+                  Quy tắc hoàn tiền:
                 </p>
+                <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ color: "var(--text-secondary)" }}>
+                      <th style={{ textAlign: "left", paddingBottom: 4 }}>Thời gian</th>
+                      <th style={{ textAlign: "center" }}>Lần 1-2</th>
+                      <th style={{ textAlign: "center" }}>Lần 3</th>
+                      <th style={{ textAlign: "center" }}>Lần 4+</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Trước 24h</td>
+                      <td style={{ textAlign: "center", color: "#10b981", fontWeight: 700 }}>100%</td>
+                      <td style={{ textAlign: "center", color: "#f59e0b", fontWeight: 700 }}>50%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>2 - 24h</td>
+                      <td style={{ textAlign: "center", color: "#f59e0b", fontWeight: 700 }}>50%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Dưới 2h</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 8 }}>
+                  * Đếm số lần hủy trong 30 ngày gần nhất
+                </p>
+              </div>
+
+              {/* Preview từ backend */}
+              {previewLoading ? (
+                <div style={{ textAlign: "center", padding: "12px 0" }}>
+                  <span className="pay-spinner" style={{ borderTopColor: "#f97316" }} />
+                  <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 8 }}>
+                    Đang tính số tiền hoàn...
+                  </p>
+                </div>
+              ) : cancelConfirm.preview ? (
                 <div
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: 4,
+                    padding: "12px 16px",
+                    borderRadius: 10,
+                    marginBottom: 16,
+                    background:
+                      cancelConfirm.preview.refundPercent > 0
+                        ? "rgba(16,185,129,0.08)"
+                        : "rgba(239,68,68,0.08)",
+                    border: `1px solid ${
+                      cancelConfirm.preview.refundPercent > 0
+                        ? "rgba(16,185,129,0.3)"
+                        : "rgba(239,68,68,0.3)"
+                    }`,
                   }}
                 >
-                  <span
-                    style={{ color: "var(--text-secondary)", fontSize: 13 }}
+                  <p
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      marginBottom: 6,
+                      color: cancelConfirm.preview.refundPercent > 0 ? "#10b981" : "#ef4444",
+                    }}
                   >
-                    Số tiền đã trả:
-                  </span>
-                  <span style={{ fontWeight: 700 }}>
-                    {cancelConfirm.originalAmount.toLocaleString("vi-VN")}đ
-                  </span>
+                    Dự kiến hoàn tiền: {cancelConfirm.preview.refundPercent}%
+                    {cancelConfirm.preview.refundAmount > 0 &&
+                      ` = ${cancelConfirm.preview.refundAmount.toLocaleString("vi-VN")}đ`}
+                  </p>
+                  <p style={{ fontSize: 12, color: "#94a3b8" }}>
+                    Lần hủy thứ {cancelConfirm.preview.cancelCount + 1} trong 30 ngày
+                    {cancelConfirm.preview.hoursLeft !== null &&
+                      ` · Còn ${Math.max(0, cancelConfirm.preview.hoursLeft).toFixed(1)} tiếng`}
+                  </p>
+                  {cancelConfirm.preview.warning && (
+                    <p style={{ fontSize: 12, color: "#f59e0b", marginTop: 6, whiteSpace: "pre-line" }}>
+                      {cancelConfirm.preview.warning}
+                    </p>
+                  )}
                 </div>
-              </div>
+              ) : null}
+
               {cancelConfirm.blocked ? (
                 <div
                   style={{
@@ -999,16 +1104,24 @@ export default function UserDashboard() {
                   >
                     ⚠️ Cảnh báo: Không được hoàn tiền!
                   </p>
-                  <p
-                    style={{ fontSize: 13, color: "#f87171", marginBottom: 10 }}
-                  >
+                  <p style={{ fontSize: 13, color: "#f87171", marginBottom: 10, whiteSpace: "pre-line" }}>
                     {cancelConfirm.blockedWarning}
                   </p>
-                  <p
-                    style={{ fontSize: 13, color: "#fbbf24", fontWeight: 600 }}
-                  >
-                    Tiếp tục hủy, bạn sẽ mất cọc (
-                    {cancelConfirm.originalAmount.toLocaleString("vi-VN")}đ).
+                  <p style={{ fontSize: 13, color: "#fbbf24", fontWeight: 600 }}>
+                    Nếu vẫn tiếp tục hủy, bạn sẽ{" "}
+                    <strong style={{ color: "#ef4444" }}>
+                      mất toàn bộ số tiền đã đặt cọc (
+                      {(
+                        cancelConfirm.preview?.originalAmount ||
+                        cancelConfirm.payment?.Amount ||
+                        0
+                      ).toLocaleString("vi-VN")}
+                      đ)
+                    </strong>
+                    .
+                  </p>
+                  <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 8 }}>
+                    Bạn có chắc chắn muốn hủy đơn này không?
                   </p>
                 </div>
               ) : (
@@ -1022,15 +1135,17 @@ export default function UserDashboard() {
                   }}
                 >
                   <span style={{ color: "#ef4444", fontSize: 13 }}>
-                    ⚠️ Sau khi xác nhận, lịch sẽ bị hủy.
+                    ⚠️ Booking sẽ bị hủy sau khi xác nhận.
                   </span>
                 </div>
               )}
+
               <div
                 style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}
               >
                 <button
                   onClick={() => setCancelConfirm(null)}
+                  disabled={refunding}
                   style={{
                     padding: "10px 20px",
                     border: "1px solid var(--border)",
@@ -1041,22 +1156,26 @@ export default function UserDashboard() {
                     fontWeight: 700,
                   }}
                 >
-                  Quay lại
+                  {cancelConfirm.blocked ? "Giữ lịch" : "Quay lại"}
                 </button>
                 <button
-                  onClick={() => handleConfirmCancel(cancelConfirm.blocked)}
+                  onClick={handleConfirmCancel}
+                  disabled={refunding || previewLoading}
                   style={{
                     padding: "10px 20px",
                     border: "none",
                     borderRadius: 10,
                     background: cancelConfirm.blocked ? "#dc2626" : "#ef4444",
                     color: "#fff",
-                    cursor: "pointer",
+                    cursor: refunding || previewLoading ? "not-allowed" : "pointer",
                     fontWeight: 700,
+                    opacity: refunding || previewLoading ? 0.7 : 1,
                   }}
                 >
-                  {cancelConfirm.blocked
-                    ? "Đồng ý hủy (Mất tiền)"
+                  {refunding
+                    ? "Đang xử lý..."
+                    : cancelConfirm.blocked
+                    ? "Đồng ý hủy — Mất tiền cọc"
                     : "Xác nhận hủy"}
                 </button>
               </div>

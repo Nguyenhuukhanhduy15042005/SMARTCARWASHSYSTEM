@@ -119,6 +119,13 @@ export default function NotificationBell() {
     return date.toLocaleDateString("vi-VN");
   };
 
+  // Gộp các icon/emoji (✅ ❌ ⚠️...) bị lặp liên tiếp trong text về còn 1 cái
+  // (do backend đôi khi tạo Message đã có sẵn icon rồi ghép thêm 1 lần nữa)
+  const cleanText = (text) => {
+    if (!text) return text;
+    return text.replace(/(\p{Emoji_Presentation}|\u2705|\u274c|\u26a0\ufe0f)(\s*\1)+/gu, "$1");
+  };
+
   // Icon theo loại thông báo
   const getIcon = (type) => {
     const icons = {
@@ -216,8 +223,8 @@ export default function NotificationBell() {
                   </div>
 
                   <div className="noti-item-content">
-                    <p className="noti-item-title">{noti.Title}</p>
-                    <p className="noti-item-message">{noti.Message}</p>
+                    <p className="noti-item-title">{cleanText(noti.Title)}</p>
+                    <p className="noti-item-message">{cleanText(noti.Message)}</p>
                     <span className="noti-item-time">
                       <i className="fa-regular fa-clock" aria-hidden="true"></i>
                       {formatTime(noti.CreatedDate)}
