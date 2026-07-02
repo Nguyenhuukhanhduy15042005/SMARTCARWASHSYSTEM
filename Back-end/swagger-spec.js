@@ -461,6 +461,118 @@ const swaggerSpec = {
       },
     },
 
+    // ── TIMESLOTS ─────────────────────────────────────────────────────────────
+    "/api/timeslots/machines": {
+      get: {
+        tags: ["Timeslots"],
+        summary: "Lấy danh sách các máy rửa xe hiện có",
+        responses: {
+          200: { description: "Lấy danh sách máy thành công" },
+          500: { description: "Lỗi hệ thống" }
+        }
+      }
+    },
+    "/api/timeslots/services": {
+      get: {
+        tags: ["Timeslots"],
+        summary: "Lấy danh sách dịch vụ và thời gian rửa dự kiến",
+        responses: {
+          200: { description: "Lấy danh sách dịch vụ thành công" },
+          500: { description: "Lỗi hệ thống" }
+        }
+      }
+    },
+    "/api/timeslots": {
+      get: {
+        tags: ["Timeslots"],
+        summary: "Lấy danh sách các khung giờ trống trong ngày",
+        parameters: [
+          { name: "machineId", in: "query", required: true, schema: { type: "integer", example: 1 }, description: "ID của máy rửa xe" },
+          { name: "date", in: "query", required: true, schema: { type: "string", format: "date", example: "2026-07-03" }, description: "Ngày cần kiểm tra (YYYY-MM-DD)" }
+        ],
+        responses: {
+          200: { description: "Thành công, trả về danh sách khung giờ kèm trạng thái trống" },
+          400: { description: "Ngày không đúng định dạng" },
+          500: { description: "Lỗi hệ thống" }
+        }
+      }
+    },
+    "/api/timeslots/check": {
+      post: {
+        tags: ["Timeslots"],
+        summary: "Kiểm tra tính khả dụng của một khung giờ cụ thể",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["machineId", "date", "time"],
+                properties: {
+                  machineId: { type: "integer", example: 1, description: "ID của máy rửa xe" },
+                  date: { type: "string", format: "date", example: "2026-07-03" },
+                  time: { type: "string", example: "09:30" },
+                  duration: { type: "integer", default: 30 },
+                  vehicleType: { type: "string", example: "CAR" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: "Khung giờ trống hoặc đã có lịch" },
+          400: { description: "Dữ liệu đầu vào không hợp lệ" },
+          500: { description: "Lỗi hệ thống" }
+        }
+      }
+    },
+    "/api/timeslots/overview": {
+      get: {
+        tags: ["Timeslots"],
+        summary: "Xem tổng quan trạng thái hoạt động của các máy rửa xe trong ngày",
+        parameters: [
+          { name: "date", in: "query", required: true, schema: { type: "string", format: "date", example: "2026-07-03" }, description: "Ngày cần xem tổng quan" }
+        ],
+        responses: {
+          200: { description: "Lấy tổng quan thành công" },
+          500: { description: "Lỗi hệ thống" }
+        }
+      }
+    },
+    "/api/timeslots/book": {
+      post: {
+        tags: ["Timeslots"],
+        summary: "Đặt lịch rửa xe nâng cao (chỉ định máy rửa)",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["machineId", "serviceId", "date", "time", "customerName", "customerPhone", "vehicleType"],
+                properties: {
+                  machineId: { type: "integer", example: 1, description: "ID của máy rửa" },
+                  serviceId: { type: "integer", example: 1, description: "ID của dịch vụ" },
+                  date: { type: "string", format: "date", example: "2026-07-03", description: "Ngày rửa (YYYY-MM-DD)" },
+                  time: { type: "string", example: "09:30", description: "Giờ rửa (HH:mm)" },
+                  duration: { type: "integer", default: 30, description: "Thời gian dự kiến (phút)" },
+                  customerName: { type: "string", example: "Nguyễn Văn A", description: "Tên khách hàng" },
+                  customerPhone: { type: "string", example: "0912345678", description: "Số điện thoại Việt Nam" },
+                  vehicleType: { type: "string", enum: ["CAR", "BIKE"], example: "CAR", description: "Loại xe (CAR hoặc BIKE)" },
+                  licensePlate: { type: "string", example: "23G-24532", description: "Biển số xe (Tùy chọn)" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: "Đặt lịch nâng cao thành công" },
+          400: { description: "Khung giờ đã bị trùng, sai định dạng, hoặc máy bận" },
+          500: { description: "Lỗi hệ thống" }
+        }
+      }
+    },
+
     // ── BOOKINGS ──────────────────────────────────────────────────────────────
     "/api/bookings": {
       get: {
@@ -840,6 +952,57 @@ const swaggerSpec = {
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
         responses: { 200: { description: "Xóa thành công" } },
       },
+    },
+
+    // ── NOTIFICATIONS ─────────────────────────────────────────────────────────
+    "/api/notifications": {
+      get: {
+        tags: ["Notifications"],
+        summary: "Lấy danh sách thông báo của người dùng",
+        parameters: [
+          { name: "userId", in: "query", required: true, schema: { type: "integer", example: 12 }, description: "ID người dùng cần lấy thông báo" }
+        ],
+        responses: {
+          200: {
+            description: "Thành công",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      NotificationID: { type: "integer" },
+                      UserID: { type: "integer" },
+                      BookingID: { type: "integer" },
+                      Title: { type: "string" },
+                      Message: { type: "string" },
+                      IsRead: { type: "boolean" },
+                      Type: { type: "string" },
+                      CreatedDate: { type: "string", format: "date-time" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          400: { description: "Thiếu userId" },
+          500: { description: "Lỗi hệ thống" }
+        }
+      }
+    },
+    "/api/notifications/{id}/read": {
+      put: {
+        tags: ["Notifications"],
+        summary: "Đánh dấu một thông báo là đã đọc",
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer", example: 1 }, description: "ID của thông báo" }
+        ],
+        responses: {
+          200: { description: "Đã cập nhật trạng thái đã đọc thành công" },
+          500: { description: "Lỗi hệ thống" }
+        }
+      }
     },
 
     // ── LOYALTY ───────────────────────────────────────────────────────────────
