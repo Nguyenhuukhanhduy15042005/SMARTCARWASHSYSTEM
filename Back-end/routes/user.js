@@ -473,6 +473,12 @@ router.delete("/:userId", verifyToken, async (req, res) => {
         WHERE BookingID IN (SELECT BookingID FROM BOOKING WHERE CustomerID = @userId)
       `);
 
+      // 3b. Delete feedbacks belonging to the user's bookings
+      await request.query(`
+        DELETE FROM FEEDBACK 
+        WHERE BookingID IN (SELECT BookingID FROM BOOKING WHERE CustomerID = @userId)
+      `);
+
       // 4. Delete bookings (to release reference to MEMBER_PROMOTION)
       await request.query("DELETE FROM BOOKING WHERE CustomerID = @userId");
 
@@ -487,6 +493,9 @@ router.delete("/:userId", verifyToken, async (req, res) => {
 
       // 8. Delete VEHICLE
       await request.query("DELETE FROM VEHICLE WHERE UserID = @userId");
+
+      // 8b. Delete NOTIFICATION
+      await request.query("DELETE FROM NOTIFICATION WHERE UserID = @userId");
 
       // 9. Finally delete [USER]
       await request.query("DELETE FROM [USER] WHERE UserID = @userId");
