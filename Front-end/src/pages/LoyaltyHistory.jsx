@@ -197,18 +197,14 @@ export default function LoyaltyHistory() {
       .filter((t) => t.type !== "Cancelled");
   }, [bookings]);
 
-  // Fix: Nếu API trả CurrentPoints/AccumulatedPoints = 0 nhưng có đơn hoàn thành, tự tính
+  // Lấy trực tiếp giá trị điểm khả dụng từ Profile của Backend
   const displayCurrentPoints = useMemo(() => {
-    if (profile.CurrentPoints > 0) return profile.CurrentPoints;
-    return transactionsList
-      .filter(t => t.type === "Earned")
-      .reduce((sum, t) => sum + (t.points || 0), 0);
-  }, [profile.CurrentPoints, transactionsList]);
-
+    return profile.CurrentPoints;
+  }, [profile.CurrentPoints]);
+  // Lấy trực tiếp giá trị tổng điểm tích lũy từ Profile của Backend
   const displayAccumulatedPoints = useMemo(() => {
-    if (profile.AccumulatedPoints > 0) return profile.AccumulatedPoints;
-    return displayCurrentPoints;
-  }, [profile.AccumulatedPoints, displayCurrentPoints]);
+    return profile.AccumulatedPoints;
+  }, [profile.AccumulatedPoints]);
 
   // Filter & search logic
   const filteredTransactions = useMemo(() => {
