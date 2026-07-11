@@ -3,7 +3,13 @@ import axios from "axios";
 import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://127.0.0.1:5000/api";
-const emptyForm = { PromoName: "", DiscountPercent: 10, RequiredPoints: 0, EndDate: "" };
+const emptyForm = {
+  PromoName: "",
+  DiscountPercent: 10,
+  RequiredPoints: 0,
+  MaxRedemptions: 1,
+  EndDate: "",
+};
 
 export default function PromotionManagement() {
   const [promotions, setPromotions] = useState([]);
@@ -88,6 +94,7 @@ export default function PromotionManagement() {
       PromoName: promotion.PromoName || "",
       DiscountPercent: Number(promotion.DiscountPercent || 0),
       RequiredPoints: Number(promotion.RequiredPoints || 0),
+      MaxRedemptions: Number(promotion.MaxRedemptions || 1),
       EndDate: promotion.EndDate
         ? new Date(promotion.EndDate).toISOString().slice(0, 10)
         : "",
@@ -117,6 +124,17 @@ export default function PromotionManagement() {
       showToast("Điểm cần đổi phải là số nguyên >= 0", "error");
       return false;
     }
+
+    const maxRedemptions = Number(form.MaxRedemptions);
+    if (
+      Number.isNaN(maxRedemptions) ||
+      maxRedemptions < 1 ||
+      !Number.isInteger(maxRedemptions)
+    ) {
+      showToast("Số lượt đổi tối đa phải là số nguyên >= 1", "error");
+      return false;
+    }
+
     return true;
   };
 
@@ -128,6 +146,7 @@ export default function PromotionManagement() {
       PromoName: form.PromoName.trim(),
       DiscountPercent: Number(form.DiscountPercent),
       RequiredPoints: Number(form.RequiredPoints),
+      MaxRedemptions: Number(form.MaxRedemptions),
       EndDate: form.EndDate || null,
     };
 
@@ -188,7 +207,8 @@ export default function PromotionManagement() {
     } catch (err) {
       console.error(err);
       showToast(
-        err.response?.data?.message || "Xóa khuyến mãi thất bại",
+        err.response?.data?.message ||
+          "Không thể xóa khuyến mãi vì đang được dữ liệu khác sử dụng",
         "error",
       );
     }
@@ -308,6 +328,7 @@ export default function PromotionManagement() {
                     <th>Tên khuyến mãi</th>
                     <th>Giảm giá</th>
                     <th>Điểm đổi</th>
+                    <th>Tối đa mỗi member</th>
                     <th>Ngày hết hạn</th>
                     <th>Trạng thái</th>
                     <th>Ví member</th>
@@ -333,6 +354,9 @@ export default function PromotionManagement() {
                         </span>
                       </td>
                       <td>{Number(item.RequiredPoints || 0).toLocaleString("vi-VN")}</td>
+                      <td>
+                          {Number(item.MaxRedemptions || 1).toLocaleString("vi-VN")} 
+                      </td>
                       <td>{formatDate(item.EndDate)}</td>
                       <td>
                         <span
@@ -436,6 +460,19 @@ export default function PromotionManagement() {
                 value={form.RequiredPoints}
                 onChange={(e) =>
                   setForm({ ...form, RequiredPoints: e.target.value })
+                }
+              />
+            </label>
+
+            <label className="pm-form-group">
+              <span>Số lượt đổi tối đa</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={form.MaxRedemptions}
+                onChange={(e) =>
+                  setForm({ ...form, MaxRedemptions: e.target.value })
                 }
               />
             </label>

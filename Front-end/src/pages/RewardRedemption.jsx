@@ -74,6 +74,9 @@ export default function RewardRedemption() {
         promotion.PromoName || `Khuyến mãi PR-${promotion.PromotionID}`,
       PointsRequired: Number(promotion.RequiredPoints || promotion.requiredPoints || 0),
       DiscountPercent: discountPercent,
+      MaxRedemptions: Number(
+        promotion.MaxRedemptions ?? promotion.maxRedemptions ?? 1,
+      ),
       Description: `Voucher giảm ${discountPercent}% khi thanh toán booking.`,
       RawPromotion: promotion,
     };
@@ -212,8 +215,24 @@ export default function RewardRedemption() {
     }
   };
 
+  const getRedeemedCount = (reward) => {
+    return myVouchers.filter(
+      (voucher) =>
+        Number(voucher.PromotionID) === Number(reward.RewardID),
+    ).length;
+  };
+
+  const hasReachedRedemptionLimit = (reward) => {
+    return (
+      getRedeemedCount(reward) >= Number(reward.MaxRedemptions || 1)
+    );
+  };
+
   const canUseReward = (reward) => {
-    return profile.CurrentPoints >= Number(reward.PointsRequired || 0);
+    return (
+      profile.CurrentPoints >= Number(reward.PointsRequired || 0) &&
+      !hasReachedRedemptionLimit(reward)
+    );
   };
 
   const checkoutSummary = useMemo(() => {
@@ -228,11 +247,16 @@ export default function RewardRedemption() {
   }, [profile.CurrentPoints, selectedReward]);
 
   const handleApplyReward = (reward) => {
-    if (!canUseReward(reward)) {
+    if (hasReachedRedemptionLimit(reward)) {
       showToast(
-        "Chưa đủ điểm hoặc đơn hàng chưa đạt giá trị tối thiểu.",
+        `Bạn đã đổi voucher này đủ ${reward.MaxRedemptions} lần.`,
         "error",
       );
+      return;
+    }
+
+    if (!canUseReward(reward)) {
+      showToast("Bạn chưa đủ điểm để đổi voucher này.", "error");
       return;
     }
     setSelectedReward(reward);
@@ -272,8 +296,15 @@ export default function RewardRedemption() {
       // 3. Xử lý khi thành công
       if (response.data.success) {
         showToast(response.data.message || "Đổi ưu đãi thành công!", "success");
-        setSelectedReward(null); // Bỏ chọn voucher hiện tại
-        fetchRewardData(); // Load lại điểm số mới nhất và ví voucher
+        setSelectedReward(null);
+        fetchRewardData();
+      } else {
+        showToast(
+          response.data.message || "Không thể đổi voucher này.",
+          "error",
+        );
+        setSelectedReward(null);
+        fetchRewardData();
       }
     } catch (error) {
       console.error("Lỗi gọi API Redeem:", error);
@@ -348,6 +379,7 @@ export default function RewardRedemption() {
             ) : (
               <div className="reward-list">
                 {rewards.map((reward) => {
+                  const limitReached = hasReachedRedemptionLimit(reward);
                   const disabled = !canUseReward(reward);
                   const active = selectedReward?.RewardID === reward.RewardID;
                   return (
@@ -373,6 +405,11 @@ export default function RewardRedemption() {
                             <i className="fa-solid fa-tags"></i> Giảm{" "}
                             {reward.DiscountPercent}%
                           </small>
+                          <small>
+                            <i className="fa-solid fa-repeat"></i>{" "}
+                            Đã đổi {getRedeemedCount(reward)}/
+                            {reward.MaxRedemptions}
+                          </small>
                         </div>
                       </div>
                       <button
@@ -380,7 +417,13 @@ export default function RewardRedemption() {
                         onClick={() => handleApplyReward(reward)}
                         disabled={disabled}
                       >
-                        {active ? "Đã chọn" : disabled ? "Chưa đủ" : "Đổi điểm"}
+                        {active
+                          ? "Đã chọn"
+                          : limitReached
+                            ? "Đã đủ lượt"
+                            : disabled
+                              ? "Chưa đủ điểm"
+                              : "Đổi điểm"}
                       </button>
                     </article>
                   );

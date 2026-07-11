@@ -13,15 +13,22 @@ const redeemRewardPoints = async (
   const transaction = new sql.Transaction(pool);
 
   try {
-    await transaction.begin();
+    await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
 
-    // 1. Validate promotion
+    // 1. Khóa promotion và lấy cấu hình thật từ DB.
+    // Không tin số điểm do FE gửi lên.
     const reqPromotion = new sql.Request(transaction);
     const promoRes = await reqPromotion
       .input("promotionId", sql.Int, promotionId)
       .query(`
-        SELECT PromotionID, PromoName, DiscountPercent, EndDate
-        FROM PROMOTION
+        SELECT
+          PromotionID,
+          PromoName,
+          DiscountPercent,
+          RequiredPoints,
+          MaxRedemptions,
+          EndDate
+        FROM PROMOTION WITH (UPDLOCK, HOLDLOCK)
         WHERE PromotionID = @promotionId
           AND (EndDate IS NULL OR EndDate >= GETDATE())
       `);
@@ -34,13 +41,57 @@ const redeemRewardPoints = async (
       };
     }
 
-    // 2. Check điểm member
+    const promotion = promoRes.recordset[0];
+    const requiredPoints = Number(promotion.RequiredPoints || 0);
+    const maxRedemptions = Number(promotion.MaxRedemptions || 1);
+
+    if (
+      !Number.isInteger(requiredPoints) ||
+      requiredPoints < 0 ||
+      !Number.isInteger(maxRedemptions) ||
+      maxRedemptions < 1
+    ) {
+      await transaction.rollback();
+      return {
+        success: false,
+        message: "Cấu hình voucher không hợp lệ.",
+      };
+    }
+
+    // 2. Đếm tổng số lần member đã đổi voucher này.
+    // Tính cả voucher đã dùng và chưa dùng.
+    const reqRedemptionCount = new sql.Request(transaction);
+    const redemptionCountRes = await reqRedemptionCount
+      .input("userId", sql.Int, userId)
+      .input("promotionId", sql.Int, promotionId)
+      .query(`
+        SELECT COUNT(*) AS RedeemedCount
+        FROM MEMBER_PROMOTION WITH (UPDLOCK, HOLDLOCK)
+        WHERE UserID = @userId
+          AND PromotionID = @promotionId
+      `);
+
+    const redeemedCount = Number(
+      redemptionCountRes.recordset[0]?.RedeemedCount || 0
+    );
+
+    if (redeemedCount >= maxRedemptions) {
+      await transaction.rollback();
+      return {
+        success: false,
+        message: `Bạn đã đổi voucher này đủ ${maxRedemptions} lần.`,
+        redeemedCount,
+        maxRedemptions,
+      };
+    }
+
+    // 3. Khóa hồ sơ member và kiểm tra điểm.
     const reqCheck = new sql.Request(transaction);
     const memberRes = await reqCheck
       .input("userId", sql.Int, userId)
       .query(`
         SELECT CurrentPoints
-        FROM MEMBER_PROFILE WITH (UPDLOCK)
+        FROM MEMBER_PROFILE WITH (UPDLOCK, HOLDLOCK)
         WHERE UserID = @userId
       `);
 
@@ -53,17 +104,8 @@ const redeemRewardPoints = async (
     }
 
     const currentPoints = Number(memberRes.recordset[0].CurrentPoints || 0);
-    const points = Number(pointsToDeduct || 0);
 
-    if (points <= 0) {
-      await transaction.rollback();
-      return {
-        success: false,
-        message: "Số điểm đổi voucher không hợp lệ.",
-      };
-    }
-
-    if (currentPoints < points) {
+    if (currentPoints < requiredPoints) {
       await transaction.rollback();
       return {
         success: false,
@@ -71,17 +113,18 @@ const redeemRewardPoints = async (
       };
     }
 
-    // 3. Trừ điểm
+    // 4. Trừ đúng số điểm cấu hình trong PROMOTION.
     const reqUpdate = new sql.Request(transaction);
     await reqUpdate
       .input("userId", sql.Int, userId)
-      .input("points", sql.Int, points)
+      .input("points", sql.Int, requiredPoints)
       .query(`
         UPDATE MEMBER_PROFILE
         SET CurrentPoints = CurrentPoints - @points
         WHERE UserID = @userId
       `);
-    // 4. Lưu voucher vào ví member
+
+    // 5. Lưu voucher vào ví member.
     const reqWallet = new sql.Request(transaction);
     await reqWallet
       .input("userId", sql.Int, userId)
@@ -90,12 +133,13 @@ const redeemRewardPoints = async (
         INSERT INTO MEMBER_PROMOTION (UserID, PromotionID, IsUsed)
         VALUES (@userId, @promotionId, 0)
       `);
-    // 5. Ghi log đổi điểm
+
+    // 6. Ghi log đổi điểm.
     const reqLog = new sql.Request(transaction);
     await reqLog
       .input("userId", sql.Int, userId)
       .input("bookingId", sql.Int, bookingId || null)
-      .input("points", sql.Int, points)
+      .input("points", sql.Int, requiredPoints)
       .query(`
         INSERT INTO LOYALTY_TRANSACTION
           (UserID, BookingID, TransactionType, Points, CreatedDate)
@@ -109,7 +153,9 @@ const redeemRewardPoints = async (
       success: true,
       message: `Đổi mã ${rewardCode} thành công!`,
       promotionId,
-      remainingPoints: currentPoints - points,
+      redeemedCount: redeemedCount + 1,
+      maxRedemptions,
+      remainingPoints: currentPoints - requiredPoints,
     };
   } catch (error) {
     try {

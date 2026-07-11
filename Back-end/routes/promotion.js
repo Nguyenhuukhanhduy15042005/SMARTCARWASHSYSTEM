@@ -20,8 +20,14 @@ function normalizeEndDate(value) {
 
 function normalizeRequiredPoints(value) {
   const numberValue = Number(value ?? 0);
-  if (Number.isNaN(numberValue) || numberValue < 0) return null;
-  return Math.floor(numberValue);
+  if (Number.isNaN(numberValue) || numberValue < 0 || !Number.isInteger(numberValue)) return null;
+  return numberValue;
+}
+
+function normalizeMaxRedemptions(value) {
+  const numberValue = Number(value ?? 1);
+  if (Number.isNaN(numberValue) || numberValue < 1 || !Number.isInteger(numberValue)) return null;
+  return numberValue;
 }
 
 function mapPromotion(row) {
@@ -32,6 +38,7 @@ function mapPromotion(row) {
     PromoName: row.PromoName,
     DiscountPercent: Number(row.DiscountPercent || 0),
     RequiredPoints: Number(row.RequiredPoints || 0),
+    MaxRedemptions: Number(row.MaxRedemptions || 1),
     EndDate: row.EndDate,
     Status: isActive ? "Active" : "Expired",
     UsedCount: Number(row.UsedCount || 0),
@@ -69,13 +76,14 @@ router.get("/", async (req, res) => {
         p.PromoName,
         p.DiscountPercent,
         p.RequiredPoints,
+        p.MaxRedemptions,
         p.EndDate,
         COUNT(mp.MemberPromoID) AS WalletCount,
         SUM(CASE WHEN mp.IsUsed = 1 THEN 1 ELSE 0 END) AS UsedCount
       FROM PROMOTION p
       LEFT JOIN MEMBER_PROMOTION mp ON p.PromotionID = mp.PromotionID
       ${where}
-      GROUP BY p.PromotionID, p.PromoName, p.DiscountPercent, p.RequiredPoints, p.EndDate
+      GROUP BY p.PromotionID, p.PromoName, p.DiscountPercent, p.RequiredPoints, p.MaxRedemptions, p.EndDate
       ORDER BY p.PromotionID DESC
     `);
 
@@ -101,13 +109,14 @@ router.get("/:id", async (req, res) => {
           p.PromoName,
           p.DiscountPercent,
           p.RequiredPoints,
+          p.MaxRedemptions,
           p.EndDate,
           COUNT(mp.MemberPromoID) AS WalletCount,
           SUM(CASE WHEN mp.IsUsed = 1 THEN 1 ELSE 0 END) AS UsedCount
         FROM PROMOTION p
         LEFT JOIN MEMBER_PROMOTION mp ON p.PromotionID = mp.PromotionID
         WHERE p.PromotionID = @promotionId
-        GROUP BY p.PromotionID, p.PromoName, p.DiscountPercent, p.RequiredPoints, p.EndDate
+        GROUP BY p.PromotionID, p.PromoName, p.DiscountPercent, p.RequiredPoints, p.MaxRedemptions, p.EndDate
       `);
 
     if (!result.recordset.length) {
@@ -127,10 +136,12 @@ router.post("/", async (req, res) => {
   const discountPercent = normalizeDiscount(req.body.DiscountPercent ?? req.body.discountPercent);
   const endDate = normalizeEndDate(req.body.EndDate || req.body.endDate);
   const requiredPoints = normalizeRequiredPoints(req.body.RequiredPoints ?? req.body.requiredPoints);
+  const maxRedemptions = normalizeMaxRedemptions(req.body.MaxRedemptions ?? req.body.maxRedemptions);
 
   if (!promoName) return res.status(400).json({ message: "Tên khuyến mãi không được để trống" });
   if (discountPercent === null) return res.status(400).json({ message: "Phần trăm giảm phải từ 0 đến 100" });
   if (requiredPoints === null) return res.status(400).json({ message: "Điểm cần đổi phải là số nguyên >= 0" });
+  if (maxRedemptions === null) return res.status(400).json({ message: "Số lượt đổi tối đa phải là số nguyên >= 1" });
 
   try {
     const pool = await poolPromise;
@@ -138,11 +149,12 @@ router.post("/", async (req, res) => {
       .input("promoName", sql.NVarChar(255), promoName)
       .input("discountPercent", sql.Decimal(5, 2), discountPercent)
       .input("requiredPoints", sql.Int, requiredPoints)
+      .input("maxRedemptions", sql.Int, maxRedemptions)
       .input("endDate", sql.DateTime, endDate)
       .query(`
-        INSERT INTO PROMOTION (PromoName, DiscountPercent, RequiredPoints, EndDate)
-        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.RequiredPoints, INSERTED.EndDate
-        VALUES (@promoName, @discountPercent, @requiredPoints, @endDate)
+        INSERT INTO PROMOTION (PromoName, DiscountPercent, RequiredPoints, MaxRedemptions, EndDate)
+        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.RequiredPoints, INSERTED.MaxRedemptions, INSERTED.EndDate
+        VALUES (@promoName, @discountPercent, @requiredPoints, @maxRedemptions, @endDate)
       `);
 
     res.status(201).json({
@@ -162,11 +174,13 @@ router.put("/:id", async (req, res) => {
   const discountPercent = normalizeDiscount(req.body.DiscountPercent ?? req.body.discountPercent);
   const endDate = normalizeEndDate(req.body.EndDate || req.body.endDate);
   const requiredPoints = normalizeRequiredPoints(req.body.RequiredPoints ?? req.body.requiredPoints);
+  const maxRedemptions = normalizeMaxRedemptions(req.body.MaxRedemptions ?? req.body.maxRedemptions);
 
   if (!promotionId) return res.status(400).json({ message: "PromotionID không hợp lệ" });
   if (!promoName) return res.status(400).json({ message: "Tên khuyến mãi không được để trống" });
   if (discountPercent === null) return res.status(400).json({ message: "Phần trăm giảm phải từ 0 đến 100" });
   if (requiredPoints === null) return res.status(400).json({ message: "Điểm cần đổi phải là số nguyên >= 0" });
+  if (maxRedemptions === null) return res.status(400).json({ message: "Số lượt đổi tối đa phải là số nguyên >= 1" });
 
   try {
     const pool = await poolPromise;
@@ -175,14 +189,16 @@ router.put("/:id", async (req, res) => {
       .input("promoName", sql.NVarChar(255), promoName)
       .input("discountPercent", sql.Decimal(5, 2), discountPercent)
       .input("requiredPoints", sql.Int, requiredPoints)
+      .input("maxRedemptions", sql.Int, maxRedemptions)
       .input("endDate", sql.DateTime, endDate)
       .query(`
         UPDATE PROMOTION
         SET PromoName = @promoName,
             DiscountPercent = @discountPercent,
             RequiredPoints = @requiredPoints,
+            MaxRedemptions = @maxRedemptions,
             EndDate = @endDate
-        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.RequiredPoints, INSERTED.EndDate
+        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.RequiredPoints, INSERTED.MaxRedemptions, INSERTED.EndDate
         WHERE PromotionID = @promotionId
       `);
 
@@ -212,7 +228,7 @@ router.patch("/:id/expire", async (req, res) => {
       .query(`
         UPDATE PROMOTION
         SET EndDate = DATEADD(DAY, -1, GETDATE())
-        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.RequiredPoints, INSERTED.EndDate
+        OUTPUT INSERTED.PromotionID, INSERTED.PromoName, INSERTED.DiscountPercent, INSERTED.RequiredPoints, INSERTED.MaxRedemptions, INSERTED.EndDate
         WHERE PromotionID = @promotionId
       `);
 
@@ -255,6 +271,18 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy khuyến mãi" });
     }
 
+    const bookingRequest = new sql.Request(transaction);
+    const bookingUpdateResult = await bookingRequest
+      .input("promotionId", sql.Int, promotionId)
+      .query(`
+        UPDATE b
+        SET b.MemberPromoID = NULL
+        FROM BOOKING b
+        INNER JOIN MEMBER_PROMOTION mp
+          ON mp.MemberPromoID = b.MemberPromoID
+        WHERE mp.PromotionID = @promotionId
+      `);
+
     const walletRequest = new sql.Request(transaction);
     const walletDeleteResult = await walletRequest
       .input("promotionId", sql.Int, promotionId)
@@ -273,6 +301,11 @@ router.delete("/:id", async (req, res) => {
 
     await transaction.commit();
 
+    const bookingsDetached =
+      bookingUpdateResult.rowsAffected && bookingUpdateResult.rowsAffected.length
+        ? bookingUpdateResult.rowsAffected[0]
+        : 0;
+
     const walletDeleted =
       walletDeleteResult.rowsAffected && walletDeleteResult.rowsAffected.length
         ? walletDeleteResult.rowsAffected[0]
@@ -280,6 +313,7 @@ router.delete("/:id", async (req, res) => {
 
     res.json({
       message: "Xóa khuyến mãi thành công",
+      detachedBookings: bookingsDetached,
       deletedMemberPromotions: walletDeleted,
     });
   } catch (err) {
