@@ -155,11 +155,11 @@ export default function FeedbackManagement() {
             <h1>Quản lý đánh giá khách hàng</h1>
             <p>Theo dõi đánh giá sau khi booking hoàn tất, lọc theo số sao và xử lý phản hồi kém.</p>
           </div>
-          <div className="fb-rating-card">
-            <span>Điểm trung bình</span>
-            <strong>{Number(stats.AverageRating || 0).toFixed(1)}</strong>
-            {renderStars(Math.round(Number(stats.AverageRating || 0)))}
-          </div>
+            <div className="fb-rating-card">
+              <span>Điểm trung bình</span>
+              <strong>{stats.AverageRating || 0}</strong>
+              {renderStars(Number(stats.AverageRating || 0))}
+            </div>
         </section>
 
         <section className="fb-stat-grid">
