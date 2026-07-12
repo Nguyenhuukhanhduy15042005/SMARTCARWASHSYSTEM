@@ -87,8 +87,8 @@ async function querySummary(pool, range) {
       (SELECT ISNULL(SUM(COALESCE(b.FinalPrice, b.TotalPrice, 0)), 0) FROM BOOKING b WHERE 1 = 1 ${bookingFilter} AND b.Status = 4) AS TotalRevenue,
       (SELECT ISNULL(AVG(CAST(f.Rating AS FLOAT)), 0) FROM FEEDBACK f WHERE 1 = 1 ${feedbackFilter}) AS AverageRating,
       (SELECT COUNT(*) FROM FEEDBACK f WHERE 1 = 1 ${feedbackFilter}) AS TotalFeedbacks,
-      (SELECT ISNULL(SUM(CASE WHEN lt.TransactionType = 'Accumulate' THEN lt.Points ELSE 0 END), 0) FROM LOYALTY_TRANSACTION lt WHERE 1 = 1 ${loyaltyFilter}) AS PointsEarned,
-      (SELECT ISNULL(SUM(CASE WHEN lt.TransactionType = 'Redeem' THEN lt.Points ELSE 0 END), 0) FROM LOYALTY_TRANSACTION lt WHERE 1 = 1 ${loyaltyFilter}) AS PointsRedeemed
+      (SELECT ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(lt.TransactionType))) IN ('EARN', 'ACCUMULATE') THEN lt.Points ELSE 0 END), 0) FROM LOYALTY_TRANSACTION lt WHERE 1 = 1 ${loyaltyFilter}) AS PointsEarned,
+      (SELECT ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(lt.TransactionType))) = 'REDEEM' THEN lt.Points ELSE 0 END), 0) FROM LOYALTY_TRANSACTION lt WHERE 1 = 1 ${loyaltyFilter}) AS PointsRedeemed
   `);
 
   const row = result.recordset[0] || {};
@@ -226,10 +226,10 @@ async function queryLoyaltyUsage(pool, range, groupBy) {
   const result = await pool.request().query(`
     SELECT
       ${period} AS Period,
-      ISNULL(SUM(CASE WHEN lt.TransactionType = 'Accumulate' THEN lt.Points ELSE 0 END), 0) AS PointsEarned,
-      ISNULL(SUM(CASE WHEN lt.TransactionType = 'Redeem' THEN lt.Points ELSE 0 END), 0) AS PointsRedeemed,
-      COUNT(CASE WHEN lt.TransactionType = 'Accumulate' THEN 1 END) AS AccumulateCount,
-      COUNT(CASE WHEN lt.TransactionType = 'Redeem' THEN 1 END) AS RedeemCount
+      ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(lt.TransactionType))) IN ('EARN', 'ACCUMULATE') THEN lt.Points ELSE 0 END), 0) AS PointsEarned,
+      ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(lt.TransactionType))) = 'REDEEM' THEN lt.Points ELSE 0 END), 0) AS PointsRedeemed,
+      COUNT(CASE WHEN UPPER(LTRIM(RTRIM(lt.TransactionType))) IN ('EARN', 'ACCUMULATE') THEN 1 END) AS AccumulateCount,
+      COUNT(CASE WHEN UPPER(LTRIM(RTRIM(lt.TransactionType))) = 'REDEEM' THEN 1 END) AS RedeemCount
     FROM LOYALTY_TRANSACTION lt
     WHERE lt.CreatedDate IS NOT NULL ${loyaltyFilter}
     GROUP BY ${period}
