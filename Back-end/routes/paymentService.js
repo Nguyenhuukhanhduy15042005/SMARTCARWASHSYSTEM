@@ -10,11 +10,6 @@ const VNPAY_CONFIG = {
   returnUrl: process.env.VNPAY_RETURN_URL || 'http://localhost:5000/api/payments/vnpay-return',
 };
 
-/**
- * [1] sortObject
- * Sắp xếp key của object theo thứ tự ABC và encode giá trị URL.
- * VNPay yêu cầu params phải được sort trước khi tạo chữ ký HMAC-SHA512.
- */
 function sortObject(obj) {
   const sorted = {};
   const keys = Object.keys(obj).sort();
@@ -26,13 +21,6 @@ function sortObject(obj) {
   return sorted;
 }
 
-/**
- * [2] createVNPayUrl
- * Tạo URL thanh toán VNPay.
- * Input : mã giao dịch, số tiền, mô tả đơn hàng, địa chỉ IP khách hàng.
- * Output: URL redirect sang cổng thanh toán VNPay sandbox.
- * Chi tiết: tạo bộ tham số VNPay, ký HMAC-SHA512, ghép thành URL hoàn chỉnh.
- */
 const createVNPayUrl = (paymentId, amount, orderInfo, ipAddr) => {
   const date = moment(new Date()).format('YYYYMMDDHHmmss');
   let cleanIp = ipAddr || '127.0.0.1';
@@ -64,12 +52,6 @@ const createVNPayUrl = (paymentId, amount, orderInfo, ipAddr) => {
   return paymentUrl;
 };
 
-/**
- * [3] verifyVNPayReturn
- * Xác minh tính hợp lệ của callback từ VNPay sau khi khách thanh toán.
- * Input : query params từ URL callback VNPay trả về.
- * Output: true nếu chữ ký hợp lệ VÀ vnp_ResponseCode === '00' (thành công).
- */
 const verifyVNPayReturn = (query) => {
   const secureHash = query['vnp_SecureHash'];
   const params = { ...query };
@@ -82,12 +64,6 @@ const verifyVNPayReturn = (query) => {
   return signed === secureHash && query['vnp_ResponseCode'] === '00';
 };
 
-/**
- * [4] getUserTier
- * Lấy hạng thành viên (TierID) của user từ bảng MEMBER_PROFILE.
- * Output: TierID (1=Bronze, 2=Silver, 3=Gold, 4=Platinum).
- *         Mặc định trả về 1 (Bronze) nếu user chưa có profile.
- */
 const getUserTier = async (userId) => {
   const pool = await poolPromise;
   const result = await pool.request()
@@ -96,13 +72,7 @@ const getUserTier = async (userId) => {
   return result.recordset[0]?.TierID || 1;
 };
 
-/**
- * [5] getCancelCount
- * Đếm số lần hủy booking trong 30 ngày gần nhất của khách hàng.
- * Nguồn dữ liệu: bảng BOOKING với Status=5 (Đã hủy) trong 30 ngày qua.
- * Dùng bởi: createPayment (tính forceDeposit) và refundPayment (tính refundPercent).
- * Lưu ý: Booking bị soft delete (IsHiddenByUser=1) vẫn được đếm vì Status=5 vẫn còn trong DB.
- */
+// ── Helper: đếm số lần hủy trong 30 ngày ────────────────────────────────────
 const getCancelCount = async (pool, customerId) => {
   const result = await pool.request()
     .input('customerId', sql.Int, customerId)
@@ -116,18 +86,6 @@ const getCancelCount = async (pool, customerId) => {
   return result.recordset[0].CancelCount || 0;
 };
 
-/**
- * [6] createPayment
- * Tạo giao dịch thanh toán mới cho một booking.
- * Logic theo method và tier:
- *   - method='vnpay'
- *       → Tạo paymentUrl VNPay để thanh toán toàn bộ
- *   - method='cash' + Bronze/Silver HOẶC Gold/Platinum đã hủy >=3 lần (forceDeposit=true)
- *       → Tính cọc 10% → Tạo paymentUrl VNPay để thu cọc online
- *   - method='cash' + Gold/Platinum chưa hủy đủ 3 lần
- *       → paymentAmount=0 → Lưu PAYMENT vào DB → Booking Status=2 ngay (miễn cọc, giữ chỗ)
- * Output: { payment, paymentUrl, tierID, depositOnly, forceDeposit, depositAmount, remainingAmount, fullAmount }
- */
 const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
   const pool = await poolPromise;
   const bookingCheck = await pool.request()
@@ -151,10 +109,12 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
   let paymentAmount = finalAmount;
   let tierID = 1;
   let depositOnly = false;
-  let forceDeposit = false;
+  let forceDeposit = false; // ✅ Gold/Platinum bị phạt phải cọc
 
   if (method === 'cash') {
     tierID = await getUserTier(userId || booking.CustomerID);
+
+    // ✅ Đếm số lần hủy của khách
     const cancelCount = await getCancelCount(pool, userId || booking.CustomerID);
 
     // Gold/Platinum hủy >= 3 lần → bắt đặt cọc như Bronze/Silver
@@ -165,7 +125,7 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
       paymentAmount = Math.min(finalAmount, Math.max(10000, calculatedDeposit));
       depositOnly = true;
     } else {
-      paymentAmount = 0; // Gold/Platinum miễn cọc
+      paymentAmount = 0;
     }
   }
 
@@ -173,7 +133,6 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
   let paymentUrl = null;
 
   if (method === 'cash' && !depositOnly) {
-    // Gold/Platinum miễn cọc → lưu thẳng vào DB, chuyển Status=2 ngay
     const result = await pool.request()
       .input('bookingId', sql.Int, bookingId)
       .input('method', sql.NVarChar(50), method)
@@ -186,7 +145,6 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
       UPDATE MEMBER_PROMOTION SET IsUsed = 1 WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
     `);
   } else {
-    // Tạo URL VNPay để thu tiền (vnpay toàn bộ hoặc cash cọc 10%)
     const txnRef = `${bookingId}_${method}_${paymentAmount}_${Date.now()}`;
     const orderInfo = method === 'vnpay' ? `Thanh toan booking ${bookingId}` : `Dat coc booking ${bookingId}`;
     paymentUrl = createVNPayUrl(txnRef, paymentAmount, orderInfo, ipAddr);
@@ -201,13 +159,6 @@ const createPayment = async ({ bookingId, method, amount, userId, ipAddr }) => {
   };
 };
 
-/**
- * [7] confirmVNPay
- * Xử lý callback VNPay sau khi khách hoàn tất thanh toán.
- * Logic:
- *   - isValid=true  → Lưu PAYMENT vào DB, Booking Status=2, gửi notification thành công
- *   - isValid=false → Booking Status=5, nhả voucher, giải phóng máy rửa xe, gửi notification hủy
- */
 const confirmVNPay = async (query) => {
   const isValid = verifyVNPayReturn(query);
   const txnRef = query['vnp_TxnRef'];
@@ -242,12 +193,17 @@ const confirmVNPay = async (query) => {
     `);
 
     try {
+      // 1. Lấy thông tin CustomerID và Email của User từ BookingID
       const userRes = await pool.request()
         .input('bookingId', sql.Int, bookingId)
         .query('SELECT b.CustomerID, u.Email FROM BOOKING b JOIN [USER] u ON b.CustomerID = u.UserID WHERE b.BookingID = @bookingId');
+
       const user = userRes.recordset[0];
       if (user) {
+        // 2. Import động service gửi mail & in-app notification
         const { createAndSendNotification } = require('../Services/notificationService');
+
+        // 3. Gửi thông báo đặt lịch thành công
         await createAndSendNotification({
           userId: user.CustomerID,
           bookingId: bookingId,
@@ -262,15 +218,18 @@ const confirmVNPay = async (query) => {
     }
 
   } else {
+    // 1. Cập nhật Hủy đơn + nhả voucher + giải phóng máy rửa xe
     await pool.request().input('bookingId', sql.Int, bookingId).query(`
       UPDATE BOOKING SET Status = 5 WHERE BookingID = @bookingId;
       UPDATE MEMBER_PROMOTION SET IsUsed = 0 WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
       UPDATE MACHINE SET Status = 1 WHERE MachineID = (SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId);
     `);
+    // 2. Gửi thông báo và email hủy đơn do thanh toán thất bại
     try {
       const userRes = await pool.request()
         .input('bookingId', sql.Int, bookingId)
         .query('SELECT b.CustomerID, u.Email FROM BOOKING b JOIN [USER] u ON b.CustomerID = u.UserID WHERE b.BookingID = @bookingId');
+
       const user = userRes.recordset[0];
       if (user) {
         const { createAndSendNotification } = require('../Services/notificationService');
@@ -290,12 +249,7 @@ const confirmVNPay = async (query) => {
   return { isValid, paymentId };
 };
 
-/**
- * [8] getPaymentHistory
- * Lấy lịch sử thanh toán của user, có phân trang.
- * Lọc: chỉ lấy payment chưa bị ẩn (IsHiddenByUser = 0 hoặc NULL).
- * Output: { data, total, page, limit }
- */
+
 const getPaymentHistory = async (userId, { page = 1, limit = 10 } = {}) => {
   const pool = await poolPromise;
   const offset = (page - 1) * limit;
@@ -326,41 +280,29 @@ const getPaymentHistory = async (userId, { page = 1, limit = 10 } = {}) => {
 };
 
 // ── BẢNG HOÀN TIỀN ───────────────────────────────────────────────────────────
-// cancelCount = số lần ĐÃ hủy TRƯỚC ĐÓ trong 30 ngày (chưa tính lần này)
-// cancelCount 0   → Lần 1:    Trước 24h=100%  2-24h=50%  Dưới 2h=0%
-// cancelCount 1   → Lần 2:    Trước 24h=50%   2-24h=0%   Dưới 2h=0%
-// cancelCount >=2 → Lần 3+:   0% bất kể thời gian
+// cancelCount = số lần ĐÃ hủy TRƯỚC ĐÓ (chưa tính lần này)
+// cancelCount 0,1 → Lần 1,2:  Trước 24h=100%  2-24h=50%  Dưới 2h=0%
+// cancelCount 2   → Lần 3:    Trước 24h=50%   2-24h=0%   Dưới 2h=0%
+// cancelCount >=3 → Lần 4+:   0% bất kể thời gian
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * [9] getRefundPercent
- * Tính % hoàn tiền dựa theo bảng chính sách hủy lịch.
- * Input : hoursLeft (giờ còn lại đến giờ rửa), cancelCount (số lần đã hủy trước đó).
- * Output: refundPercent (0 / 50 / 100).
- */
 const getRefundPercent = (hoursLeft, cancelCount) => {
   if (hoursLeft < 2) return 0;
-  if (cancelCount >= 2) return 0;       // Lần 3+ → 0%
-  if (cancelCount === 1)                // Lần 2
-    return hoursLeft >= 24 ? 50 : 0;
+  if (cancelCount >= 3) return 0;
+  if (cancelCount === 2) return hoursLeft >= 24 ? 50 : 0;
   return hoursLeft >= 24 ? 100 : 50;
 };
 
-/**
- * [10] getWarningMessage
- * Tạo chuỗi thông báo cảnh báo tiếng Việt hiển thị cho khách khi bấm hủy lịch.
- * Nội dung thay đổi tùy theo số lần hủy trong 30 ngày và thời gian còn lại đến giờ rửa.
- */
 const getWarningMessage = (hoursLeft, cancelCount, refundPercent, refundAmount) => {
   const nextCount = cancelCount + 1;
 
   if (hoursLeft < 2)
     return `⚠️ Bạn đang hủy trong vòng 2 tiếng trước giờ rửa xe. Không được hoàn tiền.`;
 
-  if (cancelCount >= 2)
+  if (cancelCount >= 3)
     return `❌ Bạn đã hủy ${nextCount} lần trong 30 ngày. Không được hoàn tiền cho lần hủy này.`;
 
-  if (cancelCount === 1) {
+  if (cancelCount === 2) {
     if (hoursLeft >= 24)
       return `🚨 Lần hủy thứ ${nextCount} trong 30 ngày. Chỉ hoàn 50% = ${refundAmount.toLocaleString('vi-VN')}đ. Lần sau sẽ không được hoàn tiền.`;
     return `🚨 Hủy trong 2-24 tiếng (lần ${nextCount}). Không được hoàn tiền.`;
@@ -371,12 +313,6 @@ const getWarningMessage = (hoursLeft, cancelCount, refundPercent, refundAmount) 
   return `⚠️ Hủy trong 2-24 tiếng. Chỉ hoàn 50% = ${refundAmount.toLocaleString('vi-VN')}đ.`;
 };
 
-/**
- * [11] calcRefundInfo
- * Helper nội bộ — tổng hợp thông tin hoàn tiền cho một booking cụ thể.
- * Tính: cancelCount từ DB, hoursLeft từ BookingDate, refundPercent theo bảng chính sách.
- * Dùng bởi: getRefundPreview và refundPayment.
- */
 const calcRefundInfo = async (pool, bookingId, customerId) => {
   const cancelCount = await getCancelCount(pool, customerId);
 
@@ -394,12 +330,6 @@ const calcRefundInfo = async (pool, bookingId, customerId) => {
   return { cancelCount, hoursLeft, refundPercent };
 };
 
-/**
- * [12] getRefundPreview
- * Xem trước thông tin hoàn tiền trước khi thực sự hủy booking.
- * Đặc điểm: KHÔNG thay đổi gì trong DB, chỉ đọc và tính toán.
- * Output: { refundPercent, refundAmount, cancelCount, hoursLeft, warning, originalAmount }
- */
 const getRefundPreview = async (paymentId) => {
   const pool = await poolPromise;
   const pc = await pool.request().input('paymentId', sql.Int, paymentId)
@@ -422,19 +352,6 @@ const getRefundPreview = async (paymentId) => {
   return { refundPercent, refundAmount, cancelCount, hoursLeft, warning, originalAmount: payment.Amount };
 };
 
-/**
- * [13] refundPayment
- * Thực hiện hủy booking và hoàn tiền.
- * Các bước:
- *   1. Kiểm tra trạng thái booking (không hủy nếu đang rửa hoặc đã hoàn thành)
- *   2. Tính refundPercent + refundAmount theo bảng chính sách
- *   3. Booking Status=5, nhả voucher, giải phóng máy rửa xe
- *   4. Soft delete payment (IsHiddenByUser=1) — giữ lại trong DB để đếm cancelCount chính xác
- *   5. Gửi notification hủy kèm số tiền hoàn
- *   6. Nếu Gold/Platinum hủy đủ 3 lần → trả về forceDepositWarning (cảnh báo lần sau bị bắt cọc 10%)
- * Output: { paymentId, refunded, originalAmount, refundPercent, refundAmount,
- *           cancelCount, warning, nextCancelInfo, forceDepositWarning }
- */
 const refundPayment = async (paymentId) => {
   const pool = await poolPromise;
 
@@ -464,7 +381,7 @@ const refundPayment = async (paymentId) => {
   const refundAmount = Math.round(originalAmount * refundPercent / 100);
   const warning = getWarningMessage(hoursLeftSafe, cancelCount, refundPercent, refundAmount);
 
-  // Hủy booking + nhả voucher + giải phóng máy rửa xe
+  // Hủy booking + nhả voucher + GIẢI PHÓNG MÁY RỬA XE (Fix bug của hệ thống)
   await pool.request().input('bookingId', sql.Int, payment.BookingID).query(`
     UPDATE BOOKING SET Status = 5 WHERE BookingID = @bookingId;
     UPDATE MEMBER_PROMOTION SET IsUsed = 0
@@ -472,12 +389,10 @@ const refundPayment = async (paymentId) => {
     UPDATE MACHINE SET Status = 1 
     WHERE MachineID = (SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId);
   `);
-
-  // Soft delete payment — giữ lại record để cancelCount đếm đúng qua BOOKING.Status=5
+  // Soft delete payment
   await pool.request().input('paymentId', sql.Int, paymentId)
     .query(`UPDATE PAYMENT SET IsHiddenByUser = 1 WHERE PaymentID = @paymentId`);
-
-  // Gửi notification hủy + số tiền hoàn
+  // === THÊM ĐOẠN GỬI THÔNG BÁO HỦY HOÀN TIỀN VÀO ĐÂY ===
   try {
     const userRes = await pool.request()
       .input("userId", sql.Int, payment.CustomerID)
@@ -495,7 +410,7 @@ const refundPayment = async (paymentId) => {
   } catch (notiErr) {
     console.error(`[RefundCancelNotification] Lỗi gửi thông báo cho BK-${payment.BookingID}:`, notiErr.message);
   }
-
+  //  Cảnh báo Gold/Platinum sẽ bị bắt cọc từ lần sau nếu cancelCount+1 >= 3
   const newCancelCount = cancelCount + 1;
   let nextCancelInfo = null;
   if (newCancelCount >= 4) {
@@ -504,7 +419,7 @@ const refundPayment = async (paymentId) => {
     nextCancelInfo = '⚠️ Còn 1 lần hủy được hoàn tiền trong 30 ngày';
   }
 
-  // Cảnh báo Gold/Platinum bị bắt cọc 10% từ lần đặt lịch tiếp theo
+  // ✅ Thêm cảnh báo forceDeposit cho Gold/Platinum
   const tierID = await getUserTier(payment.CustomerID);
   let forceDepositWarning = null;
   if ((tierID === 3 || tierID === 4) && newCancelCount >= 3) {
@@ -517,11 +432,6 @@ const refundPayment = async (paymentId) => {
   };
 };
 
-/**
- * [14] confirmCashDeposit
- * Nhân viên xác nhận đã thu tiền mặt tại quầy sau khi khách đến check-in.
- * Thao tác: cập nhật PaidAt = GETDATE() cho payment, đánh dấu đã thu tiền thực tế.
- */
 const confirmCashDeposit = async (paymentId) => {
   const pool = await poolPromise;
   const pc = await pool.request().input('paymentId', sql.Int, paymentId)
