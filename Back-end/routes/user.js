@@ -11,8 +11,7 @@ router.get("/me", verifyToken, async (req, res) => {
     const pool = await poolPromise;
     const result = await pool
       .request()
-      .input("userId", sql.Int, req.user.userId)
-      .query(`
+      .input("userId", sql.Int, req.user.userId).query(`
         SELECT UserID, FullName, Email, PhoneNumber, RoleID
         FROM [USER]
         WHERE UserID = @userId
@@ -240,7 +239,7 @@ router.get("/profile", async (req, res) => {
                     u.Email,
                     COALESCE(mp.CurrentPoints, 0) AS CurrentPoints, 
                     COALESCE(mp.AccumulatedPoints, 0) AS AccumulatedPoints, 
-                    COALESCE(lt.TierName, N'Standard') AS TierName, 
+                    COALESCE(lt.TierName, N'Bronze') AS TierName, 
                     COALESCE(lt.DiscountRate, 0) AS DiscountRate
                 FROM [USER] u
                 LEFT JOIN MEMBER_PROFILE mp ON u.UserID = mp.UserID
@@ -265,9 +264,16 @@ router.get("/profile", async (req, res) => {
 
 router.put("/profile", async (req, res) => {
   try {
-    const FullName = req.body.FullName !== undefined ? req.body.FullName : req.body.fullName;
-    const Email = req.body.Email !== undefined ? req.body.Email : req.body.email;
-    const PhoneNumber = req.body.PhoneNumber !== undefined ? req.body.PhoneNumber : (req.body.phoneNumber !== undefined ? req.body.phoneNumber : req.body.phone);
+    const FullName =
+      req.body.FullName !== undefined ? req.body.FullName : req.body.fullName;
+    const Email =
+      req.body.Email !== undefined ? req.body.Email : req.body.email;
+    const PhoneNumber =
+      req.body.PhoneNumber !== undefined
+        ? req.body.PhoneNumber
+        : req.body.phoneNumber !== undefined
+          ? req.body.phoneNumber
+          : req.body.phone;
     const UserID = req.body.UserID || req.body.userId || 12;
 
     const pool = await poolPromise;
@@ -276,24 +282,32 @@ router.put("/profile", async (req, res) => {
     const userRes = await pool
       .request()
       .input("userId", sql.Int, UserID)
-      .query("SELECT FullName, Email, PhoneNumber FROM [USER] WHERE UserID = @userId");
+      .query(
+        "SELECT FullName, Email, PhoneNumber FROM [USER] WHERE UserID = @userId",
+      );
 
     if (userRes.recordset.length === 0) {
       return res.status(404).json({ message: "Không tìm thấy người dùng!" });
     }
 
     const currentUser = userRes.recordset[0];
-    const finalFullName = FullName !== undefined && FullName !== null ? FullName : currentUser.FullName;
-    const finalEmail = Email !== undefined && Email !== null ? Email : currentUser.Email;
-    const finalPhoneNumber = PhoneNumber !== undefined && PhoneNumber !== null ? PhoneNumber : currentUser.PhoneNumber;
+    const finalFullName =
+      FullName !== undefined && FullName !== null
+        ? FullName
+        : currentUser.FullName;
+    const finalEmail =
+      Email !== undefined && Email !== null ? Email : currentUser.Email;
+    const finalPhoneNumber =
+      PhoneNumber !== undefined && PhoneNumber !== null
+        ? PhoneNumber
+        : currentUser.PhoneNumber;
 
     await pool
       .request()
       .input("userId", sql.Int, UserID)
       .input("fullName", sql.NVarChar, finalFullName)
       .input("email", sql.NVarChar, finalEmail)
-      .input("phoneNumber", sql.NVarChar, finalPhoneNumber)
-      .query(`
+      .input("phoneNumber", sql.NVarChar, finalPhoneNumber).query(`
         UPDATE [USER]
         SET FullName = @fullName, Email = @email, PhoneNumber = @phoneNumber
         WHERE UserID = @userId
@@ -459,7 +473,9 @@ router.delete("/:userId", verifyToken, async (req, res) => {
       request.input("userId", sql.Int, userId);
 
       // 1. Delete LOYALTY_TRANSACTION (to release reference to BOOKING)
-      await request.query("DELETE FROM LOYALTY_TRANSACTION WHERE UserID = @userId");
+      await request.query(
+        "DELETE FROM LOYALTY_TRANSACTION WHERE UserID = @userId",
+      );
 
       // 2. Delete payments belonging to the user's bookings
       await request.query(`
@@ -483,7 +499,9 @@ router.delete("/:userId", verifyToken, async (req, res) => {
       await request.query("DELETE FROM BOOKING WHERE CustomerID = @userId");
 
       // 5. Delete MEMBER_PROMOTION (wallet)
-      await request.query("DELETE FROM MEMBER_PROMOTION WHERE UserID = @userId");
+      await request.query(
+        "DELETE FROM MEMBER_PROMOTION WHERE UserID = @userId",
+      );
 
       // 6. Delete MEMBER_PROFILE
       await request.query("DELETE FROM MEMBER_PROFILE WHERE UserID = @userId");
