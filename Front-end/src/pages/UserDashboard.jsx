@@ -457,8 +457,10 @@ export default function UserDashboard() {
     if (selectedStatus === "Cancelled" && b.status !== 5) return false;
 
     // Vehicle Type Filter
-    if (vehicleFilter !== "All" && b.vehicleType !== vehicleFilter)
-      return false;
+    if (vehicleFilter !== "All") {
+      const normalizedType = (b.vehicleType?.toLowerCase() === "xe máy" || b.vehicleType?.toLowerCase() === "bike" || b.vehicleType?.toLowerCase() === "motorcycle") ? "BIKE" : "CAR";
+      if (normalizedType !== vehicleFilter) return false;
+    }
 
     // Search Box
     if (debouncedKeyword) {

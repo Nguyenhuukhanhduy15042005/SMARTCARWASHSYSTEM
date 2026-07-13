@@ -240,7 +240,7 @@ router.get("/profile", async (req, res) => {
                     u.Email,
                     COALESCE(mp.CurrentPoints, 0) AS CurrentPoints, 
                     COALESCE(mp.AccumulatedPoints, 0) AS AccumulatedPoints, 
-                    COALESCE(lt.TierName, N'Standard') AS TierName, 
+                    COALESCE(lt.TierName, N'Bronze') AS TierName, 
                     COALESCE(lt.DiscountRate, 0) AS DiscountRate
                 FROM [USER] u
                 LEFT JOIN MEMBER_PROFILE mp ON u.UserID = mp.UserID
