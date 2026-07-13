@@ -1,13 +1,7 @@
 const service = require('./paymentService');
 const { sql, poolPromise } = require('../db');
 
-/**
- * [1] getUserTier
- * Lấy hạng thành viên và trạng thái đặt cọc của user hiện tại.
- * - Đếm số lần hủy trong 30 ngày từ bảng BOOKING (Status=5)
- * - Gold/Platinum hủy >= 3 lần → forceDeposit = true → bắt cọc 10%
- * Output: { tierID, tierName, needDeposit, forceDeposit, cancelCount, forceDepositWarning }
- */
+// ✅ Thêm cancelCount + forceDeposit vào response
 const getUserTier = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -41,13 +35,6 @@ const getUserTier = async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
-/**
- * [2] createPayment
- * Tạo giao dịch thanh toán mới.
- * - Nhận bookingId, method (vnpay/cash), amount từ request body
- * - Gọi service.createPayment để xử lý logic tạo payment và URL VNPay
- * Output: { payment, paymentUrl, tierID, depositOnly, forceDeposit, depositAmount, remainingAmount, fullAmount }
- */
 const createPayment = async (req, res) => {
   try {
     const { bookingId, method, amount } = req.body;
@@ -63,13 +50,7 @@ const createPayment = async (req, res) => {
   } catch (err) { res.status(400).json({ message: err.message }); }
 };
 
-/**
- * [3] vnpayReturn
- * Xử lý callback từ VNPay sau khi khách hoàn tất thanh toán.
- * - Không cần auth (VNPay redirect về, không có token)
- * - Thêm header bypass cảnh báo ngrok
- * - Redirect về frontend với status=success hoặc status=failed
- */
+// GET /api/payments/vnpay-return
 const vnpayReturn = async (req, res) => {
   try {
     const { isValid, paymentId } = await service.confirmVNPay(req.query);
@@ -83,12 +64,6 @@ const vnpayReturn = async (req, res) => {
   }
 };
 
-/**
- * [4] getPaymentHistory
- * Lấy lịch sử thanh toán của user hiện tại, có phân trang.
- * Query params: page, limit
- * Output: { data, total, page, limit }
- */
 const getPaymentHistory = async (req, res) => {
   try {
     const result = await service.getPaymentHistory(req.user.userId, req.query);
@@ -96,12 +71,6 @@ const getPaymentHistory = async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
-/**
- * [5] getRefundPreview
- * Xem trước thông tin hoàn tiền trước khi thực sự hủy booking.
- * Không thay đổi gì trong DB — chỉ tính toán và trả về thông tin.
- * Output: { refundPercent, refundAmount, cancelCount, hoursLeft, warning, originalAmount }
- */
 const getRefundPreview = async (req, res) => {
   try {
     const result = await service.getRefundPreview(Number(req.params.id));
@@ -109,14 +78,6 @@ const getRefundPreview = async (req, res) => {
   } catch (err) { res.status(400).json({ message: err.message }); }
 };
 
-/**
- * [6] refundPayment
- * Thực hiện hủy booking và hoàn tiền.
- * Gọi service.refundPayment để xử lý toàn bộ logic:
- * hủy booking, soft delete payment, gửi notification, tính forceDepositWarning.
- * Output: { paymentId, refunded, originalAmount, refundPercent, refundAmount,
- *           cancelCount, warning, nextCancelInfo, forceDepositWarning }
- */
 const refundPayment = async (req, res) => {
   try {
     const result = await service.refundPayment(Number(req.params.id));
@@ -124,11 +85,6 @@ const refundPayment = async (req, res) => {
   } catch (err) { res.status(400).json({ message: err.message }); }
 };
 
-/**
- * [7] confirmCashDeposit
- * Nhân viên xác nhận đã thu tiền mặt tại quầy sau khi khách check-in.
- * Cập nhật PaidAt = GETDATE() cho payment tương ứng.
- */
 const confirmCashDeposit = async (req, res) => {
   try {
     const result = await service.confirmCashDeposit(Number(req.params.id));

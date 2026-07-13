@@ -1014,6 +1014,7 @@ router.get("/admin/dashboard/stats", adminAuth, async (req, res) => {
                 0 AS pending,
                 SUM(CASE WHEN Status = 3 THEN 1 ELSE 0 END) AS active,
                 SUM(CASE WHEN Status = 4 THEN 1 ELSE 0 END) AS completed,
+                SUM(CASE WHEN Status = 5 THEN 1 ELSE 0 END) AS cancelled,
                 COALESCE(SUM(CASE WHEN Status = 4 THEN COALESCE(FinalPrice, TotalPrice, 0) ELSE 0 END), 0) AS revenue
             FROM BOOKING
         `);

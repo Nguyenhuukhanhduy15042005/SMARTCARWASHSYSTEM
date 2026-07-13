@@ -457,8 +457,10 @@ export default function UserDashboard() {
     if (selectedStatus === "Cancelled" && b.status !== 5) return false;
 
     // Vehicle Type Filter
-    if (vehicleFilter !== "All" && b.vehicleType !== vehicleFilter)
-      return false;
+    if (vehicleFilter !== "All") {
+      const normalizedType = (b.vehicleType?.toLowerCase() === "xe máy" || b.vehicleType?.toLowerCase() === "bike" || b.vehicleType?.toLowerCase() === "motorcycle") ? "BIKE" : "CAR";
+      if (normalizedType !== vehicleFilter) return false;
+    }
 
     // Search Box
     if (debouncedKeyword) {
@@ -1002,22 +1004,30 @@ export default function UserDashboard() {
                 <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ color: "var(--text-secondary)" }}>
-                      <th style={{ textAlign: "left", paddingBottom: 4 }}>Lần hủy</th>
-                      <th style={{ textAlign: "center" }}>% Hoàn tiền</th>
+                      <th style={{ textAlign: "left", paddingBottom: 4 }}>Thời gian</th>
+                      <th style={{ textAlign: "center" }}>Lần 1</th>
+                      <th style={{ textAlign: "center" }}>Lần 2</th>
+                      <th style={{ textAlign: "center" }}>Lần 3+</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Lần 1</td>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Trước 24h</td>
                       <td style={{ textAlign: "center", color: "#10b981", fontWeight: 700 }}>100%</td>
-                    </tr>
-                    <tr>
-                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Lần 2</td>
                       <td style={{ textAlign: "center", color: "#f59e0b", fontWeight: 700 }}>50%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
                     </tr>
                     <tr>
-                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Lần 3 trở đi</td>
-                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0% (Không hoàn)</td>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>2 - 24h</td>
+                      <td style={{ textAlign: "center", color: "#f59e0b", fontWeight: 700 }}>50%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Dưới 2h</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
                     </tr>
                   </tbody>
                 </table>

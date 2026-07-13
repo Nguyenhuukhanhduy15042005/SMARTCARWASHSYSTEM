@@ -13,6 +13,7 @@ export default function AdminDashboard() {
     pending: 0,
     active: 0,
     completed: 0,
+    cancelled: 0,
     revenue: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -107,6 +108,10 @@ export default function AdminDashboard() {
         active: apiStats.active || list.filter((b) => b.status === 3).length,
         completed:
           apiStats.completed || list.filter((b) => b.status === 4).length,
+        cancelled:
+          apiStats.cancelled !== undefined
+            ? apiStats.cancelled
+            : list.filter((b) => b.status === 5).length,
         revenue:
           apiStats.revenue ||
           list.reduce(
@@ -323,6 +328,15 @@ export default function AdminDashboard() {
             </div>
             <div className="admin-metric-icon">
               <i className="fa-regular fa-circle-check"></i>
+            </div>
+          </div>
+          <div className="admin-metric-card metric-cancelled">
+            <div className="admin-metric-info">
+              <h3>Đã hủy</h3>
+              <p className="admin-metric-value">{stats.cancelled}</p>
+            </div>
+            <div className="admin-metric-icon">
+              <i className="fa-regular fa-circle-xmark"></i>
             </div>
           </div>
         </section>

@@ -116,14 +116,25 @@ router.post("/register-step2", async (req, res) => {
     // OTP đúng -> Hash mật khẩu và Lưu vào Database
     const hashedPassword = await bcrypt.hash(password, 10);
     const pool = await poolPromise;
-    await pool
+    const userInsertResult = await pool
       .request()
       .input("fullName", sql.NVarChar, fullName)
       .input("phone", sql.VarChar, phone)
       .input("email", sql.VarChar, email)
       .input("password", sql.NVarChar, hashedPassword).query(`
         INSERT INTO [USER] (FullName, PhoneNumber, Email, Password, RoleID)
-        VALUES (@fullName, @phone, @email, @password, 3)
+        VALUES (@fullName, @phone, @email, @password, 3);
+        SELECT SCOPE_IDENTITY() AS UserID;
+      `);
+
+    const newUserId = userInsertResult.recordset[0].UserID;
+
+    await pool
+      .request()
+      .input("userId", sql.Int, newUserId)
+      .query(`
+        INSERT INTO MEMBER_PROFILE (UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate)
+        VALUES (@userId, 1, 0, 0, GETDATE())
       `);
 
     // Xóa OTP khỏi bộ nhớ sau khi đăng ký thành công
@@ -165,14 +176,25 @@ router.post("/register", async (req, res) => {
     //Hash mật khẩu trước khi lưu DB
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await pool
+    const userInsertResult = await pool
       .request()
       .input("fullName", sql.NVarChar, fullName)
       .input("phone", sql.VarChar, phone)
       .input("email", sql.VarChar, email)
       .input("password", sql.NVarChar, hashedPassword).query(`
         INSERT INTO [USER] (FullName, PhoneNumber, Email, Password, RoleID)
-        VALUES (@fullName, @phone, @email, @password, 3)
+        VALUES (@fullName, @phone, @email, @password, 3);
+        SELECT SCOPE_IDENTITY() AS UserID;
+      `);
+
+    const newUserId = userInsertResult.recordset[0].UserID;
+
+    await pool
+      .request()
+      .input("userId", sql.Int, newUserId)
+      .query(`
+        INSERT INTO MEMBER_PROFILE (UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate)
+        VALUES (@userId, 1, 0, 0, GETDATE())
       `);
 
     res.status(201).json({ message: "Đăng ký thành công!" });
