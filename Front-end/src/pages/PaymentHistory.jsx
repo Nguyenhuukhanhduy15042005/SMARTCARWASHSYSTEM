@@ -88,8 +88,8 @@ export default function PaymentHistory() {
       );
       const data = res.data;
       const msg = data.refundAmount > 0
-        ? `✅ Hủy thành công! Hoàn ${data.refundPercent}% = ${data.refundAmount.toLocaleString("vi-VN")}đ.`
-        : "✅ Đã hủy thành công (không hoàn tiền).";
+        ? `Hủy thành công! Hoàn ${data.refundPercent}% = ${data.refundAmount.toLocaleString("vi-VN")}đ.`
+        : "Đã hủy thành công (không hoàn tiền).";
       const extra = [data.nextCancelInfo, data.forceDepositWarning].filter(Boolean).join(" ");
       showToast(extra ? `${msg} ${extra}` : msg, "success", extra ? 7000 : 3500);
       fetchHistory();

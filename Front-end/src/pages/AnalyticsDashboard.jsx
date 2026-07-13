@@ -354,33 +354,6 @@ export default function AnalyticsDashboard() {
               </div>
             </div>
 
-            {/* ④ Biểu đồ cột ngang - Top 10 dịch vụ được đặt nhiều nhất */}
-            <div className="analytics-section">
-              <div className="analytics-section-header">
-                <div className="analytics-section-title">
-                  <span>🏆</span> Top dịch vụ phổ biến
-                </div>
-              </div>
-              {data.serviceUsage?.length > 0 ? (
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart
-                    data={data.serviceUsage}
-                    layout="vertical" // Cột nằm ngang để hiện tên dịch vụ dễ đọc
-                    margin={{ top: 5, right: 20, left: 120, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                    <XAxis type="number" tick={{ fill: "#9ca3af", fontSize: 11 }} />
-                    <YAxis
-                      type="category" dataKey="serviceName"
-                      tick={{ fill: "#9ca3af", fontSize: 12 }} width={115}
-                    />
-                    <Tooltip content={<ChartTooltip />} />
-                    <Bar dataKey="usageCount" name="Lượt dùng" fill="#8b5cf6" radius={[0,4,4,0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : <div className="analytics-empty">Không có dữ liệu</div>}
-            </div>
-
             {/* ⑤ Biểu đồ đường - điểm loyalty tích lũy và điểm đã đổi theo ngày/tháng */}
             <div className="analytics-section">
               <div className="analytics-section-header">
