@@ -341,8 +341,7 @@ const getPaymentHistory = async (userId, { page = 1, limit = 10 } = {}) => {
 const getRefundPercent = (hoursLeft, cancelCount) => {
   if (hoursLeft < 2) return 0;
   if (cancelCount >= 2) return 0;       // Lần 3+ → 0%
-  if (cancelCount === 1)                // Lần 2
-    return hoursLeft >= 24 ? 50 : 0;
+  if (cancelCount === 1) return hoursLeft >= 24 ? 50 : 0;  // Lần 2
   return hoursLeft >= 24 ? 100 : 50;
 };
 
