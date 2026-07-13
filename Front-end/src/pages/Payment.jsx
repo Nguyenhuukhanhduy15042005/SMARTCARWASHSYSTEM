@@ -177,6 +177,13 @@ export default function Payment() {
   const currentFinalPrice = bookingData?.FinalPrice ?? currentTotalPrice;
   const discountAmount = currentTotalPrice - currentFinalPrice;
 
+  // Tách riêng phần giảm giá do Voucher và phần giảm giá do Hạng thành viên
+  // (backend gộp chung vào FinalPrice, FE tự tách lại để hiển thị đúng nguồn gốc)
+  const voucherDiscountAmount = activeVoucher
+    ? Math.round((currentTotalPrice * (activeVoucher.DiscountPercent || 0)) / 100)
+    : 0;
+  const tierDiscountAmount = Math.max(0, discountAmount - voucherDiscountAmount);
+
   // Tính số tiền hiển thị theo method + tier
   const tier = TIER_INFO[tierID] || TIER_INFO[1];
 
@@ -457,10 +464,16 @@ export default function Payment() {
 
             <div className="ps-rows">
               <div className="ps-row"><span>Giá dịch vụ</span><span>{formatPrice(currentTotalPrice)}</span></div>
-              {discountAmount > 0 && (
+              {voucherDiscountAmount > 0 && (
                 <div className="ps-row discount-row">
                   <span>Giảm giá (Voucher)</span>
-                  <span style={{ color: "#10b981", fontWeight: 700 }}>-{formatPrice(discountAmount)}</span>
+                  <span style={{ color: "#10b981", fontWeight: 700 }}>-{formatPrice(voucherDiscountAmount)}</span>
+                </div>
+              )}
+              {tierDiscountAmount > 0 && (
+                <div className="ps-row discount-row">
+                  <span>Giảm giá (Hạng {tier.name})</span>
+                  <span style={{ color: "#10b981", fontWeight: 700 }}>-{formatPrice(tierDiscountAmount)}</span>
                 </div>
               )}
               {method === "cash" && !loadingTier && effectiveNeedDeposit && (
