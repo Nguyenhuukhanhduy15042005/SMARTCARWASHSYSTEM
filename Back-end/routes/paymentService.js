@@ -426,7 +426,8 @@ const getRefundPreview = async (paymentId) => {
  * Thực hiện hủy booking và hoàn tiền.
  * Các bước:
  *   1. Kiểm tra trạng thái booking (không hủy nếu đang rửa hoặc đã hoàn thành)
- *   2. Tính refundPercent + refundAmount theo bảng chính sách
+ *   2. Nếu tiền cọc (cash + Amount>0) → mất trắng, refundPercent=0%
+ *      Nếu VNPay → tính refundPercent theo bảng (lần 1=100%, lần 2=50%, lần 3+=0%)
  *   3. Booking Status=5, nhả voucher, giải phóng máy rửa xe
  *   4. Soft delete payment (IsHiddenByUser=1) — giữ lại trong DB để đếm cancelCount chính xác
  *   5. Gửi notification hủy kèm số tiền hoàn
@@ -455,13 +456,27 @@ const refundPayment = async (paymentId) => {
   const hoursLeftSafe = Math.max(0, (bookingDate - now) / (1000 * 60 * 60));
 
   const cancelCount = await getCancelCount(pool, payment.CustomerID);
-
-  console.log(`[REFUND] PaymentID:${paymentId} CustomerID:${payment.CustomerID} CancelCount:${cancelCount} HoursLeft:${hoursLeftSafe.toFixed(2)}`);
-
-  const refundPercent = getRefundPercent(hoursLeftSafe, cancelCount);
   const originalAmount = Number(payment.Amount || 0);
-  const refundAmount = Math.round(originalAmount * refundPercent / 100);
-  const warning = getWarningMessage(hoursLeftSafe, cancelCount, refundPercent, refundAmount);
+
+  // Tiền cọc cash (Bronze/Silver hoặc Gold/Platinum bị forceDeposit)
+  // → Amount > 0 + PaymentMethod = 'cash' → MẤT TRẮNG, không hoàn
+  const isDeposit = (payment.PaymentMethod || '').toLowerCase() === 'cash' && originalAmount > 0;
+
+  let refundPercent = 0;
+  let refundAmount = 0;
+  let warning = '';
+
+  if (isDeposit) {
+    // Tiền cọc → mất trắng
+    warning = `❌ Tiền cọc 10% không được hoàn lại khi hủy lịch.`;
+  } else {
+    // VNPay hoặc Gold/Platinum Amount=0 → tính theo bảng hoàn tiền
+    refundPercent = getRefundPercent(hoursLeftSafe, cancelCount);
+    refundAmount = Math.round(originalAmount * refundPercent / 100);
+    warning = getWarningMessage(hoursLeftSafe, cancelCount, refundPercent, refundAmount);
+  }
+
+  console.log(`[REFUND] PaymentID:${paymentId} CustomerID:${payment.CustomerID} IsDeposit:${isDeposit} CancelCount:${cancelCount} HoursLeft:${hoursLeftSafe.toFixed(2)} RefundPercent:${refundPercent}%`);
 
   // Hủy booking + nhả voucher + giải phóng máy rửa xe
   await pool.request().input('bookingId', sql.Int, payment.BookingID).query(`
@@ -487,7 +502,9 @@ const refundPayment = async (paymentId) => {
       userId: payment.CustomerID,
       bookingId: payment.BookingID,
       title: "Hủy lịch đặt xe thành công",
-      message: `Lịch đặt rửa xe của bạn (Mã đơn BK-${payment.BookingID}) đã được hủy thành công. Số tiền hoàn trả dự kiến: ${refundAmount.toLocaleString('vi-VN')}đ (${refundPercent}%).`,
+      message: isDeposit
+        ? `Lịch đặt rửa xe của bạn (Mã đơn BK-${payment.BookingID}) đã được hủy thành công. Tiền cọc 10% không được hoàn lại.`
+        : `Lịch đặt rửa xe của bạn (Mã đơn BK-${payment.BookingID}) đã được hủy thành công. Số tiền hoàn trả dự kiến: ${refundAmount.toLocaleString('vi-VN')}đ (${refundPercent}%).`,
       type: "CANCEL",
       userEmail: userEmail || null
     });
@@ -497,10 +514,12 @@ const refundPayment = async (paymentId) => {
 
   const newCancelCount = cancelCount + 1;
   let nextCancelInfo = null;
-  if (newCancelCount >= 4) {
-    nextCancelInfo = '❌ Lần hủy tiếp theo sẽ không được hoàn tiền';
-  } else if (newCancelCount === 3) {
-    nextCancelInfo = '⚠️ Còn 1 lần hủy được hoàn tiền trong 30 ngày';
+  if (!isDeposit) {
+    if (newCancelCount >= 3) {
+      nextCancelInfo = '❌ Lần hủy tiếp theo sẽ không được hoàn tiền';
+    } else if (newCancelCount === 2) {
+      nextCancelInfo = '⚠️ Còn 1 lần hủy được hoàn tiền trong 30 ngày';
+    }
   }
 
   // Cảnh báo Gold/Platinum bị bắt cọc 10% từ lần đặt lịch tiếp theo
