@@ -310,9 +310,6 @@ router.get('/', async (req, res) => {
         if (customerId) {
             conditions.push(`b.CustomerID = @customerId`);
             request.input('customerId', sql.Int, customerId);
-
-            // Ẩn booking đã bị khách xóa khỏi lịch sử
-            conditions.push(`(b.IsHiddenByUser IS NULL OR b.IsHiddenByUser = 0)`);
         } else {
             // Mặc định ẩn các đơn nháp (Status = 1) nếu không lọc cụ thể
             if (!status) {
