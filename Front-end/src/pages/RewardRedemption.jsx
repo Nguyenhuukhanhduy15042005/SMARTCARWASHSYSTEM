@@ -346,7 +346,7 @@ export default function RewardRedemption() {
           <div>
             <p className="reward-eyebrow">Loyalty Reward</p>
             <h1>Đổi điểm thưởng</h1>
-            <p>Dùng điểm tích lũy để lấy mã giảm giá khi thanh toán booking.</p>
+            <p>Dùng điểm khả dụng để lấy mã giảm giá khi thanh toán booking.</p>
           </div>
           <div className="reward-point-card">
             <span>Điểm hiện có</span>
