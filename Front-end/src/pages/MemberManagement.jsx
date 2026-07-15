@@ -49,6 +49,28 @@ export default function MemberManagement() {
     return 4;
   };
 
+  const handleKeyDown = (e) => {
+    const allowedKeys = [
+      "Backspace",
+      "Delete",
+      "Tab",
+      "Escape",
+      "Enter",
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowDown",
+      "Home",
+      "End",
+    ];
+    if (allowedKeys.includes(e.key) || e.ctrlKey || e.metaKey) {
+      return;
+    }
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   const token =
     localStorage.getItem("TOKEN") || localStorage.getItem("token") || "";
 
@@ -137,6 +159,11 @@ export default function MemberManagement() {
   };
 
   const handleSave = async () => {
+    if (editForm.currentPoints > editForm.accumulatedPoints) {
+      showToast("Điểm hiện tại không thể lớn hơn điểm tích lũy!", "error");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch(
@@ -541,12 +568,28 @@ export default function MemberManagement() {
                     <select
                       style={styles.modalSelect}
                       value={editForm.tierId}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newTierId = parseInt(e.target.value, 10);
+                        let newAccumulated = editForm.accumulatedPoints;
+
+                        // Tự động điều chỉnh điểm tích lũy về mốc tối thiểu của hạng nếu điểm hiện tại không nằm trong khoảng hạng đó
+                        if (newTierId === 1 && (newAccumulated < 0 || newAccumulated >= 140)) {
+                          newAccumulated = 0; // Bronze
+                        } else if (newTierId === 2 && (newAccumulated < 140 || newAccumulated >= 300)) {
+                          newAccumulated = 140; // Silver
+                        } else if (newTierId === 3 && (newAccumulated < 300 || newAccumulated >= 550)) {
+                          newAccumulated = 300; // Gold
+                        } else if (newTierId === 4 && newAccumulated < 550) {
+                          newAccumulated = 550; // Platinum
+                        }
+
+
                         setEditForm({
                           ...editForm,
-                          tierId: parseInt(e.target.value, 10),
+                          tierId: newTierId,
+                          accumulatedPoints: newAccumulated,
                         })
-                      }
+                      }}
                     >
                       {tiers.map((t) => (
                         <option
@@ -558,7 +601,6 @@ export default function MemberManagement() {
                           }}
                         >
                           {" "}
-                          {/* Trọng thêm */}
                           {t.TierName} (Giảm{" "}
                           {t.DiscountRate > 1
                             ? t.DiscountRate
@@ -576,7 +618,8 @@ export default function MemberManagement() {
                       <input
                         type="number"
                         style={styles.modalInput}
-                        value={editForm.currentPoints}
+                        value={editForm.currentPoints === 0 ? "" : editForm.currentPoints}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) =>
                           setEditForm({
                             ...editForm,
@@ -592,7 +635,8 @@ export default function MemberManagement() {
                       <input
                         style={styles.modalInput}
                         type="number"
-                        value={editForm.accumulatedPoints}
+                        value={editForm.accumulatedPoints === 0 ? "" : editForm.accumulatedPoints}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => {
                           const newPoints = parseInt(e.target.value) || 0;
 
