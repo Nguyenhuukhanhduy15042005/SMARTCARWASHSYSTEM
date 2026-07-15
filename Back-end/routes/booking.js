@@ -593,7 +593,6 @@ router.get("/customer/:customerId", async (req, res) => {
                 FROM BOOKING b
                 LEFT JOIN [USER] u ON b.CustomerID = u.UserID
                 WHERE b.CustomerID = @customerId
-                AND (b.IsHiddenByUser IS NULL OR b.IsHiddenByUser = 0)
                 ORDER BY b.BookingDate DESC
 `);
         res.json(result.recordset);
