@@ -363,6 +363,12 @@ router.put("/members/:userId/tier", verifyToken, async (req, res) => {
     return res.status(400).json({ message: "UserID không hợp lệ!" });
   }
 
+  if (currentPoints > accumulatedPoints) {
+    return res.status(400).json({
+      message: "Điểm hiện tại không thể lớn hơn tổng điểm tích lũy của thành viên!",
+    });
+  }
+
   try {
     const pool = await poolPromise;
 
