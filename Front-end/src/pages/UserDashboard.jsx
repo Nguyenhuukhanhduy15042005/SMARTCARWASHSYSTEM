@@ -531,7 +531,7 @@ export default function UserDashboard() {
             </div>
             <div className="card-middle">
               <div className="points-display">
-                <span className="points-label">Điểm tích lũy hiện tại</span>
+                <span className="points-label">Điểm khả dụng hiện tại</span>
                 <span className="points-value">
                   {displayCurrentPoints} <span>PTS</span>
                 </span>
