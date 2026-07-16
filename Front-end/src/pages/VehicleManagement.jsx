@@ -54,6 +54,16 @@ const EMPTY_FORM = { userId: "", plateNumber: "", vehicleType: "", brand: "", mo
 
 const normalizePlate = (value) => value.toUpperCase().replace(/\s+/g, '');
 
+const validatePlateByType = (plate, vehicleType) => {
+  if (vehicleType === "CAR") {
+    return /^[0-9]{2}[A-Z]-[0-9]{4,5}(\.[0-9]{2})?$/.test(plate);
+  }
+  if (vehicleType === "MOTORBIKE") {
+    return /^[0-9]{2}[A-Z][0-9]-[0-9]{4,5}(\.[0-9]{2})?$/.test(plate);
+  }
+  return false;
+};
+
 const isMemberRole = (role) =>
   ["user", "member"].includes(String(role || "").toLowerCase());
 
@@ -202,6 +212,16 @@ export default function VehicleManagement() {
     const color = formData.color;
     if (!userId || !plateNumber || !vehicleType || !brand || !model || !color) {
       showToast("Vui lòng điền đầy đủ thông tin!", "error");
+      return;
+    }
+
+    if (!validatePlateByType(plateNumber, vehicleType)) {
+      showToast(
+        vehicleType === "CAR"
+          ? "Biển số ô tô không hợp lệ. VD: 59A-12345 hoặc 59A-123.45"
+          : "Biển số xe máy không hợp lệ. VD: 59T1-12345 hoặc 59T1-123.45",
+        "error"
+      );
       return;
     }
     setSubmitting(true);
@@ -411,9 +431,22 @@ export default function VehicleManagement() {
               )}
               <div style={s.field}>
                 <label style={s.label}>Biển số xe *</label>
-                <input style={s.input} placeholder="VD: 59A-12345"
+                <input
+                  style={s.input}
+                  placeholder={
+                    formData.vehicleType === "MOTORBIKE"
+                      ? "VD: 59T1-12345"
+                      : formData.vehicleType === "CAR"
+                        ? "VD: 59A-12345"
+                        : "Chọn loại xe trước"
+                  }
                   value={formData.plateNumber}
-                  onChange={e => setFormData({ ...formData, plateNumber: normalizePlate(e.target.value) })} />
+                  disabled={!formData.vehicleType}
+                  onChange={e => setFormData({
+                    ...formData,
+                    plateNumber: normalizePlate(e.target.value),
+                  })}
+                />
               </div>
               <div style={s.field}>
                 <label style={s.label}>Loại xe *</label>
@@ -421,6 +454,7 @@ export default function VehicleManagement() {
                   onChange={e => setFormData({
                     ...formData,
                     vehicleType: e.target.value,
+                    plateNumber: "",
                     brand: "",
                     model: "",
                   })}>

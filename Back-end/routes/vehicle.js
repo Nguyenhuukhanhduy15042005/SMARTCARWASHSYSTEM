@@ -22,7 +22,15 @@ const normalizeVehicleType = (value) => {
 const isMemberRole = (role) =>
   ["user", "member"].includes(String(role || "").toLowerCase());
 
-const isValidPlate = (plate) => /^[A-Z0-9\-.]{5,20}$/.test(plate);
+const isValidPlate = (plate, vehicleType) => {
+  if (vehicleType === "CAR") {
+    return /^[0-9]{2}[A-Z]-[0-9]{4,5}(\.[0-9]{2})?$/.test(plate);
+  }
+  if (vehicleType === "MOTORBIKE") {
+    return /^[0-9]{2}[A-Z][0-9]-[0-9]{4,5}(\.[0-9]{2})?$/.test(plate);
+  }
+  return false;
+};
 
 // Helper to get logged-in user from JWT token
 const getUserFromToken = (req) => {
@@ -212,12 +220,14 @@ router.post("/", async (req, res) => {
       .json({ message: "Vui lòng điền đầy đủ thông tin xe" });
   }
 
-  if (!isValidPlate(plateNumber)) {
+  if (!isValidPlate(plateNumber, vehicleType)) {
     return res
       .status(400)
       .json({
         message:
-          "Biển số không hợp lệ. Chỉ dùng chữ/số/dấu - hoặc ., độ dài 5-20 ký tự",
+          vehicleType === "CAR"
+            ? "Biển số ô tô không hợp lệ. Ví dụ: 59A-12345 hoặc 59A-123.45"
+            : "Biển số xe máy không hợp lệ. Ví dụ: 59T1-12345 hoặc 59T1-123.45",
       });
   }
 
@@ -283,12 +293,14 @@ router.put("/:id", async (req, res) => {
       .json({ message: "Vui lòng điền đầy đủ thông tin xe" });
   }
 
-  if (!isValidPlate(plateNumber)) {
+  if (!isValidPlate(plateNumber, vehicleType)) {
     return res
       .status(400)
       .json({
         message:
-          "Biển số không hợp lệ. Chỉ dùng chữ/số/dấu - hoặc ., độ dài 5-20 ký tự",
+          vehicleType === "CAR"
+            ? "Biển số ô tô không hợp lệ. Ví dụ: 59A-12345 hoặc 59A-123.45"
+            : "Biển số xe máy không hợp lệ. Ví dụ: 59T1-12345 hoặc 59T1-123.45",
       });
   }
 

@@ -5,6 +5,19 @@ import Sidebar from "../components/Sidebar";
 
 const API_BASE = "http://localhost:5000";
 
+const formatLocalDate = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeLicensePlate = value =>
+  String(value || "").trim().toUpperCase().replace(/\s+/g, "");
+
+const isValidVietnamLicensePlate = value =>
+  /^\d{2}[A-Z][A-Z0-9]?-(?:\d{3}\.\d{2}|\d{5})$/.test(value);
+
 const TIME_SLOTS = [
   "08:00","08:30","09:00","09:30","10:00","10:30",
   "11:00","11:30","12:00","12:30","13:00","13:30",
@@ -25,7 +38,7 @@ const STATUS_COLORS = {
 
 export default function TimeslotValidation() {
   const navigate = useNavigate();
-  const today = new Date().toISOString().split("T")[0];
+  const today = formatLocalDate();
 
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem("LOGIN_USER");
@@ -156,6 +169,10 @@ export default function TimeslotValidation() {
 
   // ── Click slot → check conflict → mở form booking ─────────
   const handleSlotClick = async (slotData) => {
+    if (slotData.status === "past") {
+      showToast("Khung giờ này đã qua, không thể đặt lịch!", "error");
+      return;
+    }
     if (slotData.status === "booked") return;
     if (!selectedMachine) { showToast("Chọn máy trước!", "error"); return; }
     if (selectedMachine.status === "Maintenance") { showToast("Máy đang bảo trì!", "error"); return; }
@@ -174,7 +191,10 @@ export default function TimeslotValidation() {
       });
       const data = await res.json();
       if (!data.available) {
-        showToast(`Trùng lịch với booking lúc ${data.conflictSlot}!`, "error");
+        showToast(
+          data.reason || (data.conflictSlot ? `Trùng lịch với booking lúc ${data.conflictSlot}!` : "Khung giờ không khả dụng!"),
+          "error"
+        );
         return;
       }
       // Slot hợp lệ → mở form booking
@@ -211,13 +231,14 @@ export default function TimeslotValidation() {
       return;
     }
 
-    // Kiểm tra định dạng biển số xe Việt Nam nếu có nhập
-    if (licensePlate.trim()) {
-      const plateRegex = /^[0-9]{2}[- ]?([A-Z]{1,2}|[A-Z][0-9])[- ]?[0-9]{3,5}(\.[0-9]{2})?$/i;
-      if (!plateRegex.test(licensePlate.trim())) {
-        showToast("Biển số xe không hợp lệ! Định dạng đúng VD: 59A-123.45 hoặc 59G1-123.45", "error");
-        return;
-      }
+    const normalizedPlate = normalizeLicensePlate(licensePlate);
+    if (!normalizedPlate) {
+      showToast("Vui lòng nhập biển số xe!", "error");
+      return;
+    }
+    if (!isValidVietnamLicensePlate(normalizedPlate)) {
+      showToast("Biển số xe không hợp lệ! Ví dụ: 59A-123.45 hoặc 59G1-123.45", "error");
+      return;
     }
 
     setSubmitting(true);
@@ -233,7 +254,7 @@ export default function TimeslotValidation() {
           date: bookingStep.date,
           time: bookingStep.time,
           duration: bookingStep.duration,
-          licensePlate,
+          licensePlate: normalizedPlate,
           machineId: parseInt(bookingStep.machine.id),
         }),
       });
@@ -255,6 +276,7 @@ export default function TimeslotValidation() {
 
   const bookedCount = slots.filter(s => s.status === "booked").length;
   const freeCount   = slots.filter(s => s.status === "free").length;
+  const pastCount   = slots.filter(s => s.status === "past").length;
 
   return (
     <div className="portal-layout-container" style={{ ...s.root, padding: 0 }}>
@@ -326,13 +348,13 @@ export default function TimeslotValidation() {
               {[
                 { label: "Tên khách hàng *", key: "customerName", placeholder: "Nguyễn Văn A" },
                 { label: "Số điện thoại *",  key: "customerPhone", placeholder: "0901234567" },
-                { label: "Biển số xe",        key: "licensePlate",  placeholder: "59A-12345 (tuỳ chọn)" },
+                { label: "Biển số xe *",      key: "licensePlate",  placeholder: "VD: 59A-123.45 hoặc 59G1-123.45" },
               ].map(({ label, key, placeholder }) => (
                 <div key={key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <label style={s.flabel}>{label}</label>
                   <input style={s.finput} placeholder={placeholder}
                     value={bookingForm[key]}
-                    onChange={e => setBookingForm({ ...bookingForm, [key]: e.target.value })} />
+                    onChange={e => setBookingForm({ ...bookingForm, [key]: key === "licensePlate" ? e.target.value.toUpperCase() : e.target.value })} />
                 </div>
               ))}
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -491,6 +513,7 @@ export default function TimeslotValidation() {
                   { val: TIME_SLOTS.length, label: "Tổng slot",  color: "var(--text-primary)" },
                   { val: freeCount,         label: "Còn trống",  color: "#4ade80" },
                   { val: bookedCount,       label: "Đã đặt",     color: "#f87171" },
+                  { val: pastCount,         label: "Đã qua",     color: "#94a3b8" },
                 ].map((st, i) => (
                   <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                     <span style={{ color: st.color, fontSize: 22, fontWeight: 800 }}>{st.val}</span>
@@ -527,9 +550,11 @@ export default function TimeslotValidation() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px", marginBottom: "20px" }}>
                   {slots.map(slot => {
                     const isBooked   = slot.status === "booked";
+                    const isPast     = slot.status === "past";
                     const isSelected = selectedTime === slot.time;
                     const isChecking = checkingSlot === slot.time;
-                    const isHovered  = hoveredSlot === slot.time && !isBooked;
+                    const isDisabled = isBooked || isPast;
+                    const isHovered  = hoveredSlot === slot.time && !isDisabled;
 
                     let cardBg = "var(--bg-card)";
                     let cardBorder = "1px solid var(--border)";
@@ -537,7 +562,13 @@ export default function TimeslotValidation() {
                     let statusText = "Còn trống";
                     let statusColor = "#4ade80";
 
-                    if (isBooked) {
+                    if (isPast) {
+                      cardBg = "rgba(100, 116, 139, 0.08)";
+                      cardBorder = "1px solid rgba(148, 163, 184, 0.22)";
+                      dotColor = "#94a3b8";
+                      statusText = "Đã qua";
+                      statusColor = "#94a3b8";
+                    } else if (isBooked) {
                       cardBg = "rgba(239, 68, 68, 0.05)";
                       cardBorder = "1px solid rgba(239, 68, 68, 0.2)";
                       dotColor = "#ef4444";
@@ -569,7 +600,7 @@ export default function TimeslotValidation() {
                           border: cardBorder,
                           borderRadius: "14px",
                           padding: "16px",
-                          cursor: isBooked ? "not-allowed" : "pointer",
+                          cursor: isDisabled ? "not-allowed" : "pointer",
                           transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                           transform: isHovered ? "translateY(-3px)" : "none",
                           boxShadow: isSelected ? "0 0 15px rgba(59, 130, 246, 0.35)" : isHovered ? "0 8px 20px rgba(0,0,0,0.2)" : "none",
@@ -579,7 +610,7 @@ export default function TimeslotValidation() {
                           position: "relative"
                         }}
                         onClick={() => handleSlotClick(slot)}
-                        onMouseEnter={() => !isBooked && setHoveredSlot(slot.time)}
+                        onMouseEnter={() => !isDisabled && setHoveredSlot(slot.time)}
                         onMouseLeave={() => setHoveredSlot(null)}
                       >
                         {/* Time and Status Indicator */}
@@ -594,7 +625,7 @@ export default function TimeslotValidation() {
                             fontSize: "11px",
                             fontWeight: "700",
                             color: statusColor,
-                            background: isBooked ? "rgba(239, 68, 68, 0.1)" : isSelected ? "rgba(59, 130, 246, 0.1)" : "rgba(16, 185, 129, 0.1)",
+                            background: isPast ? "rgba(148, 163, 184, 0.1)" : isBooked ? "rgba(239, 68, 68, 0.1)" : isSelected ? "rgba(59, 130, 246, 0.1)" : "rgba(16, 185, 129, 0.1)",
                             padding: "3px 10px",
                             borderRadius: "20px",
                             border: isSelected ? "1px solid #3b82f6" : "none"
@@ -605,8 +636,8 @@ export default function TimeslotValidation() {
                         </div>
 
                         {/* Booking Info or Action Message */}
-                        <div style={{ fontSize: "12px", color: isBooked ? "#94a3b8" : "#64748b", minHeight: "44px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                          {isBooked && slot.booking ? (
+                        <div style={{ fontSize: "12px", color: isDisabled ? "#94a3b8" : "#64748b", minHeight: "44px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                          {slot.booking ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                               <div
                                 style={{
@@ -639,7 +670,14 @@ export default function TimeslotValidation() {
                               <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
                                 🛠️ {slot.booking.serviceName}
                               </div>
+                              {isPast && (
+                                <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 700 }}>
+                                  ⏱️ Đã qua · {slot.booking.bookingStatus}
+                                </div>
+                              )}
                             </div>
+                          ) : isPast ? (
+                            <span style={{ color: "#94a3b8", fontWeight: "600" }}>⏱️ Khung giờ đã qua</span>
                           ) : isChecking ? (
                             <span style={{ color: "#a3e635", fontWeight: "600" }}>⏳ Đang kiểm tra lịch...</span>
                           ) : isSelected ? (

@@ -32,6 +32,20 @@ function toSqlDateTime(date, time) {
   return new Date(`${date}T${time}:00`);
 }
 
+function isPastSlot(date, time, now = new Date()) {
+  const slotDateTime = toSqlDateTime(date, time);
+  return Number.isNaN(slotDateTime.getTime()) || slotDateTime <= now;
+}
+
+function normalizeLicensePlate(value) {
+  return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function isValidVietnamLicensePlate(value) {
+  // Hỗ trợ: 59A-123.45, 59A-12345, 59G1-123.45, 59G1-12345
+  return /^\d{2}[A-Z][A-Z0-9]?-(?:\d{3}\.\d{2}|\d{5})$/.test(value);
+}
+
 function timeFromDate(value) {
   const d = new Date(value);
   const hh = String(d.getHours()).padStart(2, '0');
@@ -227,9 +241,15 @@ router.get('/', async (req, res) => {
       machineId: String(machineId),
       date,
       duration: DEFAULT_DURATION,
-      slots: TIME_SLOTS.map(time => occupiedMap[time]
-        ? { time, status: 'booked', booking: occupiedMap[time] }
-        : { time, status: 'free', booking: null })
+      slots: TIME_SLOTS.map(time => {
+        const booking = occupiedMap[time] || null;
+        if (isPastSlot(date, time)) {
+          return { time, status: 'past', booking };
+        }
+        return booking
+          ? { time, status: 'booked', booking }
+          : { time, status: 'free', booking: null };
+      })
     });
   } catch (err) {
     console.error('GET /api/timeslots error:', err);
@@ -246,6 +266,10 @@ router.post('/check', async (req, res) => {
   if (!machineId || !date || !time) return res.status(400).json({ message: 'Thiếu machineId, date hoặc time' });
 
   try {
+    if (isPastSlot(date, time)) {
+      return res.json({ available: false, reason: 'Khung giờ đã qua' });
+    }
+
     const pool = await poolPromise;
     const machine = await pool.request()
       .input('machineId', sql.Int, machineId)
@@ -325,9 +349,9 @@ router.post('/book', async (req, res) => {
   const customerName = String(req.body.customerName || '').trim();
   const customerPhone = String(req.body.customerPhone || '').trim();
   const vehicleType = String(req.body.vehicleType || '').toUpperCase();
-  const licensePlate = String(req.body.licensePlate || '').trim() || null;
+  const licensePlate = normalizeLicensePlate(req.body.licensePlate);
 
-  if (!machineId || !serviceId || !date || !time || !customerName || !customerPhone || !vehicleType) {
+  if (!machineId || !serviceId || !date || !time || !customerName || !customerPhone || !vehicleType || !licensePlate) {
     return res.status(400).json({ message: 'Thiếu thông tin đặt lịch' });
   }
   if (!/^(0|\+84)(3|5|7|8|9)\d{8}$/.test(customerPhone)) {
@@ -335,6 +359,14 @@ router.post('/book', async (req, res) => {
   }
   if (!['CAR', 'BIKE'].includes(vehicleType)) {
     return res.status(400).json({ message: 'vehicleType chỉ nhận CAR hoặc BIKE' });
+  }
+  if (!isValidVietnamLicensePlate(licensePlate)) {
+    return res.status(400).json({
+      message: 'Biển số xe không hợp lệ. Ví dụ đúng: 59A-123.45 hoặc 59G1-123.45'
+    });
+  }
+  if (isPastSlot(date, time)) {
+    return res.status(400).json({ message: 'Không thể đặt lịch vào khung giờ đã qua' });
   }
 
   const pool = await poolPromise;
