@@ -21,7 +21,7 @@ export default function UserDashboard() {
     Email: "",
     CurrentPoints: 0,
     AccumulatedPoints: 0,
-    TierName: "Standard",
+    TierName: "Bronze",
     DiscountRate: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -113,7 +113,7 @@ export default function UserDashboard() {
             rawProfile.AccumulatedPoints !== undefined
               ? rawProfile.AccumulatedPoints
               : rawProfile.accumulatedPoints || 0,
-          TierName: rawProfile.TierName || rawProfile.tierName || "Standard",
+          TierName: rawProfile.TierName || rawProfile.tierName || "Bronze",
           DiscountRate:
             rawProfile.DiscountRate !== undefined
               ? rawProfile.DiscountRate
@@ -969,14 +969,25 @@ export default function UserDashboard() {
             <div className="admin-modal-body">
               {cancelConfirm.payment && (
                 <div style={{ marginBottom: 16 }}>
-                  <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 4 }}>
+                  <p
+                    style={{
+                      color: "var(--text-secondary)",
+                      fontSize: 13,
+                      marginBottom: 4,
+                    }}
+                  >
                     {cancelConfirm.payment.ServiceName || "Dịch vụ rửa xe"}
                     {cancelConfirm.payment.LicensePlate
                       ? ` · ${cancelConfirm.payment.LicensePlate}`
                       : ""}
                   </p>
-                  <p style={{ fontSize: 22, fontWeight: 800, color: "#f97316" }}>
-                    {(cancelConfirm.payment.Amount || 0).toLocaleString("vi-VN")}đ
+                  <p
+                    style={{ fontSize: 22, fontWeight: 800, color: "#f97316" }}
+                  >
+                    {(cancelConfirm.payment.Amount || 0).toLocaleString(
+                      "vi-VN",
+                    )}
+                    đ
                   </p>
                 </div>
               )}
@@ -1001,10 +1012,18 @@ export default function UserDashboard() {
                 >
                   Quy tắc hoàn tiền:
                 </p>
-                <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    fontSize: 12,
+                    borderCollapse: "collapse",
+                  }}
+                >
                   <thead>
                     <tr style={{ color: "var(--text-secondary)" }}>
-                      <th style={{ textAlign: "left", paddingBottom: 4 }}>Thời gian</th>
+                      <th style={{ textAlign: "left", paddingBottom: 4 }}>
+                        Thời gian
+                      </th>
                       <th style={{ textAlign: "center" }}>Lần 1</th>
                       <th style={{ textAlign: "center" }}>Lần 2</th>
                       <th style={{ textAlign: "center" }}>Lần 3+</th>
@@ -1012,26 +1031,116 @@ export default function UserDashboard() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Trước 24h</td>
-                      <td style={{ textAlign: "center", color: "#10b981", fontWeight: 700 }}>100%</td>
-                      <td style={{ textAlign: "center", color: "#f59e0b", fontWeight: 700 }}>50%</td>
-                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td
+                        style={{ color: "var(--text-primary)", paddingTop: 4 }}
+                      >
+                        Trước 24h
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          color: "#10b981",
+                          fontWeight: 700,
+                        }}
+                      >
+                        100%
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          color: "#f59e0b",
+                          fontWeight: 700,
+                        }}
+                      >
+                        50%
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          color: "#ef4444",
+                          fontWeight: 700,
+                        }}
+                      >
+                        0%
+                      </td>
                     </tr>
                     <tr>
-                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>2 - 24h</td>
-                      <td style={{ textAlign: "center", color: "#f59e0b", fontWeight: 700 }}>50%</td>
-                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
-                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td
+                        style={{ color: "var(--text-primary)", paddingTop: 4 }}
+                      >
+                        2 - 24h
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          color: "#f59e0b",
+                          fontWeight: 700,
+                        }}
+                      >
+                        50%
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          color: "#ef4444",
+                          fontWeight: 700,
+                        }}
+                      >
+                        0%
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          color: "#ef4444",
+                          fontWeight: 700,
+                        }}
+                      >
+                        0%
+                      </td>
                     </tr>
                     <tr>
-                      <td style={{ color: "var(--text-primary)", paddingTop: 4 }}>Dưới 2h</td>
-                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
-                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
-                      <td style={{ textAlign: "center", color: "#ef4444", fontWeight: 700 }}>0%</td>
+                      <td
+                        style={{ color: "var(--text-primary)", paddingTop: 4 }}
+                      >
+                        Dưới 2h
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          color: "#ef4444",
+                          fontWeight: 700,
+                        }}
+                      >
+                        0%
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          color: "#ef4444",
+                          fontWeight: 700,
+                        }}
+                      >
+                        0%
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          color: "#ef4444",
+                          fontWeight: 700,
+                        }}
+                      >
+                        0%
+                      </td>
                     </tr>
                   </tbody>
                 </table>
-                <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 8 }}>
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: "var(--text-secondary)",
+                    marginTop: 8,
+                  }}
+                >
                   * Đếm số lần hủy trong 30 ngày gần nhất
                 </p>
               </div>
@@ -1039,7 +1148,10 @@ export default function UserDashboard() {
               {/* Preview từ backend */}
               {previewLoading ? (
                 <div style={{ textAlign: "center", padding: "12px 0" }}>
-                  <span className="pay-spinner" style={{ borderTopColor: "#f97316" }} />
+                  <span
+                    className="pay-spinner"
+                    style={{ borderTopColor: "#f97316" }}
+                  />
                   <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 8 }}>
                     Đang tính số tiền hoàn...
                   </p>
@@ -1066,7 +1178,10 @@ export default function UserDashboard() {
                       fontSize: 13,
                       fontWeight: 700,
                       marginBottom: 6,
-                      color: cancelConfirm.preview.refundPercent > 0 ? "#10b981" : "#ef4444",
+                      color:
+                        cancelConfirm.preview.refundPercent > 0
+                          ? "#10b981"
+                          : "#ef4444",
                     }}
                   >
                     Dự kiến hoàn tiền: {cancelConfirm.preview.refundPercent}%
@@ -1074,12 +1189,20 @@ export default function UserDashboard() {
                       ` = ${cancelConfirm.preview.refundAmount.toLocaleString("vi-VN")}đ`}
                   </p>
                   <p style={{ fontSize: 12, color: "#94a3b8" }}>
-                    Lần hủy thứ {cancelConfirm.preview.cancelCount + 1} trong 30 ngày
+                    Lần hủy thứ {cancelConfirm.preview.cancelCount + 1} trong 30
+                    ngày
                     {cancelConfirm.preview.hoursLeft !== null &&
                       ` · Còn ${Math.max(0, cancelConfirm.preview.hoursLeft).toFixed(1)} tiếng`}
                   </p>
                   {cancelConfirm.preview.warning && (
-                    <p style={{ fontSize: 12, color: "#f59e0b", marginTop: 6, whiteSpace: "pre-line" }}>
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "#f59e0b",
+                        marginTop: 6,
+                        whiteSpace: "pre-line",
+                      }}
+                    >
                       {cancelConfirm.preview.warning}
                     </p>
                   )}
@@ -1106,10 +1229,19 @@ export default function UserDashboard() {
                   >
                     ⚠️ Cảnh báo: Không được hoàn tiền!
                   </p>
-                  <p style={{ fontSize: 13, color: "#f87171", marginBottom: 10, whiteSpace: "pre-line" }}>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "#f87171",
+                      marginBottom: 10,
+                      whiteSpace: "pre-line",
+                    }}
+                  >
                     {cancelConfirm.blockedWarning}
                   </p>
-                  <p style={{ fontSize: 13, color: "#fbbf24", fontWeight: 600 }}>
+                  <p
+                    style={{ fontSize: 13, color: "#fbbf24", fontWeight: 600 }}
+                  >
                     Nếu vẫn tiếp tục hủy, bạn sẽ{" "}
                     <strong style={{ color: "#ef4444" }}>
                       mất toàn bộ số tiền đã đặt cọc (
@@ -1169,7 +1301,8 @@ export default function UserDashboard() {
                     borderRadius: 10,
                     background: cancelConfirm.blocked ? "#dc2626" : "#ef4444",
                     color: "#fff",
-                    cursor: refunding || previewLoading ? "not-allowed" : "pointer",
+                    cursor:
+                      refunding || previewLoading ? "not-allowed" : "pointer",
                     fontWeight: 700,
                     opacity: refunding || previewLoading ? 0.7 : 1,
                   }}
@@ -1177,8 +1310,8 @@ export default function UserDashboard() {
                   {refunding
                     ? "Đang xử lý..."
                     : cancelConfirm.blocked
-                    ? "Đồng ý hủy — Mất tiền cọc"
-                    : "Xác nhận hủy"}
+                      ? "Đồng ý hủy — Mất tiền cọc"
+                      : "Xác nhận hủy"}
                 </button>
               </div>
             </div>

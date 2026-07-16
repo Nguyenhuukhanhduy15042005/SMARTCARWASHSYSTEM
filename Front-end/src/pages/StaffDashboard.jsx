@@ -23,7 +23,7 @@ export default function StaffDashboard() {
   const [keyword, setKeyword] = useState("");
   const [debouncedKeyword, setDebouncedKeyword] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("All");
-  const [vehicleFilter, setVehicleFilter] = useState("All"); // Đã thêm bộ lọc loại xe
+  const [vehicleFilter, setVehicleFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
 
@@ -136,9 +136,9 @@ export default function StaffDashboard() {
           );
           const price = Number(
             freshBooking.FinalPrice ||
-            freshBooking.TotalPrice ||
-            freshBooking.price ||
-            0,
+              freshBooking.TotalPrice ||
+              freshBooking.price ||
+              0,
           );
           const remaining = price - paid;
           if (remaining > 0) {
@@ -610,15 +610,15 @@ export default function StaffDashboard() {
                             )}
                             {(String(booking.Status) === "1" ||
                               String(booking.Status) === "2") && (
-                                <button
-                                  style={styles.btnCancel}
-                                  onClick={() =>
-                                    handleTransition(booking.BookingID, 5)
-                                  }
-                                >
-                                  <i className="fa-solid fa-ban"></i> Hủy
-                                </button>
-                              )}
+                              <button
+                                style={styles.btnCancel}
+                                onClick={() =>
+                                  handleTransition(booking.BookingID, 5)
+                                }
+                              >
+                                <i className="fa-solid fa-ban"></i> Hủy
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

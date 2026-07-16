@@ -97,7 +97,7 @@ export default function MachineDashboard() {
         maintenanceForm,
         { headers },
       );
-      showToastMsg("Lên lịch bảo trì thành công! Máy đã bị block.");
+      showToastMsg("Lên lịch bảo trì thành công!");
       setShowMaintenanceModal(null);
       setMaintenanceForm({ description: "", maintenanceDate: "" });
       fetchMachines();
