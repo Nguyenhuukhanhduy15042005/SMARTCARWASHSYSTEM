@@ -446,10 +446,10 @@ export default function UserDashboard() {
     });
   };
 
-  // LOCAL FILTERING - Cực kỳ mượt cho trải nghiệm User
-  const filteredBookings = bookings.filter((b) => {
-    if (b.isHiddenByUser) return false;
+  const visibleBookings = bookings.filter((b) => !b.isHiddenByUser);
 
+  // LOCAL FILTERING - Cực kỳ mượt cho trải nghiệm User
+  const filteredBookings = visibleBookings.filter((b) => {
     // Status Filter
     if (selectedStatus === "Active" && ![1, 2, 3].includes(b.status))
       return false;
@@ -457,8 +457,10 @@ export default function UserDashboard() {
     if (selectedStatus === "Cancelled" && b.status !== 5) return false;
 
     // Vehicle Type Filter
-    if (vehicleFilter !== "All" && b.vehicleType !== vehicleFilter)
-      return false;
+    if (vehicleFilter !== "All") {
+      const normalizedType = (b.vehicleType?.toLowerCase() === "xe máy" || b.vehicleType?.toLowerCase() === "bike" || b.vehicleType?.toLowerCase() === "motorcycle") ? "BIKE" : "CAR";
+      if (normalizedType !== vehicleFilter) return false;
+    }
 
     // Search Box
     if (debouncedKeyword) {
@@ -529,7 +531,7 @@ export default function UserDashboard() {
             </div>
             <div className="card-middle">
               <div className="points-display">
-                <span className="points-label">Điểm tích lũy hiện tại</span>
+                <span className="points-label">Điểm khả dụng hiện tại</span>
                 <span className="points-value">
                   {displayCurrentPoints} <span>PTS</span>
                 </span>
@@ -630,25 +632,25 @@ export default function UserDashboard() {
               className={`admin-tab ${selectedStatus === "All" ? "active" : ""}`}
               onClick={() => setSelectedStatus("All")}
             >
-              Tất cả ({bookings.length})
+              Tất cả ({visibleBookings.length})
             </button>
             <button
               className={`admin-tab ${selectedStatus === "Active" ? "active" : ""}`}
               onClick={() => setSelectedStatus("Active")}
             >
-              Đang hoạt động ({activeCount})
+              Đang hoạt động ({visibleBookings.filter((b) => b.status === 1 || b.status === 2 || b.status === 3).length})
             </button>
             <button
               className={`admin-tab ${selectedStatus === "Completed" ? "active" : ""}`}
               onClick={() => setSelectedStatus("Completed")}
             >
-              Đã hoàn thành ({completedCount})
+              Đã hoàn thành ({visibleBookings.filter((b) => b.status === 4).length})
             </button>
             <button
               className={`admin-tab ${selectedStatus === "Cancelled" ? "active" : ""}`}
               onClick={() => setSelectedStatus("Cancelled")}
             >
-              Đã hủy ({bookings.filter((b) => b.status === 5).length})
+              Đã hủy ({visibleBookings.filter((b) => b.status === 5).length})
             </button>
           </div>
           <div style={{ display: "flex", gap: "12px" }}>

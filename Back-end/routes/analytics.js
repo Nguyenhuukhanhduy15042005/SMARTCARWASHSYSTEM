@@ -175,31 +175,6 @@ async function queryBookingStatus(pool, range) {
   }));
 }
 
-async function queryServiceUsage(pool, range) {
-  const bookingFilter = buildDateFilter("b", "BookingDate", range);
-
-  const result = await pool.request().query(`
-    SELECT TOP 10
-      s.ServiceID,
-      s.ServiceName,
-      COUNT(bd.DetailID) AS UsageCount,
-      ISNULL(SUM(bd.PriceAtBooking), 0) AS Revenue
-    FROM BOOKING_DETAIL bd
-    INNER JOIN BOOKING b ON b.BookingID = bd.BookingID
-    INNER JOIN SERVICE s ON s.ServiceID = bd.ServiceID
-    WHERE 1 = 1 ${bookingFilter}
-    GROUP BY s.ServiceID, s.ServiceName
-    ORDER BY UsageCount DESC, Revenue DESC
-  `);
-
-  return result.recordset.map((row) => ({
-    serviceId: row.ServiceID,
-    serviceName: row.ServiceName,
-    usageCount: toNumber(row.UsageCount),
-    revenue: toNumber(row.Revenue),
-  }));
-}
-
 async function queryVehicleTypeUsage(pool, range) {
   const bookingFilter = buildDateFilter("b", "BookingDate", range);
 
@@ -329,7 +304,6 @@ router.get("/dashboard", async (req, res) => {
       revenueTrend,
       bookingTrend,
       bookingStatus,
-      serviceUsage,
       vehicleTypeUsage,
       loyaltyUsage,
       promotionUsage,
@@ -339,7 +313,6 @@ router.get("/dashboard", async (req, res) => {
       queryRevenueTrend(pool, range, groupBy),
       queryBookingTrend(pool, range, groupBy),
       queryBookingStatus(pool, range),
-      queryServiceUsage(pool, range),
       queryVehicleTypeUsage(pool, range),
       queryLoyaltyUsage(pool, range, groupBy),
       queryPromotionUsage(pool, range),
@@ -356,7 +329,6 @@ router.get("/dashboard", async (req, res) => {
       revenueTrend,
       bookingTrend,
       bookingStatus,
-      serviceUsage,
       vehicleTypeUsage,
       loyaltyUsage,
       promotionUsage,

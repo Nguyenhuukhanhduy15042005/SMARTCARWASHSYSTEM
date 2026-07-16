@@ -310,9 +310,6 @@ router.get('/', async (req, res) => {
         if (customerId) {
             conditions.push(`b.CustomerID = @customerId`);
             request.input('customerId', sql.Int, customerId);
-
-            // Ẩn booking đã bị khách xóa khỏi lịch sử
-            conditions.push(`(b.IsHiddenByUser IS NULL OR b.IsHiddenByUser = 0)`);
         } else {
             // Mặc định ẩn các đơn nháp (Status = 1) nếu không lọc cụ thể
             if (!status) {
@@ -596,7 +593,6 @@ router.get("/customer/:customerId", async (req, res) => {
                 FROM BOOKING b
                 LEFT JOIN [USER] u ON b.CustomerID = u.UserID
                 WHERE b.CustomerID = @customerId
-                AND (b.IsHiddenByUser IS NULL OR b.IsHiddenByUser = 0)
                 ORDER BY b.BookingDate DESC
 `);
         res.json(result.recordset);
@@ -1014,6 +1010,7 @@ router.get("/admin/dashboard/stats", adminAuth, async (req, res) => {
                 0 AS pending,
                 SUM(CASE WHEN Status = 3 THEN 1 ELSE 0 END) AS active,
                 SUM(CASE WHEN Status = 4 THEN 1 ELSE 0 END) AS completed,
+                SUM(CASE WHEN Status = 5 THEN 1 ELSE 0 END) AS cancelled,
                 COALESCE(SUM(CASE WHEN Status = 4 THEN COALESCE(FinalPrice, TotalPrice, 0) ELSE 0 END), 0) AS revenue
             FROM BOOKING
         `);

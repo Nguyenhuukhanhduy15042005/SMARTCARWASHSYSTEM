@@ -39,6 +39,7 @@ export default function Payment() {
 
   const [vouchers, setVouchers] = useState([]);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [cancelCount, setCancelCount] = useState(0);
 
   const getToken = () => localStorage.getItem("token") || localStorage.getItem("TOKEN");
 
@@ -117,6 +118,29 @@ export default function Payment() {
     };
     fetchTier();
 
+    // Đếm số lần hủy trong 30 ngày gần nhất (tự tính ở FE, dùng lại API /bookings có sẵn)
+    // Mô phỏng đúng logic backend: Status=5 (Đã hủy) VÀ BookingDate >= hôm nay - 30 ngày
+    const fetchCancelCount = async () => {
+      try {
+        const userId = getCustomerId();
+        const res = await axios.get(`${API_BASE}/bookings?customerId=${userId}`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        const list = res.data?.data || res.data || [];
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const count = list.filter((b) => {
+          const isCancelled = Number(b.Status) === 5;
+          const bookingTime = b.BookingDate ? new Date(b.BookingDate).getTime() : 0;
+          return isCancelled && bookingTime >= thirtyDaysAgo;
+        }).length;
+        setCancelCount(count);
+      } catch (err) {
+        console.error("Lỗi khi đếm số lần hủy:", err);
+        setCancelCount(0);
+      }
+    };
+    fetchCancelCount();
+
     const fetchBookingAndVouchers = async () => {
       const bId = bookingData?.BookingID || booking?.BookingID;
       if (!bId) return;
@@ -153,13 +177,37 @@ export default function Payment() {
   const currentFinalPrice = bookingData?.FinalPrice ?? currentTotalPrice;
   const discountAmount = currentTotalPrice - currentFinalPrice;
 
+  // Tách riêng phần giảm giá do Voucher và phần giảm giá do Hạng thành viên
+  // (backend gộp chung vào FinalPrice, FE tự tách lại để hiển thị đúng nguồn gốc)
+  const voucherDiscountAmount = activeVoucher
+    ? Math.round((currentTotalPrice * (activeVoucher.DiscountPercent || 0)) / 100)
+    : 0;
+  const tierDiscountAmount = Math.max(0, discountAmount - voucherDiscountAmount);
+
   // Tính số tiền hiển thị theo method + tier
   const tier = TIER_INFO[tierID] || TIER_INFO[1];
+
+  // Gold/Platinum đã hủy >= 3 lần trong 30 ngày → bị bắt cọc 10% như Bronze/Silver
+  // (mô phỏng đúng logic forceDeposit trong paymentService.js ở backend)
+  const forceDeposit = (tierID === 3 || tierID === 4) && cancelCount >= 3;
+  const effectiveNeedDeposit = tier.needDeposit || forceDeposit;
+
   const depositAmount = Math.min(currentFinalPrice, Math.max(10000, Math.round(currentFinalPrice * 0.1)));
   const remainingAmount = currentFinalPrice - depositAmount;
 
   const getPaymentNote = () => {
     if (method !== "cash") return null;
+    if (forceDeposit) {
+      return (
+        <div className="payment-redirect-note" style={{ borderColor: "rgba(239,68,68,0.35)", background: "rgba(239,68,68,0.08)" }}>
+          <span>🚨</span>
+          <div>
+            <p>Hạng <strong style={{ color: tier.color }}>{tier.name}</strong> đã hủy đủ <strong style={{ color: "#ef4444" }}>3 lần</strong> trong 30 ngày, cần đặt cọc <strong style={{ color: "#f97316" }}>{Math.round(currentFinalPrice * 0.1) < 10000 ? "10% (Tối thiểu 10.000 đ)" : "10%"} = {formatPrice(depositAmount)}</strong> như hạng Bronze/Silver.</p>
+            <p style={{ marginTop: 4, fontSize: 12, color: "#94a3b8" }}>Số tiền còn lại <strong>{formatPrice(remainingAmount)}</strong> sẽ thanh toán khi check-in.</p>
+          </div>
+        </div>
+      );
+    }
     if (tier.needDeposit) {
       return (
         <div className="payment-redirect-note" style={{ borderColor: "rgba(205,127,50,0.3)", background: "rgba(205,127,50,0.06)" }}>
@@ -184,7 +232,7 @@ export default function Payment() {
 
   const getButtonLabel = () => {
     if (method === "vnpay") return `Thanh toán qua VNPay →`;
-    if (tier.needDeposit) return `Đặt cọc ${formatPrice(depositAmount)} qua VNPay →`;
+    if (effectiveNeedDeposit) return `Đặt cọc ${formatPrice(depositAmount)} qua VNPay →`;
     return "✓ Xác nhận giữ chỗ (Miễn phí)";
   };
 
@@ -241,7 +289,7 @@ export default function Payment() {
           qrData: res.data.qrData,
           depositAmount: res.data.depositAmount,
         });
-      } else if (method === "cash" && tier.needDeposit) {
+      } else if (method === "cash" && effectiveNeedDeposit) {
         showToast(`Đặt cọc ${formatPrice(depositAmount)} thành công!`, "success");
         setTimeout(() => navigate("/payments/history"), 1500);
       } else {
@@ -259,7 +307,7 @@ export default function Payment() {
   // Tính số tiền hiển thị trong summary
   const displayAmount = () => {
     if (method !== "cash") return currentFinalPrice;
-    if (tier.needDeposit) return depositAmount;
+    if (effectiveNeedDeposit) return depositAmount;
     return 0;
   };
 
@@ -416,13 +464,19 @@ export default function Payment() {
 
             <div className="ps-rows">
               <div className="ps-row"><span>Giá dịch vụ</span><span>{formatPrice(currentTotalPrice)}</span></div>
-              {discountAmount > 0 && (
+              {voucherDiscountAmount > 0 && (
                 <div className="ps-row discount-row">
                   <span>Giảm giá (Voucher)</span>
-                  <span style={{ color: "#10b981", fontWeight: 700 }}>-{formatPrice(discountAmount)}</span>
+                  <span style={{ color: "#10b981", fontWeight: 700 }}>-{formatPrice(voucherDiscountAmount)}</span>
                 </div>
               )}
-              {method === "cash" && !loadingTier && tier.needDeposit && (
+              {tierDiscountAmount > 0 && (
+                <div className="ps-row discount-row">
+                  <span>Giảm giá (Hạng {tier.name})</span>
+                  <span style={{ color: "#10b981", fontWeight: 700 }}>-{formatPrice(tierDiscountAmount)}</span>
+                </div>
+              )}
+              {method === "cash" && !loadingTier && effectiveNeedDeposit && (
                 <>
                   <div className="ps-row">
                     <span>{Math.round(currentFinalPrice * 0.1) < 10000 ? "Đặt cọc (Tối thiểu 10.000 đ)" : "Đặt cọc (10%)"}</span>
@@ -434,7 +488,7 @@ export default function Payment() {
                   </div>
                 </>
               )}
-              {method === "cash" && !loadingTier && !tier.needDeposit && (
+              {method === "cash" && !loadingTier && !effectiveNeedDeposit && (
                 <div className="ps-row">
                   <span>Thanh toán ngay</span>
                   <span className="green-text">Miễn phí</span>
@@ -448,12 +502,14 @@ export default function Payment() {
               <span className="ps-total-amount">{formatPrice(displayAmount())}</span>
             </div>
 
-            {method === "cash" && !loadingTier && tier.needDeposit && (
+            {method === "cash" && !loadingTier && effectiveNeedDeposit && (
               <div style={{ textAlign: "center", fontSize: 12, color: "#64748b", marginTop: 8 }}>
-                Hạng {tier.name} — đặt cọc {Math.round(currentFinalPrice * 0.1) < 10000 ? "tối thiểu 10.000 đ" : "10%"} để giữ chỗ
+                {forceDeposit
+                  ? `🚨 Hạng ${tier.name} đã hủy 3 lần — đặt cọc ${Math.round(currentFinalPrice * 0.1) < 10000 ? "tối thiểu 10.000 đ" : "10%"} như Bronze/Silver`
+                  : `Hạng ${tier.name} — đặt cọc ${Math.round(currentFinalPrice * 0.1) < 10000 ? "tối thiểu 10.000 đ" : "10%"} để giữ chỗ`}
               </div>
             )}
-            {method === "cash" && !loadingTier && !tier.needDeposit && (
+            {method === "cash" && !loadingTier && !effectiveNeedDeposit && (
               <div style={{ textAlign: "center", fontSize: 12, color: "#10b981", marginTop: 8 }}>
                 ⭐ Hạng {tier.name} — miễn phí giữ chỗ!
               </div>

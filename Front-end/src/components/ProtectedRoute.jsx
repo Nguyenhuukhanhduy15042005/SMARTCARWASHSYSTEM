@@ -15,9 +15,10 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     );
   }
 
-  // Chưa đăng nhập → về trang HOME (không phải /login)
+  // Chưa đăng nhập → đưa sang trang đăng nhập, kèm đường dẫn ban đầu
+  // để Login.jsx có thể điều hướng lại đúng chỗ sau khi đăng nhập thành công
   if (!user) {
-    return <Navigate to="/" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (requiredRole) {
