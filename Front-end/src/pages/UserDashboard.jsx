@@ -458,7 +458,12 @@ export default function UserDashboard() {
 
     // Vehicle Type Filter
     if (vehicleFilter !== "All") {
-      const normalizedType = (b.vehicleType?.toLowerCase() === "xe máy" || b.vehicleType?.toLowerCase() === "bike" || b.vehicleType?.toLowerCase() === "motorcycle") ? "BIKE" : "CAR";
+      const normalizedType =
+        b.vehicleType?.toLowerCase() === "xe máy" ||
+        b.vehicleType?.toLowerCase() === "bike" ||
+        b.vehicleType?.toLowerCase() === "motorcycle"
+          ? "BIKE"
+          : "CAR";
       if (normalizedType !== vehicleFilter) return false;
     }
 
@@ -489,14 +494,8 @@ export default function UserDashboard() {
   const totalSpend = bookings
     .filter((b) => b.status === 4)
     .reduce((acc, b) => acc + (b.price || 0), 0);
-  const computedPoints = bookings
-    .filter((b) => b.status === 4)
-    .reduce((sum, b) => sum + Math.floor((b.price || 0) / 10000), 0);
-  const displayCurrentPoints =
-    profile.CurrentPoints > 0 ? profile.CurrentPoints : computedPoints;
-  const displayAccumulatedPoints =
-    profile.AccumulatedPoints > 0 ? profile.AccumulatedPoints : computedPoints;
-
+  const displayCurrentPoints = profile.CurrentPoints || 0;
+  const displayAccumulatedPoints = profile.AccumulatedPoints || 0;
   return (
     <div className="portal-layout-container">
       <Sidebar />
@@ -638,13 +637,20 @@ export default function UserDashboard() {
               className={`admin-tab ${selectedStatus === "Active" ? "active" : ""}`}
               onClick={() => setSelectedStatus("Active")}
             >
-              Đang hoạt động ({visibleBookings.filter((b) => b.status === 1 || b.status === 2 || b.status === 3).length})
+              Đang hoạt động (
+              {
+                visibleBookings.filter(
+                  (b) => b.status === 1 || b.status === 2 || b.status === 3,
+                ).length
+              }
+              )
             </button>
             <button
               className={`admin-tab ${selectedStatus === "Completed" ? "active" : ""}`}
               onClick={() => setSelectedStatus("Completed")}
             >
-              Đã hoàn thành ({visibleBookings.filter((b) => b.status === 4).length})
+              Đã hoàn thành (
+              {visibleBookings.filter((b) => b.status === 4).length})
             </button>
             <button
               className={`admin-tab ${selectedStatus === "Cancelled" ? "active" : ""}`}
