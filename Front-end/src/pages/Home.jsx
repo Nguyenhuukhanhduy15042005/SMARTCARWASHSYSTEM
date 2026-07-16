@@ -265,7 +265,7 @@ const Home = () => {
                 <stop offset="0%" stopColor="#4CEBF5" />
                 <stop offset="100%" stopColor="#0A8C97" />
               </linearGradient>
-              <radialGradient id="spotlight" cx="50%" cy="45%" r="60%">
+              <radialGradient id="spotlight" cx="50%" cy="42%" r="60%">
                 <stop offset="0%" stopColor="rgba(255,255,255,0.14)" />
                 <stop offset="100%" stopColor="rgba(255,255,255,0)" />
               </radialGradient>
@@ -277,19 +277,36 @@ const Home = () => {
 
             <rect x="0" y="0" width="400" height="500" fill="url(#spotlight)" />
 
-            {/* bong bóng / giọt nước, kích thước khác nhau tạo chiều sâu */}
-            <circle cx="66" cy="86" r="5" fill="rgba(255,255,255,.32)" />
-            <circle cx="66" cy="86" r="9" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="1" />
-            <circle cx="334" cy="132" r="3.5" fill="rgba(255,255,255,.28)" />
-            <circle cx="302" cy="64" r="2.5" fill="rgba(255,255,255,.35)" />
-            <circle cx="58" cy="190" r="2" fill="rgba(255,255,255,.22)" />
-            <circle cx="352" cy="220" r="6" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="1" />
-            <circle cx="120" cy="60" r="2" fill="rgba(255,255,255,.25)" />
+            {/* bong bóng / giọt nước — bố trí đối xứng thành 1 khung quanh viền: 4 góc + mép trên/dưới/trái/phải */}
+            {/* 4 góc */}
+            <circle cx="50" cy="50" r="4" fill="rgba(255,255,255,.3)" />
+            <circle cx="50" cy="50" r="8" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="1" />
+            <circle cx="350" cy="50" r="4" fill="rgba(255,255,255,.3)" />
+            <circle cx="350" cy="50" r="8" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="1" />
+            <circle cx="50" cy="450" r="4" fill="rgba(255,255,255,.3)" />
+            <circle cx="50" cy="450" r="8" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="1" />
+            <circle cx="350" cy="450" r="4" fill="rgba(255,255,255,.3)" />
+            <circle cx="350" cy="450" r="8" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="1" />
 
-            {/* bóng đổ dưới xe */}
-            <ellipse cx="200" cy="378" rx="145" ry="16" fill="url(#shadow)" />
+            {/* mép trên / mép dưới — đối xứng trái phải */}
+            <circle cx="140" cy="32" r="3" fill="rgba(255,255,255,.26)" />
+            <circle cx="260" cy="32" r="3" fill="rgba(255,255,255,.26)" />
+            <circle cx="140" cy="468" r="3" fill="rgba(255,255,255,.26)" />
+            <circle cx="260" cy="468" r="3" fill="rgba(255,255,255,.26)" />
 
-            <g transform="translate(40,260)">
+            {/* mép trái / mép phải — đối xứng trên dưới */}
+            <circle cx="22" cy="165" r="3" fill="rgba(255,255,255,.22)" />
+            <circle cx="22" cy="335" r="3" fill="rgba(255,255,255,.22)" />
+            <circle cx="378" cy="165" r="3" fill="rgba(255,255,255,.22)" />
+            <circle cx="378" cy="335" r="3" fill="rgba(255,255,255,.22)" />
+
+            {/* điểm nhấn chính giữa mép trên, giữ trục đối xứng dọc */}
+            <circle cx="200" cy="22" r="2.5" fill="rgba(255,255,255,.2)" />
+
+            {/* bóng đổ dưới xe — đã căn lại theo vị trí xe mới */}
+            <ellipse cx="200" cy="295" rx="140" ry="15" fill="url(#shadow)" />
+
+            <g transform="translate(33,165)">
               <path
                 d="M10 90 Q0 60 30 55 L60 20 Q75 5 110 5 L230 5 Q265 5 280 25 L305 55 Q335 58 328 90 Q328 105 310 105 L295 105 Q290 118 275 118 Q260 118 255 105 L95 105 Q90 118 75 118 Q60 118 55 105 L28 105 Q10 105 10 90 Z"
                 fill="url(#carGrad)"
