@@ -105,6 +105,10 @@ initReminderJob(); // Khởi chạy cron job khi server bật
 const initPaymentTimeoutJob = require('./Jobs/paymentTimeoutJob');
 initPaymentTimeoutJob();
 
+//import và khởi chạy cron job tự động hoàn tất chu trình rửa (BR-23)
+const initWashingCycleJob = require('./Jobs/washingCycleJob');
+initWashingCycleJob();
+
 // Đăng kí notification.js
 const notificationRouter = require('./routes/notification');
 app.use('/api/notifications', notificationRouter);

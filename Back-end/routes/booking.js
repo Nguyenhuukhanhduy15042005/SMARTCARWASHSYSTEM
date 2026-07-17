@@ -1059,4 +1059,5 @@ router.get("/admin/dashboard/stats", adminAuth, async (req, res) => {
     }
 });
 
+router.processBookingStatusChange = processBookingStatusChange;
 module.exports = router;
