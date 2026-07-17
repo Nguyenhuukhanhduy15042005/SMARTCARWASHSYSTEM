@@ -420,7 +420,7 @@ export default function TimeslotValidation() {
             {/* Ngày */}
             <div style={s.card}>
               <div style={s.cardTitle}>📅 Chọn ngày</div>
-              <input type="date" style={s.dateInput} value={selectedDate} min={today}
+              <input type="date" style={s.dateInput} value={selectedDate} max={formatLocalDate(new Date(new Date().setFullYear(new Date().getFullYear() + 1)))}
                 onChange={e => { setSelectedDate(e.target.value); setSelectedTime(null); }} />
             </div>
 
