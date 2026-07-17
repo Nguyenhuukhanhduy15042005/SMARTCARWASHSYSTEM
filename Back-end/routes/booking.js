@@ -19,6 +19,23 @@ const formatLocalDateTime = (dateInput) => {
     };
 };
 
+const logBookingActivity = async (bookingId, activityType, description, clientPool = null) => {
+    try {
+        const pool = clientPool || (await poolPromise);
+        await pool.request()
+            .input("bookingId", sql.Int, bookingId)
+            .input("activityType", sql.NVarChar, activityType)
+            .input("description", sql.NVarChar, description)
+            .query(`
+                INSERT INTO BOOKING_HISTORY (BookingID, ActivityType, Description, CreatedAt)
+                VALUES (@bookingId, @activityType, @description, GETDATE())
+            `);
+        console.log(`[ActivityLog] BK-${bookingId} - ${activityType}: ${description}`);
+    } catch (err) {
+        console.error(`[ActivityLog Error] Không thể ghi log cho BK-${bookingId}:`, err.message);
+    }
+};
+
 const getAvailableMachineForBooking = async (
     pool,
     bookingDate,
@@ -97,6 +114,24 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
                 CheckInTime = CASE WHEN @status = 3 THEN GETDATE() ELSE CheckInTime END
             WHERE BookingID = @bookingId
         `);
+
+    let statusDesc = "";
+    let activityType = "StatusChange";
+    if (statusInt === 2) {
+        statusDesc = "Đơn đặt lịch được xác nhận thanh toán thành công.";
+        activityType = "Payment";
+    } else if (statusInt === 3) {
+        statusDesc = "Bắt đầu chu trình rửa xe (Đang rửa).";
+    } else if (statusInt === 4) {
+        statusDesc = "Rửa xe hoàn tất. Máy rửa được giải phóng.";
+    } else if (statusInt === 5) {
+        statusDesc = "Đơn đặt lịch bị hủy.";
+        activityType = "Cancellation";
+    }
+
+    if (statusDesc) {
+        await logBookingActivity(bookingId, activityType, statusDesc, pool);
+    }
 
     //Cập nhật trạng thái máy
     const detailRes = await pool
@@ -554,6 +589,22 @@ router.post("/", async (req, res) => {
                 );
         }
 
+        // 1. Log Booking Creation
+        await logBookingActivity(newBookingID, 'Creation', 'Đơn đặt lịch được tạo.', pool);
+
+        // 2. Log Machine Assignment
+        const machineRes = await pool.request()
+            .input("machineId", sql.Int, assignedMachineId)
+            .query("SELECT MachineName FROM MACHINE WHERE MachineID = @machineId");
+        const machineName = machineRes.recordset[0]?.MachineName || `Máy #${assignedMachineId}`;
+        await logBookingActivity(newBookingID, 'MachineAssignment', `Đã tự động gán máy rửa: ${machineName}`, pool);
+
+        // 3. Log initial status if confirmed (Status = 2)
+        const finalStatus = Status || 1;
+        if (finalStatus === 2) {
+            await logBookingActivity(newBookingID, 'Payment', 'Đơn đặt lịch được xác nhận thanh toán thành công.', pool);
+        }
+
         //Thông báo đặt lịch rửa xe thành công
         const userRes = await pool.request()
             .input("userId", sql.Int, CustomerID)
@@ -985,6 +1036,22 @@ router.post("/admin/create", adminAuth, async (req, res) => {
                     );
             }
         }
+
+        // 1. Log Booking Creation
+        await logBookingActivity(newBookingID, 'Creation', 'Đơn đặt lịch được tạo bởi quản trị viên.', pool);
+
+        // 2. Log Machine Assignment
+        const machineRes = await pool.request()
+            .input("machineId", sql.Int, assignedMachineId)
+            .query("SELECT MachineName FROM MACHINE WHERE MachineID = @machineId");
+        const machineName = machineRes.recordset[0]?.MachineName || `Máy #${assignedMachineId}`;
+        await logBookingActivity(newBookingID, 'MachineAssignment', `Đã gán máy rửa: ${machineName}`, pool);
+
+        // 3. Log initial status if confirmed (Status = 2)
+        const finalStatus = Status || 2;
+        if (finalStatus === 2) {
+            await logBookingActivity(newBookingID, 'Payment', 'Đơn đặt lịch được xác nhận thanh toán thành công.', pool);
+        }
         res.status(201).json({
             message: "Tạo booking thành công",
             id: newBookingID,
@@ -1054,6 +1121,26 @@ router.get("/admin/dashboard/stats", adminAuth, async (req, res) => {
             FROM BOOKING
         `);
         res.json(result.recordset[0]);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// GET /api/bookings/:id/history — Lấy lịch sử dòng thời gian của 1 booking
+router.get("/:id/history", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const pool = await poolPromise;
+        const result = await pool
+            .request()
+            .input("bookingId", sql.Int, id)
+            .query(`
+                SELECT HistoryID, BookingID, ActivityType, Description, CreatedAt
+                FROM BOOKING_HISTORY
+                WHERE BookingID = @bookingId
+                ORDER BY CreatedAt ASC
+            `);
+        res.json(result.recordset);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
