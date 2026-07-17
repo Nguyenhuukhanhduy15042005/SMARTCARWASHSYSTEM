@@ -19,6 +19,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [bookingHistory, setBookingHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem("LOGIN_USER");
@@ -203,6 +205,24 @@ export default function AdminDashboard() {
         `Lỗi cập nhật: ${err.response?.data?.message || err.message}`,
         "error",
       );
+    }
+  };
+
+  const handleViewDetails = async (booking) => {
+    setSelectedBooking(booking);
+    setHistoryLoading(true);
+    setBookingHistory([]);
+    const token = localStorage.getItem("token") || "mock-token";
+    try {
+      const res = await axios.get(`http://127.0.0.1:5000/api/bookings/${booking.id}/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setBookingHistory(res.data || []);
+    } catch (err) {
+      console.error("Lỗi khi tải lịch sử booking:", err);
+      setBookingHistory([]);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -684,7 +704,7 @@ export default function AdminDashboard() {
                           <button
                             className="action-icon-btn btn-details"
                             title="Chi tiết"
-                            onClick={() => setSelectedBooking(b)}
+                            onClick={() => handleViewDetails(b)}
                           >
                             <i className="fa-solid fa-circle-info"></i>
                           </button>
@@ -825,6 +845,37 @@ export default function AdminDashboard() {
                     </span>
                   </div>
                 </div>
+              </div>
+
+              <div className="modal-section" style={{ marginTop: "24px", borderTop: "1px dashed rgba(255,255,255,0.1)", paddingTop: "20px" }}>
+                <h4 className="modal-section-title" style={{ marginBottom: "16px" }}>
+                  <i className="fa-solid fa-clock-rotate-left"></i> Lịch sử hoạt động đơn
+                </h4>
+                {historyLoading ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-secondary)", fontSize: "13px" }}>
+                    <i className="fa-solid fa-circle-notch fa-spin"></i> Đang tải lịch sử...
+                  </div>
+                ) : bookingHistory.length === 0 ? (
+                  <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "4px 0 0 0" }}>Chưa ghi nhận lịch sử nào.</p>
+                ) : (
+                  <div className="booking-timeline">
+                    {bookingHistory.map((item, idx) => (
+                      <div key={item.HistoryID} className="timeline-step">
+                        <div className="timeline-marker">
+                          <div className="timeline-circle"></div>
+                          {idx < bookingHistory.length - 1 && <div className="timeline-line"></div>}
+                        </div>
+                        <div className="timeline-info">
+                          <div className="timeline-time">
+                            {new Date(item.CreatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}{' - '}
+                            {new Date(item.CreatedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </div>
+                          <div className="timeline-desc">{item.Description}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

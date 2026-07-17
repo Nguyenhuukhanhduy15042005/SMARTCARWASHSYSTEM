@@ -13,6 +13,8 @@ export default function StaffDashboard() {
     completed: 0,
   });
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [bookingHistory, setBookingHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem("LOGIN_USER");
@@ -180,6 +182,27 @@ export default function StaffDashboard() {
       }
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleViewDetails = async (booking) => {
+    setSelectedBooking(booking);
+    setHistoryLoading(true);
+    setBookingHistory([]);
+    const token = localStorage.getItem("token") || localStorage.getItem("TOKEN") || "mock-token";
+    try {
+      const res = await fetch(`http://localhost:5000/api/bookings/${booking.BookingID}/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBookingHistory(data || []);
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải lịch sử booking:", err);
+      setBookingHistory([]);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -422,6 +445,7 @@ export default function StaffDashboard() {
                     <th style={styles.th}>Mã</th>
                     <th style={styles.th}>Khách hàng</th>
                     <th style={styles.th}>Thông tin xe</th>
+                    <th style={styles.th}>Máy / Sàn</th>
                     <th style={styles.th}>Thời gian</th>
                     <th style={styles.th}>Thanh toán</th>
                     <th style={styles.th}>Trạng thái</th>
@@ -463,6 +487,20 @@ export default function StaffDashboard() {
                             ></i>
                             {booking.VehicleType}
                           </div>
+                        </td>
+                        <td style={styles.td}>
+                          <div style={styles.machineInfo}>
+                            {booking.MachineName || "Chưa gán máy/sàn"}
+                          </div>
+                          {booking.MachineID && (
+                            <div style={styles.machineSub}>
+                              <i
+                                className="fa-solid fa-gears"
+                                style={{ fontSize: "10px", marginRight: "4px" }}
+                              ></i>
+                              ID: #{booking.MachineID}
+                            </div>
+                          )}
                         </td>
                         <td style={styles.td}>
                           <div style={styles.bookingDate}>
@@ -582,7 +620,7 @@ export default function StaffDashboard() {
                           <div style={styles.actionGroup}>
                             <button
                               style={styles.viewBtn}
-                              onClick={() => setSelectedBooking(booking)}
+                              onClick={() => handleViewDetails(booking)}
                               title="Chi tiết"
                             >
                               <i className="fa-solid fa-eye"></i>
@@ -679,12 +717,22 @@ export default function StaffDashboard() {
               </div>
               <div style={styles.modalBody}>
                 <div style={styles.modalGrid}>
+                  {/* Row 1: Khách hàng + SĐT */}
                   <div style={styles.modalField}>
                     <label style={styles.modalLabel}>Khách hàng</label>
                     <div style={styles.modalValue}>
-                      {selectedBooking.CustomerName}
+                      {selectedBooking.CustomerName || "Khách vãng lai"}
                     </div>
                   </div>
+                  <div style={styles.modalField}>
+                    <label style={styles.modalLabel}>Số điện thoại</label>
+                    <div style={styles.modalValue}>
+                      <i className="fa-solid fa-phone" style={{ fontSize: "11px", marginRight: "6px", color: "var(--text-secondary)" }}></i>
+                      {selectedBooking.Phone || "Không có SĐT"}
+                    </div>
+                  </div>
+
+                  {/* Row 2: Biển số xe + Loại xe */}
                   <div style={styles.modalField}>
                     <label style={styles.modalLabel}>Biển số xe</label>
                     <div
@@ -698,17 +746,72 @@ export default function StaffDashboard() {
                     </div>
                   </div>
                   <div style={styles.modalField}>
-                    <label style={styles.modalLabel}>Dịch vụ</label>
+                    <label style={styles.modalLabel}>Loại xe</label>
                     <div style={styles.modalValue}>
-                      {selectedBooking.servicePackage}
+                      <i className="fa-solid fa-car" style={{ fontSize: "11px", marginRight: "6px", color: "var(--text-secondary)" }}></i>
+                      {selectedBooking.VehicleType || "N/A"}
+                    </div>
+                  </div>
+
+                  {/* Row 3: Dịch vụ + Máy / Sàn */}
+                  <div style={styles.modalField}>
+                    <label style={styles.modalLabel}>Gói dịch vụ</label>
+                    <div style={{ ...styles.modalValue, fontWeight: "600" }}>
+                      {selectedBooking.servicePackage || "N/A"}
                     </div>
                   </div>
                   <div style={styles.modalField}>
-                    <label style={styles.modalLabel}>Tổng thanh toán</label>
+                    <label style={styles.modalLabel}>Máy / Sàn đã chọn</label>
+                    <div style={{ ...styles.modalValue, color: "#f59e0b", fontWeight: "700" }}>
+                      <i className="fa-solid fa-gears" style={{ fontSize: "11px", marginRight: "6px" }}></i>
+                      {selectedBooking.MachineName || "Chưa gán máy/sàn"}
+                    </div>
+                  </div>
+
+                  {/* Row 4: Thời gian + Trạng thái */}
+                  <div style={styles.modalField}>
+                    <label style={styles.modalLabel}>Thời gian</label>
+                    <div style={{ ...styles.modalValue, fontWeight: "600" }}>
+                      {selectedBooking.BookingDate
+                        ? `${new Date(selectedBooking.BookingDate).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} — ${new Date(selectedBooking.BookingDate).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}`
+                        : "N/A"}
+                    </div>
+                  </div>
+                  <div style={styles.modalField}>
+                    <label style={styles.modalLabel}>Trạng thái</label>
+                    <div>
+                      {(() => {
+                        const badge = getStatusDetails(selectedBooking.Status);
+                        return (
+                          <span style={{
+                            padding: "5px 12px",
+                            borderRadius: "30px",
+                            fontSize: "12px",
+                            fontWeight: "700",
+                            backgroundColor: badge.bg,
+                            color: badge.text,
+                            border: `1px solid ${badge.text}`,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}>
+                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: badge.dotBg, display: "inline-block" }}></span>
+                            {badge.text}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Row 5: Tổng thanh toán + Phương thức thanh toán */}
+                  <div style={styles.modalField}>
+                    <label style={styles.modalLabel}>Tổng chi phí</label>
                     <div
                       style={{
                         ...styles.modalValue,
                         color: "var(--color-success)",
+                        fontWeight: "700",
+                        fontSize: "17px",
                       }}
                     >
                       {(
@@ -718,6 +821,54 @@ export default function StaffDashboard() {
                       ).toLocaleString("vi-VN")}{" "}
                       đ
                     </div>
+                  </div>
+                  <div style={styles.modalField}>
+                    <label style={styles.modalLabel}>Thanh toán</label>
+                    <div style={styles.modalValue}>
+                      {selectedBooking.PaidAmount > 0 ? (
+                        <span style={{ color: "#10b981", fontWeight: "600" }}>
+                          <i className="fa-solid fa-circle-check" style={{ marginRight: "6px" }}></i>
+                          Đã thu đủ ({selectedBooking.PaymentMethod || "N/A"})
+                        </span>
+                      ) : (
+                        <span style={{ color: "#ef4444", fontWeight: "600" }}>
+                          <i className="fa-solid fa-circle-xmark" style={{ marginRight: "6px" }}></i>
+                          Chưa thanh toán
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Timeline Lịch sử */}
+                  <div style={styles.timelineContainer}>
+                    <div style={styles.timelineTitle}>
+                      <i className="fa-solid fa-clock-rotate-left"></i> Lịch sử hoạt động đơn
+                    </div>
+                    {historyLoading ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-secondary)", fontSize: "13px" }}>
+                        <i className="fa-solid fa-circle-notch fa-spin"></i> Đang tải lịch sử...
+                      </div>
+                    ) : bookingHistory.length === 0 ? (
+                      <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "4px 0 0 0" }}>Chưa ghi nhận lịch sử nào.</p>
+                    ) : (
+                      <div style={styles.timeline}>
+                        {bookingHistory.map((item, idx) => (
+                          <div key={item.HistoryID} style={styles.timelineStep}>
+                            <div style={styles.timelineMarker}>
+                              <div style={styles.timelineCircle}></div>
+                              {idx < bookingHistory.length - 1 && <div style={styles.timelineLine}></div>}
+                            </div>
+                            <div style={styles.timelineInfo}>
+                              <div style={styles.timelineTime}>
+                                {new Date(item.CreatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}{' - '}
+                                {new Date(item.CreatedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              </div>
+                              <div style={styles.timelineDesc}>{item.Description}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -911,6 +1062,14 @@ const styles = {
     alignItems: "center",
   },
   licensePlate: { fontWeight: "700", color: "#60a5fa", fontSize: "15px" },
+  machineInfo: { fontWeight: "700", color: "#f59e0b", fontSize: "15px" },
+  machineSub: {
+    color: "var(--text-secondary)",
+    fontSize: "13px",
+    marginTop: "4px",
+    display: "flex",
+    alignItems: "center",
+  },
   vehicleType: {
     color: "var(--text-secondary)",
     fontSize: "13px",
@@ -1033,8 +1192,11 @@ const styles = {
   modalContent: {
     background: "var(--bg-card)",
     borderRadius: "20px",
-    width: "500px",
+    width: "600px",
     maxWidth: "95%",
+    maxHeight: "90vh",
+    display: "flex",
+    flexDirection: "column",
     border: "1px solid var(--border)",
     overflow: "hidden",
     boxShadow: "0 25px 50px -12px rgba(0,0,0,0.4)",
@@ -1053,7 +1215,7 @@ const styles = {
     fontSize: "20px",
     cursor: "pointer",
   },
-  modalBody: { padding: "24px", maxHeight: "70vh", overflowY: "auto" },
+  modalBody: { padding: "24px", overflowY: "auto", flexGrow: 1 },
   modalGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" },
   modalField: { display: "flex", flexDirection: "column", gap: "6px" },
   modalLabel: {
@@ -1082,5 +1244,85 @@ const styles = {
     cursor: "pointer",
     fontSize: "14px",
     fontWeight: "600",
+  },
+  timelineContainer: {
+    marginTop: "24px",
+    borderTop: "1px dashed rgba(255, 255, 255, 0.1)",
+    paddingTop: "20px",
+    width: "100%",
+    gridColumn: "span 2",
+  },
+  timelineTitle: {
+    fontSize: "14px",
+    fontWeight: "700",
+    color: "var(--text-primary)",
+    marginBottom: "16px",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+  timeline: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    position: "relative",
+    padding: "10px 0",
+    width: "100%",
+  },
+  timelineStep: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    flex: 1,
+    textAlign: "center",
+    position: "relative",
+  },
+  timelineMarker: {
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    position: "relative",
+    marginBottom: "12px",
+  },
+  timelineCircle: {
+    width: "12px",
+    height: "12px",
+    borderRadius: "50%",
+    backgroundColor: "var(--color-accent)",
+    boxShadow: "0 0 8px var(--color-accent)",
+    zIndex: 10,
+  },
+  timelineLine: {
+    height: "2px",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    position: "absolute",
+    left: "50%",
+    right: "-50%",
+    top: "50%",
+    transform: "translateY(-50%)",
+    zIndex: 5,
+  },
+  timelineInfo: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "4px",
+  },
+  timelineTime: {
+    fontSize: "10px",
+    color: "var(--text-secondary)",
+    fontWeight: "600",
+    whiteSpace: "nowrap",
+  },
+  timelineDesc: {
+    fontSize: "11px",
+    color: "var(--text-primary)",
+    lineHeight: "1.4",
+    margin: 0,
+    maxWidth: "120px",
+    wordWrap: "break-word",
   },
 };
