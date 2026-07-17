@@ -297,7 +297,16 @@ router.get('/', async (req, res) => {
                    p.Amount AS PaidAmount, p.PaymentMethod AS PaymentMethod,
                    (SELECT TOP 1 s.ServiceName FROM BOOKING_DETAIL bd
                     INNER JOIN SERVICE s ON bd.ServiceID = s.ServiceID
-                    WHERE bd.BookingID = b.BookingID) AS servicePackage
+                    WHERE bd.BookingID = b.BookingID) AS servicePackage,
+                   (SELECT TOP 1 bd.MachineID
+                    FROM BOOKING_DETAIL bd
+                    WHERE bd.BookingID = b.BookingID
+                      AND bd.MachineID IS NOT NULL) AS MachineID,
+                   (SELECT TOP 1 m.MachineName
+                    FROM BOOKING_DETAIL bd
+                    INNER JOIN MACHINE m ON m.MachineID = bd.MachineID
+                    WHERE bd.BookingID = b.BookingID
+                      AND bd.MachineID IS NOT NULL) AS MachineName
             FROM BOOKING b
             LEFT JOIN [USER] u ON b.CustomerID = u.UserID
             LEFT JOIN (SELECT BookingID, SUM(Amount) AS Amount, MAX(PaymentMethod) AS PaymentMethod
@@ -367,7 +376,16 @@ router.get("/:id", async (req, res) => {
         const pool = await poolPromise;
         const result = await pool.request().input("bookingId", sql.Int, id).query(`
                 SELECT b.*, u.FullName AS CustomerName, u.PhoneNumber AS Phone,
-                       p.Amount AS PaidAmount, p.PaymentMethod AS PaymentMethod
+                       p.Amount AS PaidAmount, p.PaymentMethod AS PaymentMethod,
+                       (SELECT TOP 1 bd.MachineID
+                        FROM BOOKING_DETAIL bd
+                        WHERE bd.BookingID = b.BookingID
+                          AND bd.MachineID IS NOT NULL) AS MachineID,
+                       (SELECT TOP 1 m.MachineName
+                        FROM BOOKING_DETAIL bd
+                        INNER JOIN MACHINE m ON m.MachineID = bd.MachineID
+                        WHERE bd.BookingID = b.BookingID
+                          AND bd.MachineID IS NOT NULL) AS MachineName
                 FROM BOOKING b
                 LEFT JOIN [USER] u ON b.CustomerID = u.UserID
                 LEFT JOIN (SELECT BookingID, SUM(Amount) AS Amount, MAX(PaymentMethod) AS PaymentMethod
@@ -403,13 +421,19 @@ router.post("/", async (req, res) => {
             !BookingDate ||
             !VehicleType ||
             !LicensePlate ||
+            !machineId ||
             !ServiceIDs ||
             !Array.isArray(ServiceIDs) ||
             ServiceIDs.length === 0
         )
             return res.status(400).json({
-                message: "Thiếu thông tin đặt lịch hoặc gói dịch vụ không hợp lệ!",
+                message: "Thiếu thông tin đặt lịch, máy/sàn rửa xe hoặc gói dịch vụ không hợp lệ!",
             });
+
+        const requestedMachineId = Number(machineId);
+        if (!Number.isInteger(requestedMachineId) || requestedMachineId <= 0) {
+            return res.status(400).json({ message: "MachineID không hợp lệ!" });
+        }
 
         //Kiểm tra định dạng ngày giờ đặt lịch:
         const scheduledDate = new Date(BookingDate);
@@ -469,13 +493,11 @@ router.post("/", async (req, res) => {
             pool,
             scheduledDate,
             VehicleType,
-            machineId,
+            requestedMachineId,
         );
         if (!assignedMachineId) {
             return res.status(409).json({
-                message: machineId
-                    ? "Sàn/khoang rửa xe được chọn đã có lịch đặt hoặc đang bảo trì!"
-                    : "Tất cả các sàn/khoang rửa xe đã đầy, vui lòng chọn khung giờ khác!",
+                message: "Máy/sàn rửa xe được chọn không phù hợp, đang bảo trì hoặc đã có lịch trong khung giờ này!",
             });
         }
 
@@ -547,10 +569,19 @@ router.post("/", async (req, res) => {
             userEmail: userEmail
         });
 
+        const selectedMachineRes = await pool
+            .request()
+            .input("machineId", sql.Int, assignedMachineId)
+            .query(
+                "SELECT MachineName FROM MACHINE WHERE MachineID = @machineId",
+            );
+
         res.status(201).json({
             message: "Tạo booking thành công",
             BookingID: newBookingID,
             MachineID: assignedMachineId,
+            MachineName:
+                selectedMachineRes.recordset[0]?.MachineName || null,
         });
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -788,11 +819,13 @@ router.get("/admin/all", adminAuth, async (req, res) => {
             SELECT b.BookingID, b.CustomerID, b.BookingDate, b.CheckInTime, b.VehicleType,
                    b.LicensePlate, b.TotalPrice, b.FinalPrice, b.Status,
                    u.FullName AS CustomerName, u.PhoneNumber AS CustomerPhone, s.ServiceName,
+                   bd.MachineID, m.MachineName,
                    p.Amount AS PaidAmount, p.PaymentMethod AS PaymentMethod
             FROM BOOKING b
             INNER JOIN [USER] u ON b.CustomerID = u.UserID
             LEFT JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
             LEFT JOIN SERVICE s ON bd.ServiceID = s.ServiceID
+            LEFT JOIN MACHINE m ON m.MachineID = bd.MachineID
             LEFT JOIN (SELECT BookingID, SUM(Amount) AS Amount, MAX(PaymentMethod) AS PaymentMethod
                        FROM PAYMENT GROUP BY BookingID) p ON b.BookingID = p.BookingID
             WHERE b.Status != 1
@@ -838,6 +871,8 @@ router.get("/admin/all", adminAuth, async (req, res) => {
                     time: format.timeStr,
                     paidAmount: row.PaidAmount ? Number(row.PaidAmount) : 0,
                     paymentMethod: row.PaymentMethod || null,
+                    machineId: row.MachineID || null,
+                    machineName: row.MachineName || null,
                     servicesList: [],
                 };
             }
@@ -862,11 +897,13 @@ router.get("/admin/:id", adminAuth, async (req, res) => {
         const result = await pool.request().input("id", sql.Int, req.params.id)
             .query(`
                 SELECT b.*, u.FullName AS CustomerName, u.PhoneNumber AS CustomerPhone,
-                       s.ServiceName, s.BasePrice, p.Amount AS PaidAmount, p.PaymentMethod
+                       s.ServiceName, s.BasePrice, bd.MachineID, m.MachineName,
+                       p.Amount AS PaidAmount, p.PaymentMethod
                 FROM BOOKING b
                 INNER JOIN [USER] u ON b.CustomerID = u.UserID
                 LEFT JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
                 LEFT JOIN SERVICE s ON bd.ServiceID = s.ServiceID
+                LEFT JOIN MACHINE m ON m.MachineID = bd.MachineID
                 LEFT JOIN (SELECT BookingID, SUM(Amount) AS Amount, MAX(PaymentMethod) AS PaymentMethod
                            FROM PAYMENT GROUP BY BookingID) p ON b.BookingID = p.BookingID
                 WHERE b.BookingID = @id
@@ -889,6 +926,8 @@ router.get("/admin/:id", adminAuth, async (req, res) => {
             time: format.timeStr,
             paidAmount: first.PaidAmount ? Number(first.PaidAmount) : 0,
             paymentMethod: first.PaymentMethod || null,
+            machineId: first.MachineID || null,
+            machineName: first.MachineName || null,
             servicePackage: services.join(", ") || "N/A",
         });
     } catch (err) {

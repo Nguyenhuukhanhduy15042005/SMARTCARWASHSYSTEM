@@ -113,6 +113,9 @@ export default function Booking() {
   const [note, setNote] = useState("");
 
   const [slotsAvailability, setSlotsAvailability] = useState({});
+  const [machines, setMachines] = useState([]);
+  const [selectedMachineId, setSelectedMachineId] = useState("");
+  const [machinesLoading, setMachinesLoading] = useState(false);
 
   const [slotsLoading, setSlotsLoading] = useState(false);
 
@@ -340,6 +343,48 @@ export default function Booking() {
     fetchServices();
   }, [vehicleType]);
 
+  useEffect(() => {
+    const fetchMachines = async () => {
+      setMachinesLoading(true);
+      setSelectedMachineId("");
+      setTime("");
+      setSlotsAvailability({});
+      setFetchError("");
+
+      try {
+        const typeParam = vehicleType === "BIKE" ? "BIKE" : "CAR";
+        const res = await axios.get(
+          `http://127.0.0.1:5000/api/timeslots/machines?type=${typeParam}`,
+        );
+
+        const list = Array.isArray(res.data) ? res.data : [];
+        const usableMachines = list.filter(
+          (machine) =>
+            machine.status !== "Maintenance" &&
+            machine.status !== "Under Maintenance",
+        );
+
+        setMachines(usableMachines);
+
+        if (usableMachines.length === 0) {
+          setFetchError(
+            `Không tìm thấy máy/sàn đang hoạt động cho ${
+              vehicleType === "BIKE" ? "xe máy" : "ô tô"
+            }.`,
+          );
+        }
+      } catch (err) {
+        console.error("Lỗi tải danh sách máy:", err);
+        setMachines([]);
+        setFetchError("Không thể tải danh sách máy/sàn rửa xe.");
+      } finally {
+        setMachinesLoading(false);
+      }
+    };
+
+    fetchMachines();
+  }, [vehicleType]);
+
   const checkIfPast = (slotTime) => {
     if (!date) return false;
 
@@ -360,100 +405,61 @@ export default function Booking() {
   };
 
   useEffect(() => {
-    if (!date) {
+    if (!date || !selectedMachineId) {
       setSlotsAvailability({});
+      setTime("");
       return;
     }
 
     const fetchSlotsAvailability = async () => {
       setSlotsLoading(true);
-
       setFetchError("");
 
       try {
-        const typeParam = vehicleType === "BIKE" ? "BIKE" : "CAR";
-
-        const machinesRes = await axios.get(
-          `http://127.0.0.1:5000/api/timeslots/machines?type=${typeParam}`,
+        const res = await axios.get(
+          `http://127.0.0.1:5000/api/timeslots?machineId=${selectedMachineId}&date=${date}`,
         );
 
-        const machines = Array.isArray(machinesRes.data)
-          ? machinesRes.data
-          : [];
-
-        if (machines.length === 0) {
-          const initialSlots = {};
-
-          TIME_SLOTS.forEach((t) => {
-            initialSlots[t] = "booked";
-          });
-
-          setSlotsAvailability(initialSlots);
-
-          setFetchError(
-            `Không tìm thấy máy rửa hoạt động cho ${vehicleType === "BIKE" ? "Xe máy" : "Ô tô"}!`,
-          );
-
-          return;
-        }
-
-        const promises = machines.map((m) =>
-          axios
-            .get(
-              `http://127.0.0.1:5000/api/timeslots?machineId=${m.machineId}&date=${date}`,
-            )
-
-            .then((res) => res.data)
-
-            .catch(() => null),
-        );
-
-        const results = await Promise.all(promises);
-
-        const aggregated = {};
+        const slots = Array.isArray(res.data?.slots) ? res.data.slots : [];
+        const availability = {};
 
         TIME_SLOTS.forEach((slotTime) => {
-          let hasFreeMachine = false;
-
-          results.forEach((r) => {
-            if (r && Array.isArray(r.slots)) {
-              const found = r.slots.find((s) => s.time === slotTime);
-
-              if (found && found.status === "free") hasFreeMachine = true;
-            }
-          });
-
-          aggregated[slotTime] = hasFreeMachine ? "free" : "booked";
+          const slot = slots.find((item) => item.time === slotTime);
+          availability[slotTime] = slot?.status || "booked";
         });
 
-        setSlotsAvailability(aggregated);
+        setSlotsAvailability(availability);
 
-        if (time && (aggregated[time] === "booked" || checkIfPast(time))) {
+        if (
+          time &&
+          (availability[time] !== "free" || checkIfPast(time))
+        ) {
           setTime("");
-
           showToast(
-            "Khung giờ đang chọn không còn trống, vui lòng chọn lại!",
+            "Khung giờ đang chọn không còn trống trên máy/sàn này.",
             "error",
           );
         }
       } catch (err) {
-        console.error("Lỗi tải timeslots:", err);
-
-        setFetchError("Có lỗi xảy ra khi đồng bộ lịch từ hệ thống máy rửa.");
+        console.error("Lỗi tải timeslot theo máy:", err);
+        setSlotsAvailability({});
+        setFetchError("Không thể đồng bộ lịch của máy/sàn đã chọn.");
       } finally {
         setSlotsLoading(false);
       }
     };
 
     fetchSlotsAvailability();
-  }, [date, vehicleType]);
+  }, [date, selectedMachineId]);
 
   const handleVehicleTypeChange = (type) => {
     setVehicleType(type);
-
     setLicensePlate("");
-
     setPlateError("");
+    setSelectedMachineId("");
+    setDate("");
+    setTime("");
+    setSlotsAvailability({});
   };
 
   // Validate biển số realtime khi user nhập + gợi ý và tự nhận diện loại xe
@@ -523,6 +529,9 @@ export default function Booking() {
     if (!selectedService)
       return showToast("Vui lòng chọn một gói dịch vụ!", "error");
 
+    if (!selectedMachineId)
+      return showToast("Vui lòng chọn máy/sàn rửa xe!", "error");
+
     if (!date || !time)
       return showToast("Vui lòng chọn ngày và giờ rửa xe!", "error");
 
@@ -549,6 +558,8 @@ export default function Booking() {
       FinalPrice: finalPrice,
 
       Status: 1,
+
+      MachineID: Number(selectedMachineId),
 
       ServiceIDs: [selectedService.serviceId],
     };
@@ -586,6 +597,13 @@ export default function Booking() {
               TotalPrice: finalPrice || basePrice,
 
               LicensePlate: plateResult.clean,
+              MachineID: Number(selectedMachineId),
+              MachineName:
+                machines.find(
+                  (machine) =>
+                    String(machine.machineId || machine.id) ===
+                    String(selectedMachineId),
+                )?.name || "Chưa xác định",
             },
           },
         });
@@ -828,6 +846,94 @@ export default function Booking() {
                 )}
               </div>
 
+              {/* Chọn máy / sàn */}
+
+              <div className="form-section-card">
+                <h3 className="form-section-title">
+                  <i className="fa-solid fa-gears text-orange-500"></i>{" "}
+                  Chọn máy / sàn rửa xe
+                </h3>
+
+                {machinesLoading ? (
+                  <div className="slots-loading">
+                    <i
+                      className="fa-solid fa-spinner fa-spin"
+                      style={{ marginRight: "8px" }}
+                    ></i>
+                    Đang tải danh sách máy/sàn...
+                  </div>
+                ) : machines.length === 0 ? (
+                  <div className="slots-error">
+                    <i
+                      className="fa-solid fa-triangle-exclamation"
+                      style={{ marginRight: "8px" }}
+                    ></i>
+                    Không có máy/sàn phù hợp đang hoạt động.
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(220px, 1fr))",
+                      gap: "12px",
+                    }}
+                  >
+                    {machines.map((machine) => {
+                      const machineId = String(
+                        machine.machineId || machine.id,
+                      );
+                      const isSelected =
+                        String(selectedMachineId) === machineId;
+
+                      return (
+                        <button
+                          key={machineId}
+                          type="button"
+                          onClick={() => {
+                            setSelectedMachineId(machineId);
+                            setDate("");
+                            setTime("");
+                            setSlotsAvailability({});
+                          }}
+                          style={{
+                            textAlign: "left",
+                            padding: "14px 16px",
+                            borderRadius: "12px",
+                            border: isSelected
+                              ? "1px solid #f97316"
+                              : "1px solid var(--border)",
+                            background: isSelected
+                              ? "rgba(249,115,22,0.10)"
+                              : "var(--bg-primary)",
+                            color: "var(--text-primary)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              marginBottom: 5,
+                            }}
+                          >
+                            {machine.name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            {vehicleType === "BIKE" ? "Xe máy" : "Ô tô"} ·{" "}
+                            {machine.status || "Available"}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Ngày & Giờ */}
 
               <div className="form-section-card">
@@ -857,6 +963,7 @@ export default function Booking() {
                         setTime("");
                       }}
                       required
+                      disabled={!selectedMachineId}
                       className="form-input"
                       min={new Date().toLocaleDateString("en-CA")}
                       max={getMaxDate()}
@@ -875,7 +982,15 @@ export default function Booking() {
                       )}
                     </label>
 
-                    {!date ? (
+                    {!selectedMachineId ? (
+                      <div className="select-date-prompt">
+                        <i
+                          className="fa-solid fa-gears"
+                          style={{ marginRight: "8px" }}
+                        ></i>
+                        Vui lòng chọn máy/sàn trước khi chọn ngày và giờ.
+                      </div>
+                    ) : !date ? (
                       <div className="select-date-prompt">
                         <i
                           className="fa-regular fa-calendar-days"
@@ -925,7 +1040,7 @@ export default function Booking() {
 
                                 <span className="slot-status">
                                   {isBooked
-                                    ? "Hết máy"
+                                    ? "Đã đặt"
                                     : isPast
                                       ? "Đã qua"
                                       : isSelected
@@ -945,7 +1060,7 @@ export default function Booking() {
 
                           <div className="legend-item">
                             <span className="legend-dot legend-booked"></span>
-                            <span>Hết máy</span>
+                            <span>Đã đặt trên máy/sàn này</span>
                           </div>
 
                           <div className="legend-item">
@@ -1035,6 +1150,17 @@ export default function Booking() {
                     <span>Hạng thành viên:</span>
 
                     <span style={{ color: "#818cf8" }}>{profile.TierName}</span>
+                  </div>
+
+                  <div className="summary-row">
+                    <span>Máy / sàn đã chọn:</span>
+                    <span>
+                      {machines.find(
+                        (machine) =>
+                          String(machine.machineId || machine.id) ===
+                          String(selectedMachineId),
+                      )?.name || "..."}
+                    </span>
                   </div>
 
                   {discountRate > 0 && (

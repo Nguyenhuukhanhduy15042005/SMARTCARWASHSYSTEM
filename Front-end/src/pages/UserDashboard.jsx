@@ -148,6 +148,8 @@ export default function UserDashboard() {
           date: dateStr,
           time: timeStr,
           servicePackage: b.servicePackage || b.ServiceName || "N/A",
+          machineId: b.machineId || b.MachineID || null,
+          machineName: b.machineName || b.MachineName || "Chưa gán máy/sàn",
           isHiddenByUser:
             b.IsHiddenByUser === true ||
             b.IsHiddenByUser === 1 ||
@@ -852,7 +854,19 @@ export default function UserDashboard() {
                           </span>
                         </div>
                       </td>
-                      <td>{b.servicePackage}</td>
+                      <td>
+                        <div>{b.servicePackage}</div>
+                        <div
+                          style={{
+                            marginTop: 4,
+                            fontSize: 11,
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          <i className="fa-solid fa-gears"></i>{" "}
+                          {b.machineName || "Chưa gán máy/sàn"}
+                        </div>
+                      </td>
                       <td>
                         <div
                           style={{ display: "flex", flexDirection: "column" }}
@@ -1357,6 +1371,13 @@ export default function UserDashboard() {
                   <div className="modal-field" style={{ gridColumn: "span 2" }}>
                     <label>Gói dịch vụ</label>
                     <span>{selectedBooking.servicePackage}</span>
+                  </div>
+                  <div className="modal-field" style={{ gridColumn: "span 2" }}>
+                    <label>Máy / sàn đã chọn</label>
+                    <span>
+                      <i className="fa-solid fa-gears"></i>{" "}
+                      {selectedBooking.machineName || "Chưa gán máy/sàn"}
+                    </span>
                   </div>
                   <div className="modal-field">
                     <label>Thời gian</label>

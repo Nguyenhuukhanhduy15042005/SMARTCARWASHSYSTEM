@@ -531,7 +531,19 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       </td>
-                      <td>{b.servicePackage}</td>
+                      <td>
+                        <div>{b.servicePackage}</div>
+                        <div
+                          style={{
+                            marginTop: 4,
+                            fontSize: 11,
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          <i className="fa-solid fa-gears"></i>{" "}
+                          {b.machineName || "Chưa gán máy/sàn"}
+                        </div>
+                      </td>
                       <td>
                         <div
                           style={{ display: "flex", flexDirection: "column" }}
@@ -776,6 +788,13 @@ export default function AdminDashboard() {
                   <div className="modal-field" style={{ gridColumn: "span 2" }}>
                     <label>Gói dịch vụ rửa xe</label>
                     <span>{selectedBooking.servicePackage}</span>
+                  </div>
+                  <div className="modal-field" style={{ gridColumn: "span 2" }}>
+                    <label>Máy / sàn đã chọn</label>
+                    <span>
+                      <i className="fa-solid fa-gears"></i>{" "}
+                      {selectedBooking.machineName || "Chưa gán máy/sàn"}
+                    </span>
                   </div>
                   <div className="modal-field">
                     <label>Thời gian đặt lịch</label>
