@@ -381,7 +381,7 @@ export default function VehicleManagement() {
           <div>
             <div style={s.badge}>🚗 Quản lý phương tiện</div>
             <h1 style={s.title}>Vehicle Management</h1>
-            <p style={s.subtitle}>Quản lý xe, liên kết chủ sở hữu & lịch sử dịch vụ</p>
+            <p style={s.subtitle}>Quản lý phương tiện thường dùng và lịch sử dịch vụ</p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button style={s.refreshBtn} onClick={fetchVehicles}>🔄 Làm mới</button>
