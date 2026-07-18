@@ -15,6 +15,9 @@ export default function StaffDashboard() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [bookingHistory, setBookingHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [isEditingPlate, setIsEditingPlate] = useState(false);
+  const [tempPlate, setTempPlate] = useState("");
+  const [savingPlate, setSavingPlate] = useState(false);
 
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem("LOGIN_USER");
@@ -187,6 +190,7 @@ export default function StaffDashboard() {
 
   const handleViewDetails = async (booking) => {
     setSelectedBooking(booking);
+    setIsEditingPlate(false);
     setHistoryLoading(true);
     setBookingHistory([]);
     const token = localStorage.getItem("token") || localStorage.getItem("TOKEN") || "mock-token";
@@ -203,6 +207,55 @@ export default function StaffDashboard() {
       setBookingHistory([]);
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  const handleSavePlate = async () => {
+    if (!tempPlate || tempPlate.trim() === "") {
+      alert("Biển số xe không được để trống");
+      return;
+    }
+    setSavingPlate(true);
+    const token = localStorage.getItem("token") || localStorage.getItem("TOKEN") || "mock-token";
+    try {
+      const res = await fetch(`http://localhost:5000/api/bookings/${selectedBooking.BookingID}/license-plate`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ licensePlate: tempPlate })
+      });
+      
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.message || "Không thể cập nhật biển số xe");
+      }
+      
+      const updatedPlate = resData.licensePlate || tempPlate.trim().toUpperCase();
+      
+      // Update bookings list state
+      setBookings(prev => prev.map(b => b.BookingID === selectedBooking.BookingID ? { ...b, LicensePlate: updatedPlate } : b));
+      
+      // Update selectedBooking state
+      setSelectedBooking(prev => ({ ...prev, LicensePlate: updatedPlate }));
+      
+      alert("Cập nhật biển số xe thành công!");
+      setIsEditingPlate(false);
+      
+      // Reload history log to show edit plate log
+      const histRes = await fetch(`http://localhost:5000/api/bookings/${selectedBooking.BookingID}/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (histRes.ok) {
+        const histData = await histRes.json();
+        setBookingHistory(histData || []);
+      }
+    } catch (err) {
+      console.error("Lỗi khi cập nhật biển số:", err);
+      alert(err.message || "Không thể cập nhật biển số xe");
+    } finally {
+      setSavingPlate(false);
     }
   };
 
@@ -735,15 +788,103 @@ export default function StaffDashboard() {
                   {/* Row 2: Biển số xe + Loại xe */}
                   <div style={styles.modalField}>
                     <label style={styles.modalLabel}>Biển số xe</label>
-                    <div
-                      style={{
-                        ...styles.modalValue,
-                        color: "#3b82f6",
-                        fontWeight: "700",
-                      }}
-                    >
-                      {selectedBooking.LicensePlate}
-                    </div>
+                    {isEditingPlate ? (
+                      <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "4px" }}>
+                        <input
+                          type="text"
+                          value={tempPlate}
+                          onChange={(e) => setTempPlate(e.target.value.toUpperCase())}
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            border: "1px solid var(--border)",
+                            background: "var(--bg-secondary)",
+                            color: "var(--text-primary)",
+                            width: "110px",
+                            fontWeight: "700",
+                            fontSize: "13px"
+                          }}
+                        />
+                        <button
+                          onClick={handleSavePlate}
+                          disabled={savingPlate}
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            border: "none",
+                            background: "#22c55e",
+                            color: "#fff",
+                            cursor: "pointer",
+                            fontSize: "12px"
+                          }}
+                          title="Lưu"
+                        >
+                          {savingPlate ? "..." : <i className="fa-solid fa-check"></i>}
+                        </button>
+                        <button
+                          onClick={() => setIsEditingPlate(false)}
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            border: "none",
+                            background: "#ef4444",
+                            color: "#fff",
+                            cursor: "pointer",
+                            fontSize: "12px"
+                          }}
+                          title="Hủy"
+                        >
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          ...styles.modalValue,
+                          color: "#3b82f6",
+                          fontWeight: "700",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "8px"
+                        }}
+                      >
+                        {selectedBooking.LicensePlate}
+                        {(() => {
+                          const bookingDate = new Date(selectedBooking.BookingDate);
+                          const today = new Date();
+                          const isToday = 
+                            bookingDate.getFullYear() === today.getFullYear() &&
+                            bookingDate.getMonth() === today.getMonth() &&
+                            bookingDate.getDate() === today.getDate();
+                          const isEditableStatus = [2, 3].includes(Number(selectedBooking.Status));
+                          
+                          if (isToday && isEditableStatus) {
+                            return (
+                              <button
+                                onClick={() => {
+                                  setTempPlate(selectedBooking.LicensePlate);
+                                  setIsEditingPlate(true);
+                                }}
+                                style={{
+                                  background: "transparent",
+                                  border: "none",
+                                  color: "#3b82f6",
+                                  cursor: "pointer",
+                                  fontSize: "12px",
+                                  padding: "0",
+                                  display: "inline-flex",
+                                  alignItems: "center"
+                                }}
+                                title="Sửa biển số"
+                              >
+                                <i className="fa-solid fa-pen" style={{ fontSize: "11px" }}></i>
+                              </button>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
                   </div>
                   <div style={styles.modalField}>
                     <label style={styles.modalLabel}>Loại xe</label>

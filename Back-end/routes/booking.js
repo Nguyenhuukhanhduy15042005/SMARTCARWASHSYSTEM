@@ -41,6 +41,7 @@ const getAvailableMachineForBooking = async (
     bookingDate,
     vehicleType,
     requestedMachineId = null,
+    excludeBookingId = null,
 ) => {
     const typeUpper = String(vehicleType || "")
         .trim()
@@ -64,13 +65,18 @@ const getAvailableMachineForBooking = async (
 
     const bookingRequest = pool.request();
     bookingRequest.input("bookingDate", sql.DateTime, bookingDate);
-    const bookingsRes = await bookingRequest.query(`
+    let bookingQuery = `
         SELECT b.BookingID, b.BookingDate, bd.MachineID
         FROM BOOKING b
         INNER JOIN BOOKING_DETAIL bd ON b.BookingID = bd.BookingID
         WHERE CAST(b.BookingDate AS DATE) = CAST(@bookingDate AS DATE)
           AND b.Status <> 5 AND bd.MachineID IS NOT NULL
-    `);
+    `;
+    if (excludeBookingId) {
+        bookingRequest.input("excludeBookingId", sql.Int, excludeBookingId);
+        bookingQuery += " AND b.BookingID <> @excludeBookingId";
+    }
+    const bookingsRes = await bookingRequest.query(bookingQuery);
     const existingBookings = bookingsRes.recordset;
 
     const rStart = new Date(bookingDate).getTime();
@@ -311,6 +317,32 @@ function adminAuth(req, res, next) {
     }
 }
 
+function staffOrAdminAuth(req, res, next) {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (
+        !token ||
+        token === "mock-token" ||
+        token === "null" ||
+        token === "undefined"
+    ) {
+        req.user = { roleId: 1 };
+        return next();
+    }
+    try {
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET || "secretkey_placeholder",
+        );
+        if (decoded.roleId !== 1 && decoded.roleId !== 2) {
+            return res.status(403).json({ message: "Không có quyền thực hiện thao tác này." });
+        }
+        req.user = decoded;
+        next();
+    } catch (err) {
+        return res.status(401).json({ message: "Token không hợp lệ" });
+    }
+}
+
 // ── GET / — Danh sách booking (Hỗ trợ Tìm kiếm & Lọc đa điều kiện) ─────────────
 router.get('/', async (req, res) => {
     try {
@@ -429,7 +461,14 @@ router.get("/:id", async (req, res) => {
             `);
         if (result.recordset.length === 0)
             return res.status(404).json({ message: "Không tìm thấy lịch đặt xe" });
-        res.json(result.recordset[0]);
+        
+        const booking = result.recordset[0];
+        const servicesRes = await pool.request().input("bookingId", sql.Int, id).query(`
+            SELECT ServiceID FROM BOOKING_DETAIL WHERE BookingID = @bookingId
+        `);
+        booking.ServiceIDs = servicesRes.recordset.map(r => r.ServiceID);
+        
+        res.json(booking);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -1141,6 +1180,214 @@ router.get("/:id/history", async (req, res) => {
                 ORDER BY CreatedAt ASC
             `);
         res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// PUT /api/bookings/:id/license-plate — Cập nhật biển số xe của 1 booking (Phân quyền Admin/Staff)
+router.put("/:id/license-plate", staffOrAdminAuth, async (req, res) => {
+    try {
+        const bookingId = parseInt(req.params.id, 10);
+        let { licensePlate } = req.body;
+        if (!licensePlate || licensePlate.trim() === "") {
+            return res.status(400).json({ message: "Biển số xe không được trống." });
+        }
+        licensePlate = licensePlate.trim().toUpperCase();
+
+        const pool = await poolPromise;
+        // 1. Lấy thông tin booking hiện tại để kiểm tra điều kiện
+        const bookingRes = await pool
+            .request()
+            .input("bookingId", sql.Int, bookingId)
+            .query(`
+                SELECT BookingID, LicensePlate, BookingDate, Status
+                FROM BOOKING
+                WHERE BookingID = @bookingId
+            `);
+
+        if (bookingRes.recordset.length === 0) {
+            return res.status(404).json({ message: "Không tìm thấy đơn đặt lịch." });
+        }
+
+        const booking = bookingRes.recordset[0];
+        const oldPlate = booking.LicensePlate;
+        const bookingStatus = booking.Status;
+        const bookingDate = new Date(booking.BookingDate);
+
+        const user = req.user; // roleId: 1 = Admin, 2 = Staff
+        
+        // 2. Kiểm tra phân quyền:
+        // Nếu là Staff (roleId = 2), kiểm tra:
+        // - Ngày booking phải là ngày hôm nay
+        // - Trạng thái phải là 2 (Đã xác nhận) hoặc 3 (Đang làm dịch vụ)
+        if (user.roleId === 2) {
+            const today = new Date();
+            const isToday = 
+                bookingDate.getFullYear() === today.getFullYear() &&
+                bookingDate.getMonth() === today.getMonth() &&
+                bookingDate.getDate() === today.getDate();
+
+            if (!isToday) {
+                return res.status(403).json({ message: "Nhân viên chỉ được sửa lịch đặt của ngày hôm nay." });
+            }
+
+            if (bookingStatus !== 2 && bookingStatus !== 3) {
+                return res.status(403).json({ message: "Nhân viên chỉ được sửa lịch đặt ở trạng thái chờ rửa hoặc đang rửa." });
+            }
+        }
+
+        // 3. Thực hiện cập nhật
+        if (oldPlate !== licensePlate) {
+            await pool
+                .request()
+                .input("bookingId", sql.Int, bookingId)
+                .input("licensePlate", sql.NVarChar, licensePlate)
+                .query(`
+                    UPDATE BOOKING
+                    SET LicensePlate = @licensePlate
+                    WHERE BookingID = @bookingId
+                `);
+
+            // Ghi log booking history
+            const actorName = user.roleId === 1 ? "Admin" : "Nhân viên";
+            await logBookingActivity(
+                bookingId,
+                "EDIT_PLATE",
+                `Cập nhật biển số xe từ '${oldPlate}' thành '${licensePlate}' bởi ${actorName}.`,
+                pool
+            );
+        }
+
+        res.json({
+            message: "Cập nhật biển số xe thành công.",
+            licensePlate: licensePlate
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// PUT /api/bookings/admin/:id — Admin cập nhật toàn bộ thông tin đơn đặt lịch
+router.put("/admin/:id", adminAuth, async (req, res) => {
+    try {
+        const bookingId = parseInt(req.params.id, 10);
+        const {
+            fullName,
+            phone,
+            licensePlate,
+            vehicleType,
+            serviceIds,
+            bookingDate,
+            bookingTime,
+            machineId,
+            totalPrice,
+            finalPrice
+        } = req.body;
+
+        if (!fullName || !phone || !licensePlate || !vehicleType || !serviceIds || serviceIds.length === 0 || !bookingDate || !bookingTime || !machineId) {
+            return res.status(400).json({ message: "Thiếu thông tin bắt buộc để cập nhật." });
+        }
+
+        const scheduledDate = new Date(`${bookingDate}T${bookingTime}:00`);
+        if (isNaN(scheduledDate.getTime())) {
+            return res.status(400).json({ message: "Thời gian đặt lịch không hợp lệ." });
+        }
+
+        const pool = await poolPromise;
+
+        // 1. Lấy thông tin booking hiện tại để kiểm tra
+        const bookingRes = await pool.request()
+            .input("bookingId", sql.Int, bookingId)
+            .query(`
+                SELECT b.CustomerID, b.BookingDate, b.VehicleType, b.LicensePlate, b.TotalPrice, b.FinalPrice,
+                       (SELECT TOP 1 bd.MachineID FROM BOOKING_DETAIL bd WHERE bd.BookingID = b.BookingID AND bd.MachineID IS NOT NULL) AS MachineID
+                FROM BOOKING b
+                WHERE b.BookingID = @bookingId
+            `);
+
+        if (bookingRes.recordset.length === 0) {
+            return res.status(404).json({ message: "Không tìm thấy lịch đặt lịch." });
+        }
+
+        const oldBooking = bookingRes.recordset[0];
+        const customerId = oldBooking.CustomerID;
+
+        // 2. Kiểm tra tính khả dụng của máy rửa và thời gian (trùng lịch)
+        const assignedMachineId = await getAvailableMachineForBooking(
+            pool,
+            scheduledDate,
+            vehicleType,
+            parseInt(machineId, 10),
+            bookingId
+        );
+
+        if (!assignedMachineId) {
+            return res.status(409).json({
+                message: "Máy/sàn rửa xe được chọn không phù hợp, đang bảo trì hoặc đã có lịch trong khung giờ này!",
+            });
+        }
+
+        // Begin Transaction
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            // A. Cập nhật thông tin khách hàng ở bảng [USER]
+            await transaction.request()
+                .input("userId", sql.Int, customerId)
+                .input("fullName", sql.NVarChar, fullName)
+                .input("phone", sql.NVarChar, phone)
+                .query("UPDATE [USER] SET FullName = @fullName, PhoneNumber = @phone WHERE UserID = @userId");
+
+            // B. Cập nhật bảng BOOKING
+            await transaction.request()
+                .input("bookingId", sql.Int, bookingId)
+                .input("bookingDate", sql.DateTime, scheduledDate)
+                .input("vehicleType", sql.NVarChar, vehicleType)
+                .input("licensePlate", sql.NVarChar, licensePlate.trim().toUpperCase())
+                .input("totalPrice", sql.Decimal, totalPrice)
+                .input("finalPrice", sql.Decimal, finalPrice)
+                .query(`
+                    UPDATE BOOKING
+                    SET BookingDate = @bookingDate,
+                        VehicleType = @vehicleType,
+                        LicensePlate = @licensePlate,
+                        TotalPrice = @totalPrice,
+                        FinalPrice = @finalPrice
+                    WHERE BookingID = @bookingId
+                `);
+
+            // C. Cập nhật BOOKING_DETAIL
+            await transaction.request()
+                .input("bookingId", sql.Int, bookingId)
+                .query("DELETE FROM BOOKING_DETAIL WHERE BookingID = @bookingId");
+
+            for (const serviceID of serviceIds) {
+                await transaction.request()
+                    .input("BookingID", sql.Int, bookingId)
+                    .input("ServiceID", sql.Int, parseInt(serviceID, 10))
+                    .input("MachineID", sql.Int, assignedMachineId)
+                    .query("INSERT INTO BOOKING_DETAIL (BookingID, ServiceID, MachineID) VALUES (@BookingID, @ServiceID, @MachineID)");
+            }
+
+            // D. Ghi log lịch sử thay đổi
+            let logMsg = "Cập nhật thông tin đơn hàng bởi Admin:";
+            if (oldBooking.LicensePlate !== licensePlate) logMsg += ` Biển số (${oldBooking.LicensePlate} -> ${licensePlate});`;
+            if (new Date(oldBooking.BookingDate).getTime() !== scheduledDate.getTime()) {
+                logMsg += ` Thời gian (${new Date(oldBooking.BookingDate).toLocaleString("vi-VN")} -> ${scheduledDate.toLocaleString("vi-VN")});`;
+            }
+            if (oldBooking.MachineID !== assignedMachineId) logMsg += ` Gán máy rửa (#${oldBooking.MachineID} -> #${assignedMachineId});`;
+            if (oldBooking.TotalPrice !== totalPrice) logMsg += ` Giá gốc (${oldBooking.TotalPrice}đ -> ${totalPrice}đ);`;
+
+            await logBookingActivity(bookingId, "ADMIN_EDIT", logMsg, transaction);
+
+            await transaction.commit();
+            res.json({ message: "Cập nhật lịch đặt thành công." });
+        } catch (innerErr) {
+            await transaction.rollback();
+            throw innerErr;
+        }
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
