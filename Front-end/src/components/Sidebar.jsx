@@ -80,6 +80,7 @@ export default function Sidebar() {
         icon: "fa-solid fa-tags",
       },
       { path: "/admin/feedbacks", label: "Đánh giá", icon: "fa-solid fa-star" },
+      { path: "/admin/refund-requests", label: "Hoàn tiền", icon: "fa-solid fa-money-bill-transfer" },
     );
   } else if (role === "staff") {
     menuItems.push(
@@ -110,6 +111,7 @@ export default function Sidebar() {
         icon: "fa-solid fa-tags",
       },
       { path: "/staff/feedbacks", label: "Đánh giá", icon: "fa-solid fa-star" },
+      { path: "/staff/refund-requests", label: "Hoàn tiền", icon: "fa-solid fa-money-bill-transfer" },
     );
   } else {
     menuItems.push(

@@ -223,6 +223,29 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+  /* Cho phép menu tự cuộn khi danh sách dài, không đẩy phần footer ra ngoài viewport */
+  flex: 1 1 auto;
+  min-height: 0; /* bắt buộc để flex item có thể co lại nhỏ hơn nội dung của nó */
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  /* Thanh cuộn mảnh, tiệp màu, chỉ hiện khi cần */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color-portal) transparent;
+}
+
+.portal-sidebar-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.portal-sidebar-menu::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+.portal-sidebar-menu::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .portal-menu-item {
@@ -280,8 +303,12 @@
   transition-delay: 0.05s;
 }
 
+/* Khối dưới cùng (ThemePanel + Đăng xuất): luôn giữ nguyên vị trí, không bị cuộn cùng menu */
+.portal-sidebar-bottom {
+  flex-shrink: 0;
+}
+
 .portal-sidebar-footer {
-  margin-top: auto;
   border-top: 1px solid transparent;
   padding-top: 20px;
   transition: border-color 0.3s;

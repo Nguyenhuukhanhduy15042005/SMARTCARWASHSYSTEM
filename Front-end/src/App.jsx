@@ -29,6 +29,8 @@ import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 // Duy thêm mới: trang Khảo sát Survey dành cho Admin
 import SurveyDashboard from "./pages/SurveyDashboard";
 import BehaviorAnalytics from "./pages/BehaviorAnalytics";
+import RefundRequestManagement from "./pages/RefundRequestManagement";
+import RefundRequestStaff from "./pages/RefundRequestStaff";
 const getStoredRole = () => {
   try {
     const savedUser = JSON.parse(localStorage.getItem("LOGIN_USER") || "null");
@@ -298,6 +300,22 @@ function App() {
           element={
             <ProtectedRoute requiredRole="user">
               <PaymentResult />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/refund-requests"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <RefundRequestManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/refund-requests"
+          element={
+            <ProtectedRoute requiredRole="staff">
+              <RefundRequestStaff />
             </ProtectedRoute>
           }
         />
