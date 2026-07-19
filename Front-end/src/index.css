@@ -8,12 +8,40 @@
   font-family: "Inter", sans-serif;
 }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+}
+
 body {
   background-color: #fcf7f0;
   color: #1e293b;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+
+#root {
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Bypass hoàn toàn Tailwind container - dùng class riêng để căn giữa */
+.page-center {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  box-sizing: border-box;
 }
 
 /* =========================================
