@@ -637,6 +637,33 @@ const swaggerSpec = {
         },
       },
     },
+    "/api/bookings/{id}/license-plate": {
+      put: {
+        tags: ["Bookings"],
+        summary: "Staff hoặc Admin cập nhật biển số xe của lịch đặt (Staff chỉ được sửa hôm nay ở trạng thái Chờ rửa/Đang rửa)",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["licensePlate"],
+                properties: {
+                  licensePlate: { type: "string", example: "29A-12345" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: "Cập nhật biển số thành công" },
+          400: { description: "Biển số xe không hợp lệ hoặc sai điều kiện sửa của Staff" },
+          404: { description: "Không tìm thấy lịch đặt" }
+        }
+      }
+    },
     "/api/bookings/{id}/transition": {
       post: {
         tags: ["Bookings"],
@@ -715,6 +742,41 @@ const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
         responses: { 200: { description: "Xóa thành công" } },
+      },
+      put: {
+        tags: ["Bookings"],
+        summary: "Admin cập nhật toàn bộ thông tin đơn đặt lịch",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["fullName", "phone", "licensePlate", "vehicleType", "serviceIds", "bookingDate", "bookingTime", "machineId", "totalPrice", "finalPrice"],
+                properties: {
+                  fullName: { type: "string", example: "Nguyễn Văn A" },
+                  phone: { type: "string", example: "0901234567" },
+                  licensePlate: { type: "string", example: "29A-12345" },
+                  vehicleType: { type: "string", enum: ["CAR", "BIKE"], example: "CAR" },
+                  serviceIds: { type: "array", items: { type: "integer" }, example: [2, 14] },
+                  bookingDate: { type: "string", format: "date", example: "2026-07-19" },
+                  bookingTime: { type: "string", example: "16:30" },
+                  machineId: { type: "integer", example: 4 },
+                  totalPrice: { type: "number", example: 180000 },
+                  finalPrice: { type: "number", example: 180000 }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: "Cập nhật đơn đặt lịch thành công" },
+          400: { description: "Thiếu thông tin bắt buộc" },
+          409: { description: "Lịch hẹn bị trùng hoặc máy rửa bận/bảo trì" },
+          440: { description: "Không tìm thấy khách hàng hoặc lịch đặt" }
+        }
       },
     },
     "/api/bookings/admin/create": {
