@@ -61,12 +61,12 @@ const Home = () => {
             >
               Trang chủ
             </Link>
-            <Link
-              to="/login"
+            <a
+              href="#services"
               className="text-base font-medium text-gray-600 hover:text-[#192b4d] transition-colors"
             >
               Dịch vụ
-            </Link>
+            </a>
 
             {/* Đặt lịch: chỉ user thường thấy */}
             {(!user || isUser()) && (
@@ -253,8 +253,8 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Panel trực quan — thay cho ảnh stock */}
-        <div className="relative w-full min-w-0 aspect-[4/5] rounded-[2rem] overflow-hidden shadow-2xl bg-gradient-to-br from-[#192b4d] via-[#22315c] to-[#0A8C97]">
+        {/* Panel trực quan — minh hoạ tự vẽ: xe đi qua dàn rửa tự động */}
+        <div className="relative w-full min-w-0 aspect-[4/5] rounded-[2rem] overflow-hidden shadow-2xl bg-gradient-to-br from-[#192b4d] via-[#1c2c50] to-[#0A8C97]">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute -inset-y-10 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-[sweep_5s_ease-in-out_infinite]" />
           </div>
@@ -265,84 +265,101 @@ const Home = () => {
                 <stop offset="0%" stopColor="#4CEBF5" />
                 <stop offset="100%" stopColor="#0A8C97" />
               </linearGradient>
-              <radialGradient id="spotlight" cx="50%" cy="42%" r="60%">
+              <linearGradient id="brushGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#1D9E75" />
+                <stop offset="100%" stopColor="#0F6E56" />
+              </linearGradient>
+              <radialGradient id="spotlight" cx="50%" cy="40%" r="65%">
                 <stop offset="0%" stopColor="rgba(255,255,255,0.14)" />
                 <stop offset="100%" stopColor="rgba(255,255,255,0)" />
               </radialGradient>
-              <radialGradient id="shadow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="rgba(0,0,0,0.35)" />
-                <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+              <radialGradient id="foamGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
+                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
               </radialGradient>
             </defs>
 
             <rect x="0" y="0" width="400" height="500" fill="url(#spotlight)" />
 
-            {/* bong bóng / giọt nước — bố trí đối xứng thành 1 khung quanh viền: 4 góc + mép trên/dưới/trái/phải */}
-            {/* 4 góc */}
-            <circle cx="50" cy="50" r="4" fill="rgba(255,255,255,.3)" />
-            <circle cx="50" cy="50" r="8" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="1" />
-            <circle cx="350" cy="50" r="4" fill="rgba(255,255,255,.3)" />
-            <circle cx="350" cy="50" r="8" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="1" />
-            <circle cx="50" cy="450" r="4" fill="rgba(255,255,255,.3)" />
-            <circle cx="50" cy="450" r="8" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="1" />
-            <circle cx="350" cy="450" r="4" fill="rgba(255,255,255,.3)" />
-            <circle cx="350" cy="450" r="8" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="1" />
+            {/* thanh ray + vạch chỉ hướng di chuyển của xe qua dàn rửa */}
+            <line x1="20" y1="400" x2="380" y2="400" stroke="rgba(255,255,255,.14)" strokeWidth="2" />
+            <path d="M300 400 l14 0 l-6 -6 M314 400 l-6 6" stroke="rgba(255,255,255,.35)" strokeWidth="2" strokeLinecap="round" fill="none" />
 
-            {/* mép trên / mép dưới — đối xứng trái phải */}
-            <circle cx="140" cy="32" r="3" fill="rgba(255,255,255,.26)" />
-            <circle cx="260" cy="32" r="3" fill="rgba(255,255,255,.26)" />
-            <circle cx="140" cy="468" r="3" fill="rgba(255,255,255,.26)" />
-            <circle cx="260" cy="468" r="3" fill="rgba(255,255,255,.26)" />
+            {/* vòi phun nước phía trên */}
+            <rect x="60" y="48" width="280" height="10" rx="5" fill="rgba(255,255,255,.12)" />
+            {[95, 140, 200, 260, 305].map((x, i) => (
+              <g key={x}>
+                <circle cx={x} cy="58" r="3" fill="#4CEBF5" />
+                <line
+                  x1={x}
+                  y1="61"
+                  x2={x - 6}
+                  y2="150"
+                  stroke="#4CEBF5"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  opacity="0.55"
+                >
+                  <animate attributeName="opacity" values="0.15;0.6;0.15" dur="1.6s" repeatCount="indefinite" begin={`${i * 0.15}s`} />
+                </line>
+              </g>
+            ))}
 
-            {/* mép trái / mép phải — đối xứng trên dưới */}
-            <circle cx="22" cy="165" r="3" fill="rgba(255,255,255,.22)" />
-            <circle cx="22" cy="335" r="3" fill="rgba(255,255,255,.22)" />
-            <circle cx="378" cy="165" r="3" fill="rgba(255,255,255,.22)" />
-            <circle cx="378" cy="335" r="3" fill="rgba(255,255,255,.22)" />
+            {/* cụm chổi quay bên trái */}
+            <g transform="translate(38,150)">
+              <rect x="0" y="0" width="26" height="230" rx="13" fill="url(#brushGrad)" />
+              {Array.from({ length: 9 }).map((_, i) => (
+                <line key={i} x1="-6" y1={14 + i * 25} x2="32" y2={2 + i * 25} stroke="rgba(255,255,255,.35)" strokeWidth="3" strokeLinecap="round" />
+              ))}
+              <path d="M-14 40 a20 20 0 0 1 0 -30" stroke="rgba(255,255,255,.3)" strokeWidth="2" fill="none" strokeLinecap="round">
+                <animateTransform attributeName="transform" type="rotate" from="0 13 25" to="360 13 25" dur="1.8s" repeatCount="indefinite" />
+              </path>
+            </g>
 
-            {/* điểm nhấn chính giữa mép trên, giữ trục đối xứng dọc */}
-            <circle cx="200" cy="22" r="2.5" fill="rgba(255,255,255,.2)" />
+            {/* cụm chổi quay bên phải */}
+            <g transform="translate(336,150)">
+              <rect x="0" y="0" width="26" height="230" rx="13" fill="url(#brushGrad)" />
+              {Array.from({ length: 9 }).map((_, i) => (
+                <line key={i} x1="32" y1={14 + i * 25} x2="-6" y2={2 + i * 25} stroke="rgba(255,255,255,.35)" strokeWidth="3" strokeLinecap="round" />
+              ))}
+              <path d="M40 40 a20 20 0 0 0 0 -30" stroke="rgba(255,255,255,.3)" strokeWidth="2" fill="none" strokeLinecap="round">
+                <animateTransform attributeName="transform" type="rotate" from="0 13 25" to="-360 13 25" dur="1.8s" repeatCount="indefinite" />
+              </path>
+            </g>
 
-            {/* bóng đổ dưới xe — đã căn lại theo vị trí xe mới */}
-            <ellipse cx="200" cy="295" rx="140" ry="15" fill="url(#shadow)" />
+            {/* bọt / bong bóng quanh gầm xe */}
+            <ellipse cx="200" cy="392" rx="130" ry="20" fill="url(#foamGlow)" />
+            <circle cx="120" cy="388" r="6" fill="rgba(255,255,255,.55)" />
+            <circle cx="150" cy="398" r="4" fill="rgba(255,255,255,.4)" />
+            <circle cx="250" cy="396" r="5" fill="rgba(255,255,255,.45)" />
+            <circle cx="280" cy="386" r="7" fill="rgba(255,255,255,.5)" />
+            <circle cx="200" cy="402" r="3.5" fill="rgba(255,255,255,.35)" />
 
-            <g transform="translate(33,165)">
+            {/* xe */}
+            <g transform="translate(70,255)">
               <path
-                d="M10 90 Q0 60 30 55 L60 20 Q75 5 110 5 L230 5 Q265 5 280 25 L305 55 Q335 58 328 90 Q328 105 310 105 L295 105 Q290 118 275 118 Q260 118 255 105 L95 105 Q90 118 75 118 Q60 118 55 105 L28 105 Q10 105 10 90 Z"
+                d="M10 90 Q0 60 30 55 L60 20 Q75 5 110 5 L170 5 Q205 5 220 25 L245 55 Q275 58 268 90 Q268 105 250 105 L235 105 Q230 118 215 118 Q200 118 195 105 L75 105 Q70 118 55 118 Q40 118 35 105 L28 105 Q10 105 10 90 Z"
                 fill="url(#carGrad)"
               />
-              {/* viền sáng trên nóc xe */}
               <path
-                d="M63 53 L86 22 Q98 8 115 8 L225 8"
+                d="M63 53 L86 22 Q98 8 115 8 L165 8"
                 fill="none"
                 stroke="rgba(255,255,255,.55)"
                 strokeWidth="2.5"
                 strokeLinecap="round"
               />
-              {/* kính lái — kính chắn gió */}
-              <path
-                d="M65 55 L85 25 Q95 15 115 15 L172 15 L172 55 Z"
-                fill="rgba(20,24,43,.4)"
-              />
-              <path
-                d="M178 15 L225 15 Q245 15 258 28 L275 55 L178 55 Z"
-                fill="rgba(20,24,43,.4)"
-              />
-              {/* phản chiếu trên kính */}
+              <path d="M65 55 L85 25 Q95 15 115 15 L152 15 L152 55 Z" fill="rgba(20,24,43,.4)" />
+              <path d="M158 15 L165 15 Q185 15 198 28 L215 55 L158 55 Z" fill="rgba(20,24,43,.4)" />
               <path d="M92 48 L108 22 L118 22 L102 48 Z" fill="rgba(255,255,255,.25)" />
-              <path d="M195 20 L235 20 L250 40 L195 40 Z" fill="rgba(255,255,255,.12)" />
-              {/* trụ cửa giữa */}
-              <rect x="172" y="12" width="4" height="45" fill="rgba(20,24,43,.5)" />
+              <rect x="152" y="12" width="4" height="45" fill="rgba(20,24,43,.5)" />
 
-              {/* bánh xe */}
-              <circle cx="75" cy="108" r="18" fill="#0B1130" />
-              <circle cx="75" cy="108" r="18" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="1.5" />
-              <circle cx="75" cy="108" r="7" fill="#4CEBF5" />
-              <circle cx="275" cy="108" r="18" fill="#0B1130" />
-              <circle cx="275" cy="108" r="18" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="1.5" />
-              <circle cx="275" cy="108" r="7" fill="#4CEBF5" />
+              <circle cx="75" cy="108" r="17" fill="#0B1130" />
+              <circle cx="75" cy="108" r="17" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="1.5" />
+              <circle cx="75" cy="108" r="6.5" fill="#4CEBF5" />
+              <circle cx="215" cy="108" r="17" fill="#0B1130" />
+              <circle cx="215" cy="108" r="17" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="1.5" />
+              <circle cx="215" cy="108" r="6.5" fill="#4CEBF5" />
 
-              {/* gương chiếu hậu */}
               <path d="M58 48 Q48 46 47 56 Q47 62 55 61" fill="#0A8C97" />
             </g>
           </svg>
@@ -395,6 +412,188 @@ const Home = () => {
               <p className="text-sm text-gray-600 leading-relaxed">{s.d}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Dịch vụ */}
+      <section id="services" className="bg-white border-y border-black/5 scroll-mt-24">
+        <div className="container mx-auto px-6 py-24">
+          <div className="max-w-lg mb-14">
+            <div className="text-xs font-bold uppercase tracking-wider text-[#0A8C97] mb-2">
+              Dịch vụ
+            </div>
+            <h3 className="text-3xl font-extrabold text-[#192b4d]">
+              Chọn đúng gói cho từng loại xe
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                t: "Rửa nhanh",
+                d: "Rửa thân xe, vệ sinh la-zăng, sấy khô — xong trong 15 phút.",
+                icon: (
+                  <path d="M4 12h16M4 12l3-6h10l3 6M4 12v5a1 1 0 001 1h1a1 1 0 001-1v-1h10v1a1 1 0 001 1h1a1 1 0 001-1v-5" />
+                ),
+              },
+              {
+                t: "Nội thất",
+                d: "Hút bụi, lau taplo, khử mùi toàn bộ khoang lái.",
+                icon: <path d="M4 6h16v9a3 3 0 01-3 3H7a3 3 0 01-3-3V6zM8 6V4h8v2" />,
+              },
+              {
+                t: "Phủ ceramic",
+                d: "Phủ bảo vệ sơn, chống xước nhẹ và ố nước lên đến 6 tháng.",
+                icon: <path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z" />,
+              },
+              {
+                t: "Rửa tại nhà",
+                d: "Đội kỹ thuật mang thiết bị đến tận nơi, không cần chờ ở tiệm.",
+                icon: <path d="M3 11l9-7 9 7M5 10v9a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1v-9" />,
+              },
+            ].map((s) => (
+              <div
+                key={s.t}
+                className="group rounded-2xl border border-black/5 p-7 hover:border-[#0A8C97]/30 hover:shadow-lg transition-all"
+              >
+                <div className="w-12 h-12 rounded-xl bg-[#E6F6F4] flex items-center justify-center mb-5 group-hover:bg-[#0A8C97] transition-colors">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#0A8C97"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-6 h-6 group-hover:stroke-white transition-colors"
+                  >
+                    {s.icon}
+                  </svg>
+                </div>
+                <h4 className="text-base font-bold text-[#192b4d] mb-2">{s.t}</h4>
+                <p className="text-sm text-gray-600 leading-relaxed">{s.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Hạng thành viên */}
+      <section id="membership" className="container mx-auto px-6 py-24 scroll-mt-24">
+        <div className="max-w-lg mb-14">
+          <div className="text-xs font-bold uppercase tracking-wider text-[#0A8C97] mb-2">
+            Hạng thành viên
+          </div>
+          <h3 className="text-3xl font-extrabold text-[#192b4d]">
+            Rửa càng nhiều, đặt cọc càng ít
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            {
+              tier: "Bronze",
+              color: "#B08D57",
+              bg: "#FBF3E9",
+              rule: "Đặt cọc 10% khi giữ lịch",
+              perk: "Tích điểm cơ bản trên mỗi lượt rửa",
+            },
+            {
+              tier: "Silver",
+              color: "#8C97A6",
+              bg: "#F1F3F6",
+              rule: "Đặt cọc 10% khi giữ lịch",
+              perk: "Ưu tiên khung giờ cuối tuần",
+            },
+            {
+              tier: "Gold",
+              color: "#C7941C",
+              bg: "#FDF6E3",
+              rule: "Giữ lịch miễn cọc",
+              perk: "Đổi điểm lấy dịch vụ nâng cấp",
+              note: "Huỷ trễ nhiều lần sẽ áp lại cọc",
+            },
+            {
+              tier: "Platinum",
+              color: "#192b4d",
+              bg: "#EFF1F6",
+              rule: "Giữ lịch miễn cọc",
+              perk: "Riêng 1 kỹ thuật viên phụ trách",
+              note: "Huỷ trễ nhiều lần sẽ áp lại cọc",
+            },
+          ].map((m) => (
+            <div
+              key={m.tier}
+              className="rounded-2xl p-7 border border-black/5"
+              style={{ background: m.bg }}
+            >
+              <div
+                className="text-xs font-bold uppercase tracking-wider mb-4"
+                style={{ color: m.color }}
+              >
+                {m.tier}
+              </div>
+              <p className="text-sm font-semibold text-[#192b4d] mb-3">{m.rule}</p>
+              <p className="text-sm text-gray-600 leading-relaxed">{m.perk}</p>
+              {m.note && (
+                <p className="text-xs text-gray-400 mt-3 leading-relaxed">{m.note}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Đánh giá khách hàng */}
+      <section className="bg-[#192b4d]">
+        <div className="container mx-auto px-6 py-24">
+          <div className="max-w-lg mb-14">
+            <div className="text-xs font-bold uppercase tracking-wider text-[#4CEBF5] mb-2">
+              Khách nói gì
+            </div>
+            <h3 className="text-3xl font-extrabold text-white">
+              Được tin dùng bởi khách chạy xe hằng ngày
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                q: "Đặt lịch buổi sáng, trưa quay lại xe đã sạch bong — không phải gọi hỏi lại lần nào.",
+                n: "Minh Anh",
+                r: "Khách hàng hạng Gold",
+              },
+              {
+                q: "Theo dõi tiến trình rửa xe ngay trên điện thoại, biết chính xác khi nào nên quay lại lấy xe.",
+                n: "Quốc Bảo",
+                r: "Khách hàng hạng Silver",
+              },
+              {
+                q: "Gói rửa tại nhà tiện cho lịch làm việc dày, không cần tranh thủ giờ nghỉ trưa nữa.",
+                n: "Thu Hà",
+                r: "Khách hàng hạng Platinum",
+              },
+            ].map((t) => (
+              <div key={t.n} className="rounded-2xl bg-white/5 border border-white/10 p-7">
+                <p className="text-sm text-white/90 leading-relaxed mb-6">“{t.q}”</p>
+                <div className="text-sm font-bold text-white">{t.n}</div>
+                <div className="text-xs text-[#4CEBF5]">{t.r}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA cuối trang */}
+      <section className="container mx-auto px-6 py-24">
+        <div className="rounded-[2rem] bg-gradient-to-br from-[#0A8C97] to-[#192b4d] px-10 py-16 text-center">
+          <h3 className="text-3xl md:text-4xl font-extrabold text-white mb-4">
+            Xe bẩn không đợi được, lịch trống thì có.
+          </h3>
+          <p className="text-white/80 max-w-md mx-auto mb-8">
+            Đặt lịch trong 30 giây, chọn khung giờ gần bạn nhất và theo dõi tiến trình theo thời gian thực.
+          </p>
+          <Link
+            to="/booking"
+            className="inline-block px-8 py-3.5 text-sm font-bold text-[#192b4d] bg-white rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+          >
+            Đặt lịch ngay
+          </Link>
         </div>
       </section>
 
