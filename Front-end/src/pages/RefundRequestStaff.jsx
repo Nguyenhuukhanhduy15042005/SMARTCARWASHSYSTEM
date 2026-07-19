@@ -23,13 +23,39 @@ import "./Payment.css";
    chỉ Pending), tương tự điều kiện đã sửa trong mockApi.create() bên dưới.
    Nếu không, staff có thể tạo 2 yêu cầu song song cho cùng 1 payment trong
    lúc yêu cầu đầu đang chờ Admin xem xét.
+
+   ĐÃ NỐI DATA THẬT: USE_MOCK = false. Token JWT được đọc từ localStorage
+   key "TOKEN" (đúng key mà AuthContext.jsx đang lưu khi login), gắn vào
+   header Authorization: Bearer <token> cho mọi request.
+
+   CHỖ CẦN BẠN XÁC NHẬN LẠI: endpoint lấy danh sách "giao dịch đủ điều kiện
+   hoàn tiền" cho dropdown ở tab Tạo yêu cầu đang tạm để là
+   GET /api/payments/refundable (biến PAYMENTS_ENDPOINT bên dưới) — đây là
+   endpoint mình đoán theo quy ước đặt tên của refund-requests, backend của
+   bạn có thể đặt tên khác. Nếu sai, chỉ cần sửa 1 dòng PAYMENTS_ENDPOINT.
 ============================================================================ */
-const USE_MOCK = true;
+const USE_MOCK = false;
 const API_BASE = "/api/refund-requests";
+const PAYMENTS_ENDPOINT = "/api/payments/refundable";
+
+function authHeaders() {
+  const token = typeof window !== "undefined" ? localStorage.getItem("TOKEN") : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 async function apiFetch(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    ...options,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || "Có lỗi xảy ra");
+  return data;
+}
+
+async function apiFetchUrl(url, options = {}) {
+  const res = await fetch(url, {
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     ...options,
   });
   const data = await res.json().catch(() => ({}));
@@ -145,6 +171,10 @@ const mockApi = {
     row.UpdatedAt = new Date();
     return { message: "Đã chuyển sang UnderReview, chờ Admin duyệt", refundId: row.RefundID, status: "UnderReview" };
   },
+  async listPayments() {
+    await wait(200);
+    return { data: MOCK_PAYMENTS };
+  },
 };
 
 const Api = {
@@ -152,6 +182,7 @@ const Api = {
   getById: (id) => USE_MOCK ? mockApi.getById(id) : apiFetch(`/${id}`),
   create: (body) => USE_MOCK ? mockApi.create(body) : apiFetch(`/`, { method: "POST", body: JSON.stringify(body) }),
   startReview: (id) => USE_MOCK ? mockApi.startReview(id) : apiFetch(`/${id}/review-start`, { method: "PATCH" }),
+  listPayments: () => USE_MOCK ? mockApi.listPayments() : apiFetchUrl(PAYMENTS_ENDPOINT),
 };
 
 /* ============================================================================
@@ -477,12 +508,30 @@ function ListView({ rows, loading, statusFilter, setStatusFilter, search, setSea
    CREATE VIEW
 ============================================================================ */
 function CreateView({ onCreated, onError }) {
+  const [payments, setPayments] = useState(USE_MOCK ? MOCK_PAYMENTS : []);
+  const [loadingPayments, setLoadingPayments] = useState(!USE_MOCK);
   const [paymentId, setPaymentId] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
-  const payment = MOCK_PAYMENTS.find((p) => String(p.PaymentID) === String(paymentId));
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await Api.listPayments();
+        if (!cancelled) setPayments(res.data || res || []);
+      } catch (e) {
+        if (!cancelled) onError(`Không tải được danh sách giao dịch: ${e.message}`);
+      } finally {
+        if (!cancelled) setLoadingPayments(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const payment = payments.find((p) => String(p.PaymentID) === String(paymentId));
   const proposal = payment ? computeProposal(payment) : null;
 
   const submit = async (e) => {
@@ -514,15 +563,17 @@ function CreateView({ onCreated, onError }) {
       <form onSubmit={submit}>
         <div className="rq-field">
           <label>Giao dịch thanh toán</label>
-          <select value={paymentId} onChange={(e) => setPaymentId(e.target.value)}>
-            <option value="">— Chọn giao dịch —</option>
-            {MOCK_PAYMENTS.map((p) => (
+          <select value={paymentId} onChange={(e) => setPaymentId(e.target.value)} disabled={loadingPayments}>
+            <option value="">{loadingPayments ? "Đang tải danh sách giao dịch…" : "— Chọn giao dịch —"}</option>
+            {payments.map((p) => (
               <option key={p.PaymentID} value={p.PaymentID}>
                 #{p.PaymentID} · {p.CustomerName} · {p.LicensePlate} · {money(p.Amount)} ({p.PaymentMethod})
               </option>
             ))}
           </select>
-          <div className="hint">Trong hệ thống thật, trường này lấy PaymentID từ trang chi tiết booking.</div>
+          {!loadingPayments && payments.length === 0 && (
+            <div className="hint">Không có giao dịch nào đủ điều kiện tạo yêu cầu hoàn tiền.</div>
+          )}
         </div>
 
         {payment && proposal && (
