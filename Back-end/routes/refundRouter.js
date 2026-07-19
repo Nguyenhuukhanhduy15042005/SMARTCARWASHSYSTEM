@@ -1,4 +1,22 @@
+const express = require('express');
+const router = express.Router();
+const verifyToken = require('../middleware/verifyToken');
 const { sql, poolPromise } = require('../db');
+
+// Role verification middlewares
+const requireStaffOrAdmin = (req, res, next) => {
+  if (req.user.roleId !== 1 && req.user.roleId !== 2) {
+    return res.status(403).json({ message: "Chỉ Admin/Staff mới có quyền thực hiện!" });
+  }
+  next();
+};
+
+const requireAdmin = (req, res, next) => {
+  if (req.user.roleId !== 1) {
+    return res.status(403).json({ message: "Chỉ Admin mới có quyền thực hiện!" });
+  }
+  next();
+};
 
 // ── Helper: lấy thông tin payment + booking ──────────────────────────────────
 const getPaymentInfo = async (pool, paymentId) => {
@@ -494,11 +512,12 @@ const getRefundHistory = async (req, res) => {
   }
 };
 
-module.exports = {
-  createRefundRequest,
-  getRefundRequests,
-  getRefundRequestById,
-  startReview,
-  reviewRefundRequest,
-  getRefundHistory
-};
+// Define router endpoints
+router.post('/', verifyToken, requireStaffOrAdmin, createRefundRequest);
+router.get('/', verifyToken, requireStaffOrAdmin, getRefundRequests);
+router.get('/history', verifyToken, requireAdmin, getRefundHistory);
+router.get('/:id', verifyToken, requireStaffOrAdmin, getRefundRequestById);
+router.patch('/:id/review-start', verifyToken, requireStaffOrAdmin, startReview);
+router.patch('/:id/review', verifyToken, requireAdmin, reviewRefundRequest);
+
+module.exports = router;
