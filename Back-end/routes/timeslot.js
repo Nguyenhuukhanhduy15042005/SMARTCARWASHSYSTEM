@@ -150,10 +150,23 @@ router.get('/machines', async (req, res) => {
     const pool = await poolPromise;
     const type = String(req.query.type || 'ALL').toUpperCase();
     const request = pool.request();
-    let where = '';
+    let where = `
+      WHERE MachineID BETWEEN 1 AND 8
+    `;
 
-    if (type === 'CAR') where = "WHERE MachineType = 'CAR_WASHER'";
-    if (type === 'BIKE') where = "WHERE MachineType = 'BIKE_WASHER'";
+    if (type === 'CAR') {
+      where = `
+        WHERE MachineType = 'CAR_WASHER'
+          AND MachineID BETWEEN 1 AND 4
+      `;
+    }
+
+    if (type === 'BIKE') {
+      where = `
+        WHERE MachineType = 'BIKE_WASHER'
+          AND MachineID BETWEEN 5 AND 8
+      `;
+    }
 
     const result = await request.query(`
       SELECT MachineID, MachineName, MachineType, Status
@@ -294,9 +307,22 @@ router.get('/overview', async (req, res) => {
   try {
     const pool = await poolPromise;
 
-    let machineWhere = '';
-    if (type === 'CAR') machineWhere = "WHERE MachineType = 'CAR_WASHER'";
-    if (type === 'BIKE') machineWhere = "WHERE MachineType = 'BIKE_WASHER'";
+    let machineWhere = `
+      WHERE MachineID BETWEEN 1 AND 8
+    `;
+    if (type === 'CAR') {
+      machineWhere = `
+        WHERE MachineType = 'CAR_WASHER'
+          AND MachineID BETWEEN 1 AND 4
+      `;
+    }
+
+    if (type === 'BIKE') {
+      machineWhere = `
+        WHERE MachineType = 'BIKE_WASHER'
+          AND MachineID BETWEEN 5 AND 8
+      `;
+    }
 
     const machines = await pool.request().query(`
       SELECT MachineID, MachineName, MachineType, Status

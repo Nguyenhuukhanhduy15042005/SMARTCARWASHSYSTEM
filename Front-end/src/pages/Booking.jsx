@@ -124,6 +124,8 @@ export default function Booking() {
   const [services, setServices] = useState([]);
 
   const [selectedService, setSelectedService] = useState(null);
+  const [selectedAddons, setSelectedAddons] = useState([]);
+  const [bookingMode, setBookingMode] = useState("COMBO"); // "COMBO" or "CUSTOM"
 
   const [profile, setProfile] = useState({
     UserID: 12,
@@ -183,7 +185,27 @@ export default function Booking() {
   const showToast = (message, type = "success") => {
     setToast({ message, type });
 
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  };
+
+  const isCombo = (s) => {
+    if (!s) return false;
+    const name = (s.serviceName || "").toLowerCase();
+    return name.includes("+") || name.includes("combo") || name.includes("tron goi") || name.includes("trọn gói");
+  };
+
+  const isBaseWash = (s) => {
+    if (!s) return false;
+    if (isCombo(s)) return false;
+    const name = (s.serviceName || "").toLowerCase();
+    return name.includes("rua") || name.includes("rửa") || name.includes("co ban") || name.includes("cơ bản") || name.includes("cao cap") || name.includes("cao cấp") || name.includes("tai nho") || name.includes("tải nhỏ") || name.includes("vip");
+  };
+
+  const isAddon = (s) => {
+    if (!s) return false;
+    return !isCombo(s) && !isBaseWash(s);
   };
 
   useEffect(() => {
@@ -330,7 +352,14 @@ export default function Booking() {
 
         setServices(list);
 
-        setSelectedService(list.length > 0 ? list[0] : null);
+        let defaultService = null;
+        if (bookingMode === "COMBO") {
+          defaultService = list.find(s => isCombo(s)) || (list.length > 0 ? list[0] : null);
+        } else {
+          defaultService = list.find(s => isBaseWash(s)) || (list.length > 0 ? list[0] : null);
+        }
+        setSelectedService(defaultService);
+        setSelectedAddons([]);
       } catch (err) {
         console.error("Lỗi tải dịch vụ:", err);
 
@@ -460,6 +489,19 @@ export default function Booking() {
     setDate("");
     setTime("");
     setSlotsAvailability({});
+    setSelectedAddons([]);
+  };
+
+  const handleBookingModeChange = (mode) => {
+    setBookingMode(mode);
+    setSelectedAddons([]);
+    let defaultService = null;
+    if (mode === "COMBO") {
+      defaultService = services.find(s => isCombo(s)) || (services.length > 0 ? services[0] : null);
+    } else {
+      defaultService = services.find(s => isBaseWash(s)) || (services.length > 0 ? services[0] : null);
+    }
+    setSelectedService(defaultService);
   };
 
   // Validate biển số realtime khi user nhập + gợi ý và tự nhận diện loại xe
@@ -499,7 +541,9 @@ export default function Booking() {
     }
   };
 
-  const basePrice = selectedService ? selectedService.basePrice : 0;
+  const basePrice =
+    (selectedService ? selectedService.basePrice : 0) +
+    selectedAddons.reduce((sum, item) => sum + item.basePrice, 0);
 
   const discountRate =
     profile.DiscountRate > 1
@@ -561,7 +605,7 @@ export default function Booking() {
 
       MachineID: Number(selectedMachineId),
 
-      ServiceIDs: [selectedService.serviceId],
+      ServiceIDs: [selectedService.serviceId, ...selectedAddons.map(a => a.serviceId)],
     };
 
     setIsSubmitting(true);
@@ -585,10 +629,10 @@ export default function Booking() {
               BookingID:
                 newBooking.BookingID || newBooking.bookingId || newBooking.id,
 
-              ServiceName:
-                selectedService?.serviceName ||
-                selectedService?.ServiceName ||
-                "Dịch vụ rửa xe",
+              ServiceName: [
+                selectedService?.serviceName || selectedService?.ServiceName,
+                ...selectedAddons.map(a => a.serviceName || a.ServiceName)
+              ].filter(Boolean).join(", ") || "Dịch vụ rửa xe",
 
               Date: date,
 
@@ -811,37 +855,222 @@ export default function Booking() {
                     Không tìm thấy gói dịch vụ nào cho loại xe này.
                   </p>
                 ) : (
-                  <div className="space-y-3">
-                    {services.map((s) => (
-                      <div
-                        key={s.serviceId}
-                        className={`service-package-option ${selectedService?.serviceId === s.serviceId ? "active" : ""}`}
-                        onClick={() => setSelectedService(s)}
+                  <div>
+                    {/* Tab Toggle */}
+                    <div style={{ display: "flex", gap: "10px", background: "rgba(255,255,255,0.03)", padding: "4px", borderRadius: "12px", border: "1px solid var(--border)", marginBottom: "20px" }}>
+                      <button
+                        type="button"
+                        onClick={() => handleBookingModeChange("COMBO")}
+                        style={{
+                          flex: 1,
+                          padding: "12px 16px",
+                          borderRadius: "8px",
+                          border: "none",
+                          background: bookingMode === "COMBO" ? "#f97316" : "transparent",
+                          color: bookingMode === "COMBO" ? "#ffffff" : "var(--text-secondary)",
+                          fontWeight: "700",
+                          fontSize: "14px",
+                          cursor: "pointer",
+                          transition: "all 0.2s ease",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px"
+                        }}
                       >
-                        <div className="package-name">
-                          <i
-                            className={`fa-solid ${vehicleType === "BIKE" ? "fa-motorcycle" : "fa-car-burst"} text-orange-500`}
-                          ></i>
+                        <i className="fa-solid fa-gift"></i>
+                        Gói Combo Tiết Kiệm (Khuyên dùng)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleBookingModeChange("CUSTOM")}
+                        style={{
+                          flex: 1,
+                          padding: "12px 16px",
+                          borderRadius: "8px",
+                          border: "none",
+                          background: bookingMode === "CUSTOM" ? "#f97316" : "transparent",
+                          color: bookingMode === "CUSTOM" ? "#ffffff" : "var(--text-secondary)",
+                          fontWeight: "700",
+                          fontSize: "14px",
+                          cursor: "pointer",
+                          transition: "all 0.2s ease",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px"
+                        }}
+                      >
+                        <i className="fa-solid fa-sliders"></i>
+                        Tự Chọn Lẻ Từng Dịch Vụ
+                      </button>
+                    </div>
 
-                          <div>
-                            <span>{s.serviceName}</span>
-
-                            <span className="package-desc">
-                              {s.serviceName.includes("VIP")
-                                ? "Vệ sinh toàn diện, phủ nano sơn và khử mùi nội thất cao cấp"
-                                : s.serviceName.includes("cơ bản") ||
-                                  s.serviceName.includes("tiêu chuẩn")
-                                  ? "Rửa bọt tuyết siêu sạch, xịt gầm và lau khô xe chuyên nghiệp"
-                                  : "Rửa xe bọt tuyết nâng cao kết hợp phủ wax bóng láng bề mặt"}
-                            </span>
+                    {bookingMode === "COMBO" ? (
+                      <div className="space-y-3">
+                        {services
+                          .filter(s => isCombo(s))
+                          .map((s) => (
+                            <div
+                              key={s.serviceId}
+                              className={`service-package-option ${selectedService?.serviceId === s.serviceId ? "active" : ""}`}
+                              onClick={() => {
+                                setSelectedService(s);
+                                setSelectedAddons([]);
+                              }}
+                            >
+                              <div className="package-name">
+                                <i className="fa-solid fa-wand-magic-sparkles text-orange-500"></i>
+                                <div>
+                                  <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                    {s.serviceName}
+                                    <span style={{ fontSize: "10px", background: "rgba(249, 115, 22, 0.2)", color: "#f97316", padding: "2px 6px", borderRadius: "50px", fontWeight: "800", textTransform: "uppercase" }}>COMBO GIẢM GIÁ</span>
+                                  </span>
+                                  <span className="package-desc">
+                                    {s.serviceName.toLowerCase().includes("luxury")
+                                      ? "Gói VIP đẳng cấp: Rửa siêu cấp + Vệ sinh khoang máy chi tiết bằng hóa chất chuyên dụng (Tiết kiệm 50.000đ)."
+                                      : s.serviceName.toLowerCase().includes("mua mua") || s.serviceName.toLowerCase().includes("mưa")
+                                        ? "Gói an toàn mùa mưa: Rửa xe cao cấp + Phủ nano kính lái chống bám nước (Tiết kiệm 40.000đ)."
+                                        : s.serviceName.toLowerCase().includes("sieu biker") || s.serviceName.toLowerCase().includes("biker")
+                                          ? "Combo chăm sóc toàn diện cho xe máy: Rửa VIP + Vệ sinh động cơ + Phủ nano gương (Tiết kiệm 50.000đ)."
+                                          : s.serviceName.toLowerCase().includes("tiet kiem") || s.serviceName.toLowerCase().includes("tiết kiệm")
+                                            ? "Combo tiết kiệm: Rửa xe máy cao cấp bọt tuyết kết hợp vệ sinh làm sạch dầu mỡ động cơ (Tiết kiệm 20.000đ)."
+                                            : s.serviceName.toLowerCase().includes("phuc hoi") || s.serviceName.toLowerCase().includes("phục hồi")
+                                              ? "Combo phục hồi: Rửa xe máy siêu sạch VIP kết hợp làm sạch rỉ sét mâm và đánh bóng chi tiết kim loại (Tiết kiệm 20.000đ)."
+                                              : s.serviceName.toLowerCase().includes("toan dien") || s.serviceName.toLowerCase().includes("toàn diện")
+                                                ? "Combo chăm sóc toàn diện: Rửa xe máy bọt tuyết kết hợp kiểm tra nhớt, bugi, phanh xích và bảo dưỡng tổng quát định kỳ (Tiết kiệm 15.000đ)."
+                                                : s.serviceName.toLowerCase().includes("sieu bong") || s.serviceName.toLowerCase().includes("siêu bóng")
+                                                  ? "Combo siêu bóng: Rửa xe cao cấp bọt tuyết + Đánh bóng phục hồi sơn + Phủ nano Ceramic bảo vệ sơn xe toàn diện (Tiết kiệm 150.000đ)."
+                                                  : s.serviceName.toLowerCase().includes("bao ve") || s.serviceName.toLowerCase().includes("bảo vệ")
+                                                    ? "Combo bảo vệ tối ưu: Rửa xe siêu cấp VIP + Phủ nano bảo vệ sơn + Tẩy ố mốc kính và phủ nano chống nước mưa (Tiết kiệm 120.000đ)."
+                                                    : s.serviceName.toLowerCase().includes("sach sau") || s.serviceName.toLowerCase().includes("sạch sâu")
+                                                      ? "Combo sạch sâu: Rửa xe cao cấp bọt tuyết + Vệ sinh làm sạch dầu mỡ khoang động cơ + Tẩy ố chống bám nước kính lái (Tiết kiệm 70.000đ)."
+                                                      : s.serviceName.toLowerCase().includes("hut bui") || s.serviceName.toLowerCase().includes("hút bụi")
+                                                        ? "Combo sạch toàn diện: Rửa xe cao cấp bọt tuyết + Hút bụi vệ sinh khoang nội thất chi tiết (Tiết kiệm 20% so với mua lẻ)."
+                                                        : s.serviceName.toLowerCase().includes("danh bong") || s.serviceName.toLowerCase().includes("đánh bóng")
+                                                          ? "Combo phục hồi hoàn hảo: Rửa xe cao cấp bọt tuyết + Đánh bóng loại bỏ xước dăm toàn thân xe (Tiết kiệm 50.000đ)."
+                                                          : s.serviceName.toLowerCase().includes("phu nano") || s.serviceName.toLowerCase().includes("phủ nano")
+                                                            ? "Combo V.I.P thượng hạng: Rửa xe cao cấp bọt tuyết + Phủ màng Nano Ceramic kháng nước chống xước tối ưu (Tiết kiệm 100.000đ)."
+                                                            : s.serviceName.toLowerCase().includes("ve sinh dong co")
+                                                              ? "Combo hiệu năng xe máy: Rửa xe máy cao cấp kết hợp vệ sinh sạch sâu cặn dầu nhớt khoang động cơ."
+                                                              : "Combo chăm sóc toàn diện: Rửa xe máy cao cấp kết hợp kiểm tra nhớt, bugi, tăng sên, bảo dưỡng tổng quát xe định kỳ."}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="package-price">
+                                {s.basePrice.toLocaleString("vi-VN")}đ
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {/* 1. Gói rửa chính */}
+                        <div>
+                          <h4 style={{ fontSize: "14px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ width: "3px", height: "14px", backgroundColor: "#f97316", borderRadius: "2px", display: "inline-block" }}></span>
+                            Chọn gói rửa chính (Bắt buộc)
+                          </h4>
+                          <div className="space-y-3">
+                            {services
+                              .filter(s => isBaseWash(s))
+                              .map((s) => (
+                                <div
+                                  key={s.serviceId}
+                                  className={`service-package-option ${selectedService?.serviceId === s.serviceId ? "active" : ""}`}
+                                  onClick={() => setSelectedService(s)}
+                                >
+                                  <div className="package-name">
+                                    <i
+                                      className={`fa-solid ${vehicleType === "BIKE" ? "fa-motorcycle" : "fa-car-burst"} text-orange-500`}
+                                    ></i>
+                                    <div>
+                                      <span>{s.serviceName}</span>
+                                      <span className="package-desc">
+                                        {s.serviceName.toLowerCase().includes("sieu cap") || s.serviceName.toLowerCase().includes("siêu cấp") || s.serviceName.toLowerCase().includes("sieu sach") || s.serviceName.toLowerCase().includes("siêu sạch")
+                                          ? "Gói rửa siêu sạch VIP: Rửa bọt tuyết siêu đặc kỹ lưỡng mâm lốp, xịt gầm chi tiết, sấy khô và dưỡng bóng lốp chuyên sâu."
+                                          : s.serviceName.toLowerCase().includes("cao cap") || s.serviceName.toLowerCase().includes("cao cấp") || s.serviceName.toUpperCase().includes("VIP")
+                                            ? "Rửa bọt tuyết nâng cao kết hợp phủ wax bóng láng bề mặt, làm sạch mâm lốp chuyên nghiệp."
+                                            : s.serviceName.toLowerCase().includes("tai nho") || s.serviceName.toLowerCase().includes("tải nhỏ")
+                                              ? "Gói rửa chuyên biệt lực nước mạnh cho xe bán tải, xe 16 chỗ và xe tải nhỏ."
+                                              : "Rửa bọt tuyết siêu sạch nhanh chóng, xịt gầm sơ bộ và sấy khô thân vỏ."}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span className="package-price">
+                                    {s.basePrice.toLocaleString("vi-VN")}đ
+                                  </span>
+                                </div>
+                              ))}
                           </div>
                         </div>
 
-                        <span className="package-price">
-                          {s.basePrice.toLocaleString("vi-VN")}đ
-                        </span>
+                        {/* 2. Dịch vụ chọn thêm */}
+                        {services.filter(s => isAddon(s)).length > 0 && (
+                          <div style={{ marginTop: "24px" }}>
+                            <h4 style={{ fontSize: "14px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ width: "3px", height: "14px", backgroundColor: "#3b82f6", borderRadius: "2px", display: "inline-block" }}></span>
+                              Chọn thêm dịch vụ bổ trợ (Tùy chọn)
+                            </h4>
+                            <div className="space-y-3">
+                              {services
+                                .filter(s => isAddon(s))
+                                .map((s) => {
+                                  const isSelected = selectedAddons.some(a => a.serviceId === s.serviceId);
+                                  return (
+                                    <div
+                                      key={s.serviceId}
+                                      className={`service-package-option ${isSelected ? "active" : ""}`}
+                                      style={{ borderColor: isSelected ? "#3b82f6" : "var(--border)", background: isSelected ? "rgba(59, 130, 246, 0.08)" : undefined }}
+                                      onClick={() => {
+                                        if (isSelected) {
+                                          setSelectedAddons(selectedAddons.filter(a => a.serviceId !== s.serviceId));
+                                        } else {
+                                          setSelectedAddons([...selectedAddons, s]);
+                                        }
+                                      }}
+                                    >
+                                      <div className="package-name">
+                                        <i
+                                          className={`fa-regular ${isSelected ? "fa-square-check" : "fa-square"} text-blue-500`}
+                                          style={{ fontSize: "18px", transition: "all 0.2s" }}
+                                        ></i>
+                                        <div>
+                                          <span>{s.serviceName}</span>
+                                          <span className="package-desc">
+                                            {s.serviceName.toLowerCase().includes("khoang may") || s.serviceName.toLowerCase().includes("khoang máy")
+                                              ? "Làm sạch bùn đất, dầu mỡ khoang động cơ bằng dung dịch chuyên dụng an toàn."
+                                              : s.serviceName.toLowerCase().includes("chong bam nuoc") || s.serviceName.toLowerCase().includes("chống bám nước")
+                                                ? "Tẩy ố mốc kính xe và phủ lớp nano chống bám nước mưa hiệu quả."
+                                                : s.serviceName.toLowerCase().includes("ozone")
+                                                  ? "Khử mùi hôi nội thất, diệt khuẩn và nấm mốc bằng máy ozone chuyên sâu."
+                                                  : s.serviceName.toLowerCase().includes("guong chieu hau") || s.serviceName.toLowerCase().includes("gương chiếu hậu")
+                                                    ? "Phủ màng kháng nước Ceramic trên gương chiếu hậu giúp dễ quan sát khi trời mưa."
+                                                    : s.serviceName.toLowerCase().includes("ri set") || s.serviceName.toLowerCase().includes("rỉ sét")
+                                                      ? "Tẩy rỉ sét mâm và đánh bóng các chi tiết kim loại trên xe máy."
+                                                      : s.serviceName.toLowerCase().includes("hut bui") || s.serviceName.toLowerCase().includes("hút bụi") || s.serviceName.toLowerCase().includes("noi that") || s.serviceName.toLowerCase().includes("nội thất")
+                                                        ? "Hút thảm, lau sạch bụi bẩn táp lô, các hốc cửa và kẽ nội thất."
+                                                        : s.serviceName.toLowerCase().includes("danh bong") || s.serviceName.toLowerCase().includes("đánh bóng")
+                                                          ? "Xử lý xước dăm bề mặt, phục hồi lại độ bóng loáng của lớp sơn nguyên bản."
+                                                          : s.serviceName.toLowerCase().includes("phu nano") || s.serviceName.toLowerCase().includes("phủ nano")
+                                                            ? "Phủ màng kháng nước Ceramic bảo vệ độ trong của lớp bóng sơn xe khỏi tia UV."
+                                                            : s.serviceName.toLowerCase().includes("ve sinh dong co") || s.serviceName.toLowerCase().includes("vệ sinh động cơ")
+                                                              ? "Làm sạch bùn đất bám khoang máy bằng dung dịch chuyên dụng."
+                                                              : "Bảo dưỡng các khớp bôi trơn, tăng sên, kiểm tra bugi và các chi tiết an toàn cơ bản."}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <span className="package-price" style={{ color: isSelected ? "#3b82f6" : undefined }}>
+                                        +{s.basePrice.toLocaleString("vi-VN")}đ
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
               </div>
@@ -1122,12 +1351,26 @@ export default function Booking() {
                   </div>
 
                   <div className="summary-row">
-                    <span>Gói dịch vụ:</span>
+                    <span>Gói dịch vụ chính:</span>
 
                     <span>
                       {selectedService ? selectedService.serviceName : "..."}
                     </span>
                   </div>
+
+                  {selectedAddons.length > 0 && (
+                    <div className="summary-row" style={{ flexDirection: "column", gap: "6px" }}>
+                      <span style={{ color: "var(--text-secondary)" }}>Dịch vụ chọn thêm:</span>
+                      <div style={{ borderLeft: "2px solid #3b82f6", paddingLeft: "10px", marginTop: "4px", display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
+                        {selectedAddons.map(a => (
+                          <div key={a.serviceId} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", width: "100%" }}>
+                            <span style={{ color: "var(--text-secondary)" }}>• {a.serviceName}</span>
+                            <span style={{ color: "var(--text-primary)", fontWeight: "600" }}>+{a.basePrice.toLocaleString("vi-VN")}đ</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="summary-row">
                     <span>Thời gian:</span>

@@ -22,6 +22,26 @@ export default function AdminDashboard() {
   const [bookingHistory, setBookingHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [isEditingPlate, setIsEditingPlate] = useState(false);
+  const [tempPlate, setTempPlate] = useState("");
+  const [savingPlate, setSavingPlate] = useState(false);
+  
+  // --- FULL EDIT MODAL STATES ---
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFullName, setEditFullName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editPlate, setEditPlate] = useState("");
+  const [editVehicleType, setEditVehicleType] = useState("CAR");
+  const [editServices, setEditServices] = useState([]);
+  const [editSelectedMainService, setEditSelectedMainService] = useState(null);
+  const [editSelectedAddons, setEditSelectedAddons] = useState([]);
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editMachines, setEditMachines] = useState([]);
+  const [editSelectedMachineId, setEditSelectedMachineId] = useState("");
+  const [editSlots, setEditSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem("LOGIN_USER");
     return saved ? JSON.parse(saved) : null;
@@ -210,6 +230,7 @@ export default function AdminDashboard() {
 
   const handleViewDetails = async (booking) => {
     setSelectedBooking(booking);
+    setIsEditingPlate(false);
     setHistoryLoading(true);
     setBookingHistory([]);
     const token = localStorage.getItem("token") || "mock-token";
@@ -243,6 +264,266 @@ export default function AdminDashboard() {
         `Lỗi xóa: ${err.response?.data?.message || err.message}`,
         "error",
       );
+    }
+  };
+
+  const handleSavePlate = async () => {
+    if (!tempPlate || tempPlate.trim() === "") {
+      showToast("Biển số xe không được để trống", "error");
+      return;
+    }
+    setSavingPlate(true);
+    const token = localStorage.getItem("token") || "mock-token";
+    try {
+      const res = await axios.put(
+        `http://127.0.0.1:5000/api/bookings/${selectedBooking.id}/license-plate`,
+        { licensePlate: tempPlate },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      const updatedPlate = res.data.licensePlate || tempPlate.trim().toUpperCase();
+      
+      // Update bookings list
+      setBookings(prev => prev.map(b => b.id === selectedBooking.id ? { ...b, licensePlate: updatedPlate } : b));
+      
+      // Update selectedBooking in modal
+      setSelectedBooking(prev => ({ ...prev, licensePlate: updatedPlate }));
+      
+      showToast("Cập nhật biển số xe thành công!", "success");
+      setIsEditingPlate(false);
+      
+      // Reload history log to show edit plate log
+      if (selectedBooking) {
+        const histRes = await axios.get(`http://127.0.0.1:5000/api/bookings/${selectedBooking.id}/history`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setBookingHistory(histRes.data || []);
+      }
+    } catch (err) {
+      console.error("Lỗi khi cập nhật biển số:", err);
+      showToast(err.response?.data?.message || "Không thể cập nhật biển số xe", "error");
+    } finally {
+      setSavingPlate(false);
+    }
+  };
+
+  // Helpers
+  const isCombo = (service) => {
+    if (!service) return false;
+    const name = String(service.serviceName || "").toLowerCase();
+    const desc = String(service.description || "").toLowerCase();
+    return name.includes("combo") || desc.includes("combo") || name.includes("+") || name.includes("trọn gói");
+  };
+
+  const isBaseWash = (service) => {
+    if (!service) return false;
+    const name = String(service.serviceName || "").toLowerCase();
+    return (name.includes("rửa xe") || name.includes("rua xe")) && !isCombo(service);
+  };
+
+  const isAddon = (service) => {
+    return !isCombo(service) && !isBaseWash(service);
+  };
+
+  // Open Edit Modal
+  const handleOpenEditModal = async () => {
+    if (!selectedBooking) return;
+    setEditSaving(false);
+    
+    const token = localStorage.getItem("token") || "mock-token";
+    try {
+      const res = await axios.get(`http://127.0.0.1:5000/api/bookings/${selectedBooking.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const details = res.data;
+      
+      setEditFullName(details.CustomerName || selectedBooking.customerName);
+      setEditPhone(details.Phone || selectedBooking.phone);
+      setEditPlate(details.LicensePlate || selectedBooking.licensePlate);
+      
+      const vType = String(details.VehicleType || selectedBooking.vehicleType).toUpperCase().includes("XE MÁY") ||
+                    String(details.VehicleType || selectedBooking.vehicleType).toUpperCase().includes("BIKE")
+                    ? "BIKE" : "CAR";
+      setEditVehicleType(vType);
+
+      // Parse booking date and time
+      const bDate = details.BookingDate ? details.BookingDate.split("T")[0] : selectedBooking.date;
+      const bTime = details.BookingDate ? new Date(details.BookingDate).toLocaleTimeString("vi-VN", {hour: "2-digit", minute:"2-digit"}) : selectedBooking.time;
+      setEditDate(bDate);
+      setEditTime(bTime);
+      
+      // Fetch services list for this vehicle type
+      const servicesRes = await axios.get(`http://127.0.0.1:5000/api/timeslots/services?vehicleType=${vType}`);
+      const servList = Array.isArray(servicesRes.data) ? servicesRes.data : [];
+      setEditServices(servList);
+      
+      // Pre-select service IDs
+      const selectedIds = Array.isArray(details.ServiceIDs) ? details.ServiceIDs : [];
+      const mainServ = servList.find(s => selectedIds.includes(s.serviceId) && (isCombo(s) || isBaseWash(s)));
+      setEditSelectedMainService(mainServ || null);
+      
+      const addons = servList.filter(s => selectedIds.includes(s.serviceId) && isAddon(s));
+      setEditSelectedAddons(addons);
+
+      // Fetch machines for this vehicle type
+      const machinesRes = await axios.get(`http://127.0.0.1:5000/api/timeslots/machines?type=${vType}`);
+      const machList = Array.isArray(machinesRes.data) ? machinesRes.data : [];
+      const activeMachines = machList.filter(m => m.status !== "Maintenance" && m.status !== "Under Maintenance");
+      setEditMachines(activeMachines);
+      
+      const currentMachineId = details.MachineID || selectedBooking.machineId || (activeMachines.length > 0 ? activeMachines[0].machineId : "");
+      setEditSelectedMachineId(currentMachineId);
+      
+      setShowEditModal(true);
+    } catch (err) {
+      console.error("Lỗi khi tải thông tin chi tiết để chỉnh sửa:", err);
+      showToast("Không thể tải chi tiết lịch đặt", "error");
+    }
+  };
+
+  // Fetch slots availability when date/machine changes
+  useEffect(() => {
+    if (!editDate || !editSelectedMachineId || !showEditModal) {
+      setEditSlots([]);
+      return;
+    }
+    const fetchEditSlots = async () => {
+      setSlotsLoading(true);
+      try {
+        const res = await axios.get(`http://127.0.0.1:5000/api/timeslots?machineId=${editSelectedMachineId}&date=${editDate}`);
+        const slots = Array.isArray(res.data?.slots) ? res.data.slots : [];
+        setEditSlots(slots);
+      } catch (err) {
+        console.error("Lỗi khi tải slots:", err);
+        setEditSlots([]);
+      } finally {
+        setSlotsLoading(false);
+      }
+    };
+    fetchEditSlots();
+  }, [editDate, editSelectedMachineId, showEditModal]);
+
+  const handleEditVehicleTypeChange = async (newType) => {
+    setEditVehicleType(newType);
+    try {
+      const servicesRes = await axios.get(`http://127.0.0.1:5000/api/timeslots/services?vehicleType=${newType}`);
+      const servList = Array.isArray(servicesRes.data) ? servicesRes.data : [];
+      setEditServices(servList);
+      setEditSelectedMainService(null);
+      setEditSelectedAddons([]);
+
+      const machinesRes = await axios.get(`http://127.0.0.1:5000/api/timeslots/machines?type=${newType}`);
+      const machList = Array.isArray(machinesRes.data) ? machinesRes.data : [];
+      const activeMachines = machList.filter(m => m.status !== "Maintenance" && m.status !== "Under Maintenance");
+      setEditMachines(activeMachines);
+      setEditSelectedMachineId(activeMachines.length > 0 ? activeMachines[0].machineId : "");
+    } catch (err) {
+      console.error("Lỗi tải thông tin khi đổi loại xe:", err);
+    }
+  };
+
+  const getEditPrices = () => {
+    const mainPrice = editSelectedMainService ? editSelectedMainService.basePrice : 0;
+    const addonPrice = editSelectedAddons.reduce((sum, item) => sum + item.basePrice, 0);
+    const totalPrice = mainPrice + addonPrice;
+    return { totalPrice, finalPrice: totalPrice };
+  };
+
+  const handleSaveEditBooking = async () => {
+    if (!editFullName || editFullName.trim() === "") {
+      showToast("Vui lòng nhập họ tên", "error");
+      return;
+    }
+    if (!editPhone || editPhone.trim() === "") {
+      showToast("Vui lòng nhập số điện thoại", "error");
+      return;
+    }
+    if (!editPlate || editPlate.trim() === "") {
+      showToast("Vui lòng nhập biển số xe", "error");
+      return;
+    }
+    if (!editSelectedMainService) {
+      showToast("Vui lòng chọn dịch vụ chính", "error");
+      return;
+    }
+    if (!editDate) {
+      showToast("Vui lòng chọn ngày", "error");
+      return;
+    }
+    if (!editTime) {
+      showToast("Vui lòng chọn khung giờ", "error");
+      return;
+    }
+    if (!editSelectedMachineId) {
+      showToast("Vui lòng chọn máy/sàn rửa xe", "error");
+      return;
+    }
+
+    setEditSaving(true);
+    const token = localStorage.getItem("token") || "mock-token";
+    const { totalPrice, finalPrice } = getEditPrices();
+    
+    const serviceIds = [
+      editSelectedMainService.serviceId,
+      ...editSelectedAddons.map(a => a.serviceId)
+    ];
+
+    try {
+      await axios.put(
+        `http://127.0.0.1:5000/api/bookings/admin/${selectedBooking.id}`,
+        {
+          fullName: editFullName,
+          phone: editPhone,
+          licensePlate: editPlate,
+          vehicleType: editVehicleType,
+          serviceIds,
+          bookingDate: editDate,
+          bookingTime: editTime,
+          machineId: editSelectedMachineId,
+          totalPrice,
+          finalPrice
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      showToast("Cập nhật đơn đặt lịch thành công!", "success");
+      setShowEditModal(false);
+      
+      fetchData();
+      
+      const histRes = await axios.get(`http://127.0.0.1:5000/api/bookings/${selectedBooking.id}/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setBookingHistory(histRes.data || []);
+      
+      const freshBookingRes = await axios.get(`http://127.0.0.1:5000/api/bookings/${selectedBooking.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const freshB = freshBookingRes.data;
+      
+      const dObj = new Date(freshB.BookingDate);
+      const dStr = dObj.toLocaleDateString("en-CA");
+      const tStr = dObj.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+      
+      setSelectedBooking(prev => ({
+        ...prev,
+        customerName: freshB.CustomerName || editFullName,
+        phone: freshB.Phone || editPhone,
+        licensePlate: freshB.LicensePlate || editPlate,
+        vehicleType: freshB.VehicleType === "BIKE" ? "Xe máy" : "Ô tô",
+        date: dStr,
+        time: tStr,
+        price: Number(freshB.FinalPrice || freshB.TotalPrice),
+        totalPrice: Number(freshB.TotalPrice),
+        machineId: freshB.MachineID,
+        machineName: editMachines.find(m => m.machineId === freshB.MachineID)?.name || prev.machineName,
+        servicePackage: [editSelectedMainService.serviceName, ...editSelectedAddons.map(a => a.serviceName)].join(", ")
+      }));
+    } catch (err) {
+      console.error("Lỗi khi cập nhật đơn hàng:", err);
+      showToast(err.response?.data?.message || "Không thể cập nhật đơn đặt lịch", "error");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -725,14 +1006,35 @@ export default function AdminDashboard() {
           onClick={() => setSelectedBooking(null)}
         >
           <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="admin-modal-header">
+            <div className="admin-modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3>Chi Tiết Lịch Đặt Xe #{selectedBooking.id}</h3>
-              <button
-                className="close-modal-btn"
-                onClick={() => setSelectedBooking(null)}
-              >
-                <i className="fa-solid fa-xmark"></i>
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <button
+                  onClick={handleOpenEditModal}
+                  style={{
+                    background: "#3b82f6",
+                    border: "none",
+                    color: "#fff",
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontWeight: "600"
+                  }}
+                >
+                  <i className="fa-solid fa-pen-to-square"></i>
+                  Sửa Đơn
+                </button>
+                <button
+                  className="close-modal-btn"
+                  onClick={() => setSelectedBooking(null)}
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
             </div>
             <div className="admin-modal-body">
               {/* Modal Body Content (Omitted unchanged HTML structure for brevity, keeps existing design) */}
@@ -797,9 +1099,79 @@ export default function AdminDashboard() {
                 <div className="modal-grid">
                   <div className="modal-field">
                     <label>Biển số xe</label>
-                    <span className="vehicle-badge">
-                      {selectedBooking.licensePlate}
-                    </span>
+                    {isEditingPlate ? (
+                      <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "4px" }}>
+                        <input
+                          type="text"
+                          value={tempPlate}
+                          onChange={(e) => setTempPlate(e.target.value.toUpperCase())}
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            border: "1px solid var(--border)",
+                            background: "var(--bg-secondary)",
+                            color: "var(--text-primary)",
+                            width: "110px",
+                            fontWeight: "700",
+                            fontSize: "13px"
+                          }}
+                        />
+                        <button
+                          onClick={handleSavePlate}
+                          disabled={savingPlate}
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            border: "none",
+                            background: "#22c55e",
+                            color: "#fff",
+                            cursor: "pointer",
+                            fontSize: "12px"
+                          }}
+                          title="Lưu"
+                        >
+                          {savingPlate ? "..." : <i className="fa-solid fa-check"></i>}
+                        </button>
+                        <button
+                          onClick={() => setIsEditingPlate(false)}
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            border: "none",
+                            background: "#ef4444",
+                            color: "#fff",
+                            cursor: "pointer",
+                            fontSize: "12px"
+                          }}
+                          title="Hủy"
+                        >
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="vehicle-badge" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                        {selectedBooking.licensePlate}
+                        <button
+                          onClick={() => {
+                            setTempPlate(selectedBooking.licensePlate);
+                            setIsEditingPlate(true);
+                          }}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "#3b82f6",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            padding: "0",
+                            display: "inline-flex",
+                            alignItems: "center"
+                          }}
+                          title="Sửa biển số"
+                        >
+                          <i className="fa-solid fa-pen" style={{ fontSize: "11px" }}></i>
+                        </button>
+                      </span>
+                    )}
                   </div>
                   <div className="modal-field">
                     <label>Loại xe</label>
@@ -876,6 +1248,336 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && (
+        <div
+          className="admin-modal-overlay"
+          style={{ zIndex: 1050, display: "flex", justifyContent: "center", alignItems: "center", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)" }}
+          onClick={() => setShowEditModal(false)}
+        >
+          <div
+            className="admin-modal"
+            style={{ maxWidth: "600px", width: "90%", background: "var(--bg-primary)", borderRadius: "12px", border: "1px solid var(--border)", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.3)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-modal-header" style={{ borderBottom: "1px solid var(--border)", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700" }}>Chỉnh Sửa Lịch Đặt #{selectedBooking.id}</h3>
+              <button
+                className="close-modal-btn"
+                onClick={() => setShowEditModal(false)}
+                style={{ background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: "16px" }}
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div className="admin-modal-body" style={{ maxHeight: "75vh", overflowY: "auto", padding: "20px" }}>
+              <div className="modal-section" style={{ marginBottom: "20px" }}>
+                <h4 className="modal-section-title" style={{ fontSize: "14px", fontWeight: "600", color: "#3b82f6", borderBottom: "1px dashed var(--border)", paddingBottom: "6px", marginBottom: "12px" }}>Thông tin khách hàng</h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div className="modal-field">
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Họ và tên</label>
+                    <input
+                      type="text"
+                      value={editFullName}
+                      onChange={(e) => setEditFullName(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-primary)",
+                        fontSize: "14px"
+                      }}
+                    />
+                  </div>
+                  <div className="modal-field">
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Số điện thoại</label>
+                    <input
+                      type="text"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-primary)",
+                        fontSize: "14px"
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-section" style={{ marginBottom: "20px" }}>
+                <h4 className="modal-section-title" style={{ fontSize: "14px", fontWeight: "600", color: "#3b82f6", borderBottom: "1px dashed var(--border)", paddingBottom: "6px", marginBottom: "12px" }}>Thông tin xe</h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div className="modal-field">
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Biển số xe</label>
+                    <input
+                      type="text"
+                      value={editPlate}
+                      onChange={(e) => setEditPlate(e.target.value.toUpperCase())}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-primary)",
+                        fontSize: "14px",
+                        fontWeight: "700"
+                      }}
+                    />
+                  </div>
+                  <div className="modal-field">
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Loại xe</label>
+                    <select
+                      value={editVehicleType}
+                      onChange={(e) => handleEditVehicleTypeChange(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-primary)",
+                        fontSize: "14px"
+                      }}
+                    >
+                      <option value="CAR">Ô tô</option>
+                      <option value="BIKE">Xe máy</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-section" style={{ marginBottom: "20px" }}>
+                <h4 className="modal-section-title" style={{ fontSize: "14px", fontWeight: "600", color: "#3b82f6", borderBottom: "1px dashed var(--border)", paddingBottom: "6px", marginBottom: "12px" }}>Dịch vụ</h4>
+                <div className="modal-field" style={{ marginBottom: "12px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Gói dịch vụ chính (Rửa hoặc Combo)</label>
+                  <select
+                    value={editSelectedMainService ? editSelectedMainService.serviceId : ""}
+                    onChange={(e) => {
+                      const selected = editServices.find(s => s.serviceId === Number(e.target.value));
+                      setEditSelectedMainService(selected || null);
+                      if (!selected) {
+                        setEditSelectedAddons([]);
+                      }
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border)",
+                      background: "var(--bg-secondary)",
+                      color: "var(--text-primary)",
+                      fontSize: "14px"
+                    }}
+                  >
+                    <option value="">-- Chọn dịch vụ --</option>
+                    {editServices.filter(s => isCombo(s) || isBaseWash(s)).map(s => (
+                      <option key={s.serviceId} value={s.serviceId}>
+                        {s.serviceName} ({s.basePrice.toLocaleString("vi-VN")} đ)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="modal-field" style={{ marginBottom: "16px", opacity: editSelectedMainService ? 1 : 0.5 }}>
+                  <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>
+                    Dịch vụ chọn thêm (Add-ons) {!editSelectedMainService && "(Vui lòng chọn dịch vụ chính trước)"}
+                  </label>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "10px",
+                    marginTop: "6px",
+                    background: "rgba(255,255,255,0.03)",
+                    padding: "12px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--border)",
+                    pointerEvents: editSelectedMainService ? "auto" : "none"
+                  }}>
+                    {editServices.filter(s => isAddon(s)).map(s => {
+                      const isChecked = editSelectedAddons.some(a => a.serviceId === s.serviceId);
+                      return (
+                        <label key={s.serviceId} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px" }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            disabled={!editSelectedMainService}
+                            onChange={() => {
+                              if (isChecked) {
+                                setEditSelectedAddons(prev => prev.filter(a => a.serviceId !== s.serviceId));
+                              } else {
+                                setEditSelectedAddons(prev => [...prev, s]);
+                              }
+                            }}
+                          />
+                          <span>{s.serviceName} (+{s.basePrice.toLocaleString("vi-VN")}đ)</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-section" style={{ marginBottom: "20px" }}>
+                <h4 className="modal-section-title" style={{ fontSize: "14px", fontWeight: "600", color: "#3b82f6", borderBottom: "1px dashed var(--border)", paddingBottom: "6px", marginBottom: "12px" }}>Thời gian & Máy rửa</h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                  <div className="modal-field">
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Ngày hẹn</label>
+                    <input
+                      type="date"
+                      value={editDate}
+                      onChange={(e) => setEditDate(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-primary)",
+                        fontSize: "14px"
+                      }}
+                    />
+                  </div>
+                  <div className="modal-field">
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Máy / Sàn rửa xe</label>
+                    <select
+                      value={editSelectedMachineId}
+                      onChange={(e) => setEditSelectedMachineId(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-primary)",
+                        fontSize: "14px"
+                      }}
+                    >
+                      {editMachines.map(m => (
+                        <option key={m.machineId} value={m.machineId}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="modal-field">
+                  <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Chọn khung giờ</label>
+                  {slotsLoading ? (
+                    <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "6px" }}>
+                      <i className="fa-solid fa-spinner fa-spin"></i> Đang kiểm tra khung giờ trống...
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(4, 1fr)",
+                      gap: "8px",
+                      marginTop: "6px",
+                      background: "rgba(255,255,255,0.03)",
+                      padding: "12px",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border)"
+                    }}>
+                      {[
+                        "08:00", "08:30", "09:00", "09:30",
+                        "10:00", "10:30", "11:00", "11:30",
+                        "13:00", "13:30", "14:00", "14:30",
+                        "15:00", "15:30", "16:00", "16:30",
+                        "17:00"
+                      ].map(t => {
+                        const isOccupied = editSlots.includes(t);
+                        const isCurrentSlot = t === editTime;
+                        const isSelectable = !isOccupied || isCurrentSlot;
+                        
+                        return (
+                          <button
+                            key={t}
+                            onClick={() => setEditTime(t)}
+                            disabled={!isSelectable}
+                            style={{
+                              padding: "6px 4px",
+                              borderRadius: "4px",
+                              border: "1px solid",
+                              borderColor: t === editTime ? "#3b82f6" : (isSelectable ? "rgba(255,255,255,0.15)" : "transparent"),
+                              background: t === editTime ? "rgba(59, 130, 246, 0.2)" : (isSelectable ? "transparent" : "rgba(255,255,255,0.03)"),
+                              color: t === editTime ? "#3b82f6" : (isSelectable ? "var(--text-primary)" : "rgba(255,255,255,0.2)"),
+                              cursor: isSelectable ? "pointer" : "not-allowed",
+                              fontSize: "12px",
+                              fontWeight: t === editTime ? "700" : "normal"
+                            }}
+                          >
+                            {t} {!isSelectable && "(Đầy)"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="modal-section" style={{
+                background: "rgba(34, 197, 94, 0.05)",
+                border: "1px solid rgba(34, 197, 94, 0.2)",
+                padding: "12px",
+                borderRadius: "6px",
+                marginTop: "20px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span style={{ fontSize: "14px", fontWeight: "600" }}>Tổng tiền thanh toán tính lại:</span>
+                <span style={{ fontSize: "18px", fontWeight: "700", color: "#22c55e" }}>
+                  {getEditPrices().totalPrice.toLocaleString("vi-VN")} đ
+                </span>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "24px", borderTop: "1px solid var(--border)", paddingTop: "16px" }}>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  style={{
+                    background: "rgba(255,255,255,0.1)",
+                    border: "none",
+                    color: "var(--text-primary)",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "14px"
+                  }}
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveEditBooking}
+                  disabled={editSaving}
+                  style={{
+                    background: "#22c55e",
+                    border: "none",
+                    color: "#fff",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
+                  {editSaving ? "Đang lưu..." : "Lưu Thay Đổi"}
+                </button>
               </div>
             </div>
           </div>

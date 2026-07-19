@@ -116,3 +116,7 @@ app.use('/api/notifications', notificationRouter);
 // đăng kí tracking-Huy
 const behaviorAnalyticsRouter = require("./routes/behaviorAnalytics");
 app.use("/api/analytics/behavior", behaviorAnalyticsRouter);
+
+//phần này là của payment bên staff và admin
+const refundRouter = require('./routes/refundRouter');
+app.use('/api/refund-requests', refundRouter);
