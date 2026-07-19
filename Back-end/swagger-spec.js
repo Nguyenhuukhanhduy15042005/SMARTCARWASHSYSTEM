@@ -101,6 +101,23 @@ const swaggerSpec = {
           color:        { type: "string", example: "Trắng" },
         },
       },
+      RefundRequestBody: {
+        type: "object",
+        required: ["paymentId", "reason"],
+        properties: {
+          paymentId: { type: "integer", example: 5, description: "ID thanh toán cần hoàn" },
+          reason:    { type: "string",  example: "Khách yêu cầu hủy do bận đột xuất" },
+        },
+      },
+      RefundReviewBody: {
+        type: "object",
+        required: ["action"],
+        properties: {
+          action:       { type: "string", enum: ["approve", "reject"], example: "approve" },
+          refundAmount: { type: "number", example: 150000, description: "Tùy chọn - Admin có thể điều chỉnh (không vượt quá số đã trả)" },
+          note:         { type: "string", example: "Duyệt do lỗi từ phía hệ thống" },
+        },
+      },
     },
   },
   paths: {
@@ -468,9 +485,9 @@ const swaggerSpec = {
         summary: "Lấy danh sách các máy rửa xe hiện có",
         responses: {
           200: { description: "Lấy danh sách máy thành công" },
-          500: { description: "Lỗi hệ thống" }
-        }
-      }
+          500: { description: "Lỗi hệ thống" },
+        },
+      },
     },
     "/api/timeslots/services": {
       get: {
@@ -478,9 +495,9 @@ const swaggerSpec = {
         summary: "Lấy danh sách dịch vụ và thời gian rửa dự kiến",
         responses: {
           200: { description: "Lấy danh sách dịch vụ thành công" },
-          500: { description: "Lỗi hệ thống" }
-        }
-      }
+          500: { description: "Lỗi hệ thống" },
+        },
+      },
     },
     "/api/timeslots": {
       get: {
@@ -488,14 +505,14 @@ const swaggerSpec = {
         summary: "Lấy danh sách các khung giờ trống trong ngày",
         parameters: [
           { name: "machineId", in: "query", required: true, schema: { type: "integer", example: 1 }, description: "ID của máy rửa xe" },
-          { name: "date", in: "query", required: true, schema: { type: "string", format: "date", example: "2026-07-03" }, description: "Ngày cần kiểm tra (YYYY-MM-DD)" }
+          { name: "date", in: "query", required: true, schema: { type: "string", format: "date", example: "2026-07-03" }, description: "Ngày cần kiểm tra (YYYY-MM-DD)" },
         ],
         responses: {
           200: { description: "Thành công, trả về danh sách khung giờ kèm trạng thái trống" },
           400: { description: "Ngày không đúng định dạng" },
-          500: { description: "Lỗi hệ thống" }
-        }
-      }
+          500: { description: "Lỗi hệ thống" },
+        },
+      },
     },
     "/api/timeslots/check": {
       post: {
@@ -509,35 +526,35 @@ const swaggerSpec = {
                 type: "object",
                 required: ["machineId", "date", "time"],
                 properties: {
-                  machineId: { type: "integer", example: 1, description: "ID của máy rửa xe" },
-                  date: { type: "string", format: "date", example: "2026-07-03" },
-                  time: { type: "string", example: "09:30" },
-                  duration: { type: "integer", default: 30 },
-                  vehicleType: { type: "string", example: "CAR" }
-                }
-              }
-            }
-          }
+                  machineId:   { type: "integer", example: 1 },
+                  date:        { type: "string", format: "date", example: "2026-07-03" },
+                  time:        { type: "string", example: "09:30" },
+                  duration:    { type: "integer", default: 30 },
+                  vehicleType: { type: "string", example: "CAR" },
+                },
+              },
+            },
+          },
         },
         responses: {
           200: { description: "Khung giờ trống hoặc đã có lịch" },
           400: { description: "Dữ liệu đầu vào không hợp lệ" },
-          500: { description: "Lỗi hệ thống" }
-        }
-      }
+          500: { description: "Lỗi hệ thống" },
+        },
+      },
     },
     "/api/timeslots/overview": {
       get: {
         tags: ["Timeslots"],
         summary: "Xem tổng quan trạng thái hoạt động của các máy rửa xe trong ngày",
         parameters: [
-          { name: "date", in: "query", required: true, schema: { type: "string", format: "date", example: "2026-07-03" }, description: "Ngày cần xem tổng quan" }
+          { name: "date", in: "query", required: true, schema: { type: "string", format: "date", example: "2026-07-03" } },
         ],
         responses: {
           200: { description: "Lấy tổng quan thành công" },
-          500: { description: "Lỗi hệ thống" }
-        }
-      }
+          500: { description: "Lỗi hệ thống" },
+        },
+      },
     },
     "/api/timeslots/book": {
       post: {
@@ -551,26 +568,26 @@ const swaggerSpec = {
                 type: "object",
                 required: ["machineId", "serviceId", "date", "time", "customerName", "customerPhone", "vehicleType"],
                 properties: {
-                  machineId: { type: "integer", example: 1, description: "ID của máy rửa" },
-                  serviceId: { type: "integer", example: 1, description: "ID của dịch vụ" },
-                  date: { type: "string", format: "date", example: "2026-07-03", description: "Ngày rửa (YYYY-MM-DD)" },
-                  time: { type: "string", example: "09:30", description: "Giờ rửa (HH:mm)" },
-                  duration: { type: "integer", default: 30, description: "Thời gian dự kiến (phút)" },
-                  customerName: { type: "string", example: "Nguyễn Văn A", description: "Tên khách hàng" },
-                  customerPhone: { type: "string", example: "0912345678", description: "Số điện thoại Việt Nam" },
-                  vehicleType: { type: "string", enum: ["CAR", "BIKE"], example: "CAR", description: "Loại xe (CAR hoặc BIKE)" },
-                  licensePlate: { type: "string", example: "23G-24532", description: "Biển số xe (Tùy chọn)" }
-                }
-              }
-            }
-          }
+                  machineId:     { type: "integer", example: 1 },
+                  serviceId:     { type: "integer", example: 1 },
+                  date:          { type: "string", format: "date", example: "2026-07-03" },
+                  time:          { type: "string", example: "09:30" },
+                  duration:      { type: "integer", default: 30 },
+                  customerName:  { type: "string", example: "Nguyễn Văn A" },
+                  customerPhone: { type: "string", example: "0912345678" },
+                  vehicleType:   { type: "string", enum: ["CAR", "BIKE"], example: "CAR" },
+                  licensePlate:  { type: "string", example: "23G-24532" },
+                },
+              },
+            },
+          },
         },
         responses: {
           200: { description: "Đặt lịch nâng cao thành công" },
           400: { description: "Khung giờ đã bị trùng, sai định dạng, hoặc máy bận" },
-          500: { description: "Lỗi hệ thống" }
-        }
-      }
+          500: { description: "Lỗi hệ thống" },
+        },
+      },
     },
 
     // ── BOOKINGS ──────────────────────────────────────────────────────────────
@@ -634,10 +651,7 @@ const swaggerSpec = {
                 type: "object",
                 required: ["nextStatus"],
                 properties: {
-                  nextStatus: {
-                    type: "integer", example: 2,
-                    description: "1=Chờ duyệt, 2=Đã nhận, 3=Đang rửa, 4=Hoàn thành, 5=Đã hủy",
-                  },
+                  nextStatus: { type: "integer", example: 2, description: "1=Chờ duyệt, 2=Đã nhận, 3=Đang rửa, 4=Hoàn thành, 5=Đã hủy" },
                 },
               },
             },
@@ -960,7 +974,7 @@ const swaggerSpec = {
         tags: ["Notifications"],
         summary: "Lấy danh sách thông báo của người dùng",
         parameters: [
-          { name: "userId", in: "query", required: true, schema: { type: "integer", example: 12 }, description: "ID người dùng cần lấy thông báo" }
+          { name: "userId", in: "query", required: true, schema: { type: "integer", example: 12 } },
         ],
         responses: {
           200: {
@@ -973,36 +987,36 @@ const swaggerSpec = {
                     type: "object",
                     properties: {
                       NotificationID: { type: "integer" },
-                      UserID: { type: "integer" },
-                      BookingID: { type: "integer" },
-                      Title: { type: "string" },
-                      Message: { type: "string" },
-                      IsRead: { type: "boolean" },
-                      Type: { type: "string" },
-                      CreatedDate: { type: "string", format: "date-time" }
-                    }
-                  }
-                }
-              }
-            }
+                      UserID:         { type: "integer" },
+                      BookingID:      { type: "integer" },
+                      Title:          { type: "string" },
+                      Message:        { type: "string" },
+                      IsRead:         { type: "boolean" },
+                      Type:           { type: "string" },
+                      CreatedDate:    { type: "string", format: "date-time" },
+                    },
+                  },
+                },
+              },
+            },
           },
           400: { description: "Thiếu userId" },
-          500: { description: "Lỗi hệ thống" }
-        }
-      }
+          500: { description: "Lỗi hệ thống" },
+        },
+      },
     },
     "/api/notifications/{id}/read": {
       put: {
         tags: ["Notifications"],
         summary: "Đánh dấu một thông báo là đã đọc",
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "integer", example: 1 }, description: "ID của thông báo" }
+          { name: "id", in: "path", required: true, schema: { type: "integer", example: 1 } },
         ],
         responses: {
           200: { description: "Đã cập nhật trạng thái đã đọc thành công" },
-          500: { description: "Lỗi hệ thống" }
-        }
-      }
+          500: { description: "Lỗi hệ thống" },
+        },
+      },
     },
 
     // ── LOYALTY ───────────────────────────────────────────────────────────────
@@ -1094,6 +1108,7 @@ const swaggerSpec = {
         },
       },
     },
+
     // ── SURVEYS ───────────────────────────────────────────────────────────────
     "/api/surveys/form": {
       get: {
@@ -1118,12 +1133,12 @@ const swaggerSpec = {
                 type: "object",
                 required: ["title", "formUrl"],
                 properties: {
-                  title: { type: "string", example: "Khảo Sát Khách Hàng Dịch Vụ Rửa Xe" },
-                  description: { type: "string", example: "Khảo sát người dùng ngoài hệ thống để bổ sung external research dataset." },
-                  formUrl: { type: "string", example: "https://docs.google.com/forms/d/e/xxx/viewform" },
+                  title:            { type: "string", example: "Khảo Sát Khách Hàng Dịch Vụ Rửa Xe" },
+                  description:      { type: "string", example: "Khảo sát người dùng ngoài hệ thống." },
+                  formUrl:          { type: "string", example: "https://docs.google.com/forms/d/e/xxx/viewform" },
                   responseSheetUrl: { type: "string", example: "https://docs.google.com/spreadsheets/d/xxx" },
-                  targetAudience: { type: "string", example: "Sinh viên FPT, nhân viên FPT, chủ xe" },
-                  status: { type: "boolean", example: true },
+                  targetAudience:   { type: "string", example: "Sinh viên FPT, nhân viên FPT, chủ xe" },
+                  status:           { type: "boolean", example: true },
                 },
               },
             },
@@ -1136,7 +1151,6 @@ const swaggerSpec = {
         },
       },
     },
-
     "/api/surveys/form/{id}": {
       put: {
         tags: ["Surveys"],
@@ -1153,12 +1167,12 @@ const swaggerSpec = {
                 type: "object",
                 required: ["title", "formUrl"],
                 properties: {
-                  title: { type: "string", example: "Khảo Sát Khách Hàng Dịch Vụ Rửa Xe" },
-                  description: { type: "string", example: "Khảo sát người dùng ngoài hệ thống để bổ sung external research dataset." },
-                  formUrl: { type: "string", example: "https://docs.google.com/forms/d/e/xxx/viewform" },
+                  title:            { type: "string", example: "Khảo Sát Khách Hàng Dịch Vụ Rửa Xe" },
+                  description:      { type: "string", example: "Khảo sát người dùng ngoài hệ thống." },
+                  formUrl:          { type: "string", example: "https://docs.google.com/forms/d/e/xxx/viewform" },
                   responseSheetUrl: { type: "string", example: "https://docs.google.com/spreadsheets/d/xxx" },
-                  targetAudience: { type: "string", example: "Sinh viên FPT, nhân viên FPT, chủ xe" },
-                  status: { type: "boolean", example: true },
+                  targetAudience:   { type: "string", example: "Sinh viên FPT, nhân viên FPT, chủ xe" },
+                  status:           { type: "boolean", example: true },
                 },
               },
             },
@@ -1172,7 +1186,6 @@ const swaggerSpec = {
         },
       },
     },
-
     "/api/surveys/internal-summary": {
       get: {
         tags: ["Surveys"],
@@ -1185,7 +1198,6 @@ const swaggerSpec = {
         },
       },
     },
-
     "/api/surveys/research-dataset": {
       get: {
         tags: ["Surveys"],
@@ -1195,6 +1207,159 @@ const swaggerSpec = {
         responses: {
           200: { description: "Lấy research dataset thành công" },
           500: { description: "Lỗi khi lấy research dataset" },
+        },
+      },
+    },
+
+    // ── REFUND REQUESTS ───────────────────────────────────────────────────────
+    "/api/refund-requests": {
+      post: {
+        tags: ["Refund Requests"],
+        summary: "Staff tạo yêu cầu hoàn tiền cho khách",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/RefundRequestBody" } } },
+        },
+        responses: {
+          201: {
+            description: "Tạo yêu cầu thành công, đang chờ Admin duyệt",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    message:        { type: "string",  example: "Tạo yêu cầu hoàn tiền thành công, đang chờ Admin duyệt" },
+                    refundId:       { type: "integer", example: 1 },
+                    paymentId:      { type: "integer", example: 5 },
+                    bookingId:      { type: "integer", example: 12 },
+                    customerName:   { type: "string",  example: "Nguyễn Văn A" },
+                    originalAmount: { type: "number",  example: 150000 },
+                    refundPercent:  { type: "integer", example: 100 },
+                    refundAmount:   { type: "number",  example: 150000 },
+                    isDeposit:      { type: "boolean", example: false },
+                    status:         { type: "string",  example: "Pending" },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: "Thiếu paymentId/reason, xe đang rửa, hoặc đã có yêu cầu Pending" },
+          404: { description: "Không tìm thấy payment" },
+        },
+      },
+      get: {
+        tags: ["Refund Requests"],
+        summary: "Lấy danh sách yêu cầu hoàn tiền (Staff/Admin)",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "status", in: "query", schema: { type: "string", enum: ["Pending", "Approved", "Rejected"] }, description: "Lọc theo trạng thái" },
+          { name: "page",   in: "query", schema: { type: "integer", default: 1  } },
+          { name: "limit",  in: "query", schema: { type: "integer", default: 10 } },
+        ],
+        responses: {
+          200: {
+            description: "Thành công",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    data:  { type: "array", items: { type: "object" } },
+                    total: { type: "integer", example: 25 },
+                    page:  { type: "integer", example: 1  },
+                    limit: { type: "integer", example: 10 },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/refund-requests/history": {
+      get: {
+        tags: ["Refund Requests"],
+        summary: "Lịch sử hoàn tiền đã xử lý kèm tổng kết (Admin)",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "range", in: "query", schema: { type: "string", enum: ["7d", "30d", "90d"], default: "30d" }, description: "Khoảng thời gian" },
+        ],
+        responses: {
+          200: {
+            description: "Thành công",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    meta: {
+                      type: "object",
+                      properties: {
+                        range:       { type: "string", example: "30d" },
+                        generatedAt: { type: "string", format: "date-time" },
+                      },
+                    },
+                    summary: {
+                      type: "object",
+                      properties: {
+                        totalRequests:     { type: "integer", example: 12 },
+                        approved:          { type: "integer", example: 8  },
+                        rejected:          { type: "integer", example: 4  },
+                        totalRefundAmount: { type: "number",  example: 1200000 },
+                      },
+                    },
+                    data: { type: "array", items: { type: "object" } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/refund-requests/{id}": {
+      get: {
+        tags: ["Refund Requests"],
+        summary: "Lấy chi tiết một yêu cầu hoàn tiền (Staff/Admin)",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" }, description: "RefundID" }],
+        responses: {
+          200: { description: "Thành công" },
+          404: { description: "Không tìm thấy yêu cầu hoàn tiền" },
+        },
+      },
+    },
+    "/api/refund-requests/{id}/review": {
+      patch: {
+        tags: ["Refund Requests"],
+        summary: "Admin duyệt hoặc từ chối yêu cầu hoàn tiền",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" }, description: "RefundID" }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/RefundReviewBody" } } },
+        },
+        responses: {
+          200: {
+            description: "Xử lý thành công",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    message:      { type: "string",  example: "Đã duyệt hoàn tiền thành công" },
+                    refundId:     { type: "integer", example: 1 },
+                    status:       { type: "string",  example: "Approved" },
+                    refundAmount: { type: "number",  example: 150000 },
+                    note:         { type: "string",  example: "Duyệt do lỗi từ phía hệ thống" },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: "action không hợp lệ, yêu cầu đã xử lý, hoặc refundAmount vượt quá số tiền đã trả" },
+          404: { description: "Không tìm thấy yêu cầu hoàn tiền" },
         },
       },
     },
