@@ -253,126 +253,192 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Panel trực quan — minh hoạ tự vẽ: xe đi qua dàn rửa tự động */}
-        <div className="relative w-full min-w-0 aspect-[4/5] rounded-[2rem] overflow-hidden shadow-2xl bg-gradient-to-br from-[#192b4d] via-[#1c2c50] to-[#0A8C97]">
+        {/* Panel trực quan — SVG animation */}
+        <div className="relative w-full min-w-0 max-w-[560px] mx-auto lg:ml-auto aspect-[13/10] rounded-[2rem] overflow-hidden shadow-2xl bg-gradient-to-br from-[#192b4d] via-[#22315c] to-[#0A8C97]">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute -inset-y-10 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-[sweep_5s_ease-in-out_infinite]" />
           </div>
 
-          <svg viewBox="0 0 400 500" className="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice">
+          <svg
+            viewBox="0 0 520 400"
+            className="absolute inset-0 w-full h-full"
+            preserveAspectRatio="xMidYMid meet"
+          >
             <defs>
               <linearGradient id="carGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#4CEBF5" />
+                <stop offset="0%" stopColor="#58EEF4" />
                 <stop offset="100%" stopColor="#0A8C97" />
               </linearGradient>
-              <linearGradient id="brushGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1D9E75" />
-                <stop offset="100%" stopColor="#0F6E56" />
+
+              <linearGradient id="glassGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="rgba(223,255,255,.86)" />
+                <stop offset="100%" stopColor="rgba(35,95,113,.9)" />
               </linearGradient>
-              <radialGradient id="spotlight" cx="50%" cy="40%" r="65%">
-                <stop offset="0%" stopColor="rgba(255,255,255,0.14)" />
+
+              <radialGradient id="spotlight" cx="50%" cy="42%" r="65%">
+                <stop offset="0%" stopColor="rgba(255,255,255,0.15)" />
                 <stop offset="100%" stopColor="rgba(255,255,255,0)" />
               </radialGradient>
-              <radialGradient id="foamGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
-                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+
+              <radialGradient id="shadow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="rgba(0,0,0,0.42)" />
+                <stop offset="100%" stopColor="rgba(0,0,0,0)" />
               </radialGradient>
+
+              <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
             </defs>
 
-            <rect x="0" y="0" width="400" height="500" fill="url(#spotlight)" />
+            <rect x="0" y="0" width="520" height="400" fill="url(#spotlight)" />
 
-            {/* thanh ray + vạch chỉ hướng di chuyển của xe qua dàn rửa */}
-            <line x1="20" y1="400" x2="380" y2="400" stroke="rgba(255,255,255,.14)" strokeWidth="2" />
-            <path d="M300 400 l14 0 l-6 -6 M314 400 l-6 6" stroke="rgba(255,255,255,.35)" strokeWidth="2" strokeLinecap="round" fill="none" />
-
-            {/* vòi phun nước phía trên */}
-            <rect x="60" y="48" width="280" height="10" rx="5" fill="rgba(255,255,255,.12)" />
-            {[95, 140, 200, 260, 305].map((x, i) => (
-              <g key={x}>
-                <circle cx={x} cy="58" r="3" fill="#4CEBF5" />
-                <line
-                  x1={x}
-                  y1="61"
-                  x2={x - 6}
-                  y2="150"
-                  stroke="#4CEBF5"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  opacity="0.55"
-                >
-                  <animate attributeName="opacity" values="0.15;0.6;0.15" dur="1.6s" repeatCount="indefinite" begin={`${i * 0.15}s`} />
-                </line>
-              </g>
+            {/* Chấm nền */}
+            {[
+              [48, 48, 4], [472, 48, 4], [48, 350, 4], [472, 350, 4],
+              [130, 30, 2.5], [260, 22, 2.5], [390, 30, 2.5],
+              [25, 190, 3], [495, 190, 3]
+            ].map(([cx, cy, r], i) => (
+              <circle
+                key={i}
+                cx={cx}
+                cy={cy}
+                r={r}
+                fill="rgba(255,255,255,.28)"
+                className="animate-[pulse_2.4s_ease-in-out_infinite]"
+                style={{ animationDelay: `${i * 0.12}s` }}
+              />
             ))}
 
-            {/* cụm chổi quay bên trái */}
-            <g transform="translate(38,150)">
-              <rect x="0" y="0" width="26" height="230" rx="13" fill="url(#brushGrad)" />
-              {Array.from({ length: 9 }).map((_, i) => (
-                <line key={i} x1="-6" y1={14 + i * 25} x2="32" y2={2 + i * 25} stroke="rgba(255,255,255,.35)" strokeWidth="3" strokeLinecap="round" />
-              ))}
-              <path d="M-14 40 a20 20 0 0 1 0 -30" stroke="rgba(255,255,255,.3)" strokeWidth="2" fill="none" strokeLinecap="round">
-                <animateTransform attributeName="transform" type="rotate" from="0 13 25" to="360 13 25" dur="1.8s" repeatCount="indefinite" />
-              </path>
-            </g>
-
-            {/* cụm chổi quay bên phải */}
-            <g transform="translate(336,150)">
-              <rect x="0" y="0" width="26" height="230" rx="13" fill="url(#brushGrad)" />
-              {Array.from({ length: 9 }).map((_, i) => (
-                <line key={i} x1="32" y1={14 + i * 25} x2="-6" y2={2 + i * 25} stroke="rgba(255,255,255,.35)" strokeWidth="3" strokeLinecap="round" />
-              ))}
-              <path d="M40 40 a20 20 0 0 0 0 -30" stroke="rgba(255,255,255,.3)" strokeWidth="2" fill="none" strokeLinecap="round">
-                <animateTransform attributeName="transform" type="rotate" from="0 13 25" to="-360 13 25" dur="1.8s" repeatCount="indefinite" />
-              </path>
-            </g>
-
-            {/* bọt / bong bóng quanh gầm xe */}
-            <ellipse cx="200" cy="392" rx="130" ry="20" fill="url(#foamGlow)" />
-            <circle cx="120" cy="388" r="6" fill="rgba(255,255,255,.55)" />
-            <circle cx="150" cy="398" r="4" fill="rgba(255,255,255,.4)" />
-            <circle cx="250" cy="396" r="5" fill="rgba(255,255,255,.45)" />
-            <circle cx="280" cy="386" r="7" fill="rgba(255,255,255,.5)" />
-            <circle cx="200" cy="402" r="3.5" fill="rgba(255,255,255,.35)" />
-
-            {/* xe */}
-            <g transform="translate(70,255)">
+            {/* Cổng rửa */}
+            <g>
               <path
-                d="M10 90 Q0 60 30 55 L60 20 Q75 5 110 5 L170 5 Q205 5 220 25 L245 55 Q275 58 268 90 Q268 105 250 105 L235 105 Q230 118 215 118 Q200 118 195 105 L75 105 Q70 118 55 118 Q40 118 35 105 L28 105 Q10 105 10 90 Z"
-                fill="url(#carGrad)"
-              />
-              <path
-                d="M63 53 L86 22 Q98 8 115 8 L165 8"
+                d="M115 330V158C115 100 162 54 220 54H300C358 54 405 100 405 158V330"
                 fill="none"
-                stroke="rgba(255,255,255,.55)"
-                strokeWidth="2.5"
+                stroke="#08182f"
+                strokeWidth="34"
                 strokeLinecap="round"
               />
-              <path d="M65 55 L85 25 Q95 15 115 15 L152 15 L152 55 Z" fill="rgba(20,24,43,.4)" />
-              <path d="M158 15 L165 15 Q185 15 198 28 L215 55 L158 55 Z" fill="rgba(20,24,43,.4)" />
-              <path d="M92 48 L108 22 L118 22 L102 48 Z" fill="rgba(255,255,255,.25)" />
-              <rect x="152" y="12" width="4" height="45" fill="rgba(20,24,43,.5)" />
+              <path
+                d="M135 330V164C135 117 173 79 220 79H300C347 79 385 117 385 164V330"
+                fill="none"
+                stroke="#5DEBF1"
+                strokeWidth="6"
+                strokeLinecap="round"
+                opacity=".82"
+                filter="url(#softGlow)"
+                className="animate-[portalPulse_1.8s_ease-in-out_infinite_alternate]"
+              />
+            </g>
 
-              <circle cx="75" cy="108" r="17" fill="#0B1130" />
-              <circle cx="75" cy="108" r="17" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="1.5" />
-              <circle cx="75" cy="108" r="6.5" fill="#4CEBF5" />
-              <circle cx="215" cy="108" r="17" fill="#0B1130" />
-              <circle cx="215" cy="108" r="17" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="1.5" />
-              <circle cx="215" cy="108" r="6.5" fill="#4CEBF5" />
+            {/* Tia nước trên */}
+            <g className="animate-[waterShow_8s_ease-in-out_infinite]">
+              {[190, 225, 260, 295, 330].map((x, i) => (
+                <line
+                  key={i}
+                  x1={x}
+                  y1="96"
+                  x2={x + (i - 2) * 4}
+                  y2="245"
+                  stroke="#A8FAFF"
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                  strokeDasharray="12 10"
+                  filter="url(#softGlow)"
+                  className="animate-[waterFlow_.55s_linear_infinite]"
+                />
+              ))}
+            </g>
 
-              <path d="M58 48 Q48 46 47 56 Q47 62 55 61" fill="#0A8C97" />
+            {/* Tia nước hai bên */}
+            <g className="animate-[waterShow_8s_ease-in-out_infinite]">
+              <path d="M138 176C182 190 210 215 230 248" fill="none" stroke="#A8FAFF" strokeWidth="7" strokeLinecap="round" strokeDasharray="12 10" filter="url(#softGlow)" className="animate-[waterFlow_.55s_linear_infinite]" />
+              <path d="M382 176C338 190 310 215 290 248" fill="none" stroke="#A8FAFF" strokeWidth="7" strokeLinecap="round" strokeDasharray="12 10" filter="url(#softGlow)" className="animate-[waterFlow_.55s_linear_infinite]" />
+            </g>
+
+            {/* Bóng dưới xe */}
+            <ellipse
+              cx="260"
+              cy="325"
+              rx="145"
+              ry="20"
+              fill="url(#shadow)"
+              className="animate-[carShadow_8s_cubic-bezier(.65,0,.35,1)_infinite]"
+            />
+
+            {/* Xe */}
+            <g className="animate-[carMove_8s_cubic-bezier(.65,0,.35,1)_infinite]">
+              <path
+                d="M135 283C142 247 167 222 204 211L228 176H306L339 212C373 222 395 247 402 283L414 296V330H394C388 356 366 372 338 372C310 372 288 356 282 330H238C232 356 210 372 182 372C154 372 132 356 126 330H106V296L117 284Z"
+                fill="url(#carGrad)"
+                stroke="#8FF8FA"
+                strokeWidth="2.5"
+              />
+
+              <path
+                d="M216 188H301L329 220H193Z"
+                fill="url(#glassGrad)"
+                stroke="rgba(230,255,255,.72)"
+                strokeWidth="2"
+              />
+
+              <path d="M257 188V220" stroke="rgba(5,55,74,.58)" strokeWidth="4" />
+              <path d="M129 301H391" stroke="rgba(5,55,74,.42)" strokeWidth="4" strokeLinecap="round" />
+
+              <circle cx="182" cy="330" r="30" fill="#07162F" stroke="#163756" strokeWidth="6" />
+              <circle cx="182" cy="330" r="11" fill="#4CEBF5" stroke="#D8FFFF" strokeWidth="3" />
+              <circle cx="338" cy="330" r="30" fill="#07162F" stroke="#163756" strokeWidth="6" />
+              <circle cx="338" cy="330" r="11" fill="#4CEBF5" stroke="#D8FFFF" strokeWidth="3" />
+
+              <rect x="126" y="269" width="42" height="13" rx="6" fill="#E7FFFF" filter="url(#softGlow)" />
+              <rect x="352" y="269" width="42" height="13" rx="6" fill="#E7FFFF" filter="url(#softGlow)" />
+            </g>
+
+            {/* Bọt */}
+            <g className="animate-[foamShow_8s_ease-in-out_infinite]">
+              {[
+                [196, 236, 15], [224, 225, 11], [254, 241, 18],
+                [285, 225, 12], [315, 240, 16]
+              ].map(([cx, cy, r], i) => (
+                <circle
+                  key={i}
+                  cx={cx}
+                  cy={cy}
+                  r={r}
+                  fill="rgba(246,255,255,.9)"
+                  stroke="rgba(112,235,242,.85)"
+                  strokeWidth="2"
+                  className="animate-[foamFloat_1.1s_ease-in-out_infinite_alternate]"
+                  style={{ animationDelay: `${-i * 0.18}s` }}
+                />
+              ))}
+            </g>
+
+            {/* Ánh sáng hoàn tất */}
+            <g
+              fill="#F2FFFF"
+              filter="url(#softGlow)"
+              className="animate-[shineShow_8s_ease-in-out_infinite]"
+            >
+              <path d="M188 202L198 178L208 202L232 212L208 222L198 246L188 222L164 212Z" />
+              <path d="M334 230L341 213L348 230L365 237L348 244L341 261L334 244L317 237Z" />
             </g>
           </svg>
 
           <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between text-white">
-            <span className="font-mono text-xs bg-white/15 px-2.5 py-1.5 rounded-md">MS-0417-VN</span>
+            <span className="font-mono text-xs bg-white/15 px-2.5 py-1.5 rounded-md">
+              MS-0417-VN
+            </span>
             <span className="flex items-center gap-2 text-xs font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#3EE6A0] shadow-[0_0_0_4px_rgba(62,230,160,0.25)]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#3EE6A0] shadow-[0_0_0_4px_rgba(62,230,160,0.25)] animate-pulse" />
               Đang rửa xe
             </span>
           </div>
         </div>
-      </main>
+            </main>
 
       {/* Cách hoạt động */}
       <section id="how-it-works" className="container mx-auto px-6 pb-28 scroll-mt-24">
@@ -453,9 +519,10 @@ const Home = () => {
             ].map((s) => (
               <div
                 key={s.t}
-                className="group rounded-2xl border border-black/5 p-7 hover:border-[#0A8C97]/30 hover:shadow-lg transition-all"
+                className="group relative overflow-hidden rounded-2xl border border-black/5 p-7 hover:border-[#0A8C97]/30 hover:shadow-xl transition-all"
               >
-                <div className="w-12 h-12 rounded-xl bg-[#E6F6F4] flex items-center justify-center mb-5 group-hover:bg-[#0A8C97] transition-colors">
+                <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-[#0A8C97]/5 group-hover:bg-[#0A8C97]/10 transition-colors" />
+                <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-[#E6F6F4] to-[#CFF0EE] flex items-center justify-center mb-5 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all">
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -463,13 +530,13 @@ const Home = () => {
                     strokeWidth="1.8"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="w-6 h-6 group-hover:stroke-white transition-colors"
+                    className="w-7 h-7"
                   >
                     {s.icon}
                   </svg>
                 </div>
-                <h4 className="text-base font-bold text-[#192b4d] mb-2">{s.t}</h4>
-                <p className="text-sm text-gray-600 leading-relaxed">{s.d}</p>
+                <h4 className="relative text-base font-bold text-[#192b4d] mb-2">{s.t}</h4>
+                <p className="relative text-sm text-gray-600 leading-relaxed">{s.d}</p>
               </div>
             ))}
           </div>
@@ -494,6 +561,7 @@ const Home = () => {
               bg: "#FBF3E9",
               rule: "Đặt cọc 10% khi giữ lịch",
               perk: "Tích điểm cơ bản trên mỗi lượt rửa",
+              icon: <path d="M12 15a5 5 0 100-10 5 5 0 000 10zM8.5 14L7 21l5-2 5 2-1.5-7" />,
             },
             {
               tier: "Silver",
@@ -501,6 +569,7 @@ const Home = () => {
               bg: "#F1F3F6",
               rule: "Đặt cọc 10% khi giữ lịch",
               perk: "Ưu tiên khung giờ cuối tuần",
+              icon: <path d="M12 15a5 5 0 100-10 5 5 0 000 10zM8.5 14L7 21l5-2 5 2-1.5-7" />,
             },
             {
               tier: "Gold",
@@ -509,6 +578,7 @@ const Home = () => {
               rule: "Giữ lịch miễn cọc",
               perk: "Đổi điểm lấy dịch vụ nâng cấp",
               note: "Huỷ trễ nhiều lần sẽ áp lại cọc",
+              icon: <path d="M4 4h3l1.5 6M4 4H2m2 0l2.2 11a2 2 0 002 1.6h7.6a2 2 0 002-1.6L18 9H6.4M9 20a1 1 0 102 0 1 1 0 00-2 0zm7 0a1 1 0 102 0 1 1 0 00-2 0z" />,
             },
             {
               tier: "Platinum",
@@ -517,13 +587,30 @@ const Home = () => {
               rule: "Giữ lịch miễn cọc",
               perk: "Riêng 1 kỹ thuật viên phụ trách",
               note: "Huỷ trễ nhiều lần sẽ áp lại cọc",
+              icon: <path d="M3 8l4-4 5 4 5-4 4 4-2 10H5L3 8zM8 18h8" />,
             },
           ].map((m) => (
             <div
               key={m.tier}
-              className="rounded-2xl p-7 border border-black/5"
+              className="relative overflow-hidden rounded-2xl p-7 border border-black/5"
               style={{ background: m.bg }}
             >
+              <div
+                className="absolute -right-4 -top-4 w-9 h-9 flex items-center justify-center opacity-25"
+                style={{ color: m.color }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full">
+                  {m.icon}
+                </svg>
+              </div>
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center mb-4"
+                style={{ background: "rgba(255,255,255,.6)", color: m.color }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4.5 h-4.5">
+                  {m.icon}
+                </svg>
+              </div>
               <div
                 className="text-xs font-bold uppercase tracking-wider mb-4"
                 style={{ color: m.color }}
@@ -599,10 +686,108 @@ const Home = () => {
 
       <style>{`
         html { scroll-behavior: smooth; }
+        @keyframes riseIn {
+          0% { opacity: 0; transform: translateY(16px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cổng rửa phát sáng nhấp nháy */
+        @keyframes portalPulse {
+          0% { opacity: .55; }
+          100% { opacity: 1; }
+        }
+
+        /* Tia nước chỉ hiện khi xe đang ở trong cổng rửa (giữa chu kỳ) */
+        @keyframes waterShow {
+          0%, 28% { opacity: 0; }
+          36%, 64% { opacity: 1; }
+          72%, 100% { opacity: 0; }
+        }
+
+        /* Vệt nước chảy dọc theo tia (dịch chuyển dash) */
+        @keyframes waterFlow {
+          0% { stroke-dashoffset: 0; }
+          100% { stroke-dashoffset: -44; }
+        }
+
+        /* Bóng xe di chuyển đồng bộ với xe */
+        @keyframes carShadow {
+          0% { transform: translateX(-190px); opacity: .25; }
+          50% { transform: translateX(0); opacity: .55; }
+          100% { transform: translateX(190px); opacity: .25; }
+        }
+
+        /* Xe chạy từ trái, xuyên qua cổng rửa, ra bên phải rồi lặp lại */
+        @keyframes carMove {
+          0% { transform: translateX(-190px); }
+          50% { transform: translateX(0); }
+          100% { transform: translateX(190px); }
+        }
+
+        /* Bọt chỉ hiện khi xe ở trong cổng rửa */
+        @keyframes foamShow {
+          0%, 32% { opacity: 0; }
+          40%, 60% { opacity: 1; }
+          70%, 100% { opacity: 0; }
+        }
+
+        /* Bọt bồng bềnh nhẹ */
+        @keyframes foamFloat {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(-5px); }
+        }
+
+        /* Tia sáng loé lên khi xe vừa rửa xong, ra khỏi cổng */
+        @keyframes shineShow {
+          0%, 68% { opacity: 0; transform: scale(.8); }
+          76%, 88% { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(.8); }
+        }
         @keyframes sweep {
           0%, 100% { transform: translateX(-120%) skewX(-12deg); }
           50% { transform: translateX(320%) skewX(-12deg); }
         }
+
+        /* ===== Polish thêm cho toàn trang ===== */
+
+        /* màu bôi đen văn bản theo brand thay vì xanh mặc định của trình duyệt */
+        ::selection { background: #0A8C97; color: #ffffff; }
+
+        /* thanh cuộn mảnh, theo tông brand */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: #F4F5F8; }
+        ::-webkit-scrollbar-thumb { background: #C7D3D8; border-radius: 999px; border: 2px solid #F4F5F8; }
+        ::-webkit-scrollbar-thumb:hover { background: #0A8C97; }
+
+        /* mọi thẻ bo góc (dịch vụ / hạng thành viên / đánh giá) nổi nhẹ + đổ bóng mềm khi rê chuột */
+        .rounded-2xl { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+        .rounded-2xl:hover { transform: translateY(-3px); }
+
+        /* focus rõ ràng, không dùng viền xanh mặc định thô của trình duyệt */
+        a:focus-visible, button:focus-visible {
+          outline: 2px solid #0A8C97;
+          outline-offset: 3px;
+          border-radius: 6px;
+        }
+
+        /* gạch chân chạy động khi hover các link điều hướng */
+        header nav a {
+          position: relative;
+        }
+        header nav a:not(.text-\[\#192b4d\])::after {
+          content: "";
+          position: absolute;
+          left: 0; right: 100%;
+          bottom: -6px;
+          height: 2px;
+          background: #F58607;
+          transition: right .25s ease;
+        }
+        header nav a:not(.text-\[\#192b4d\]):hover::after { right: 0; }
+
+        /* nút CTA cam nhích nhẹ + sáng hơn khi hover, mượt hơn transition mặc định của Tailwind */
+        a.bg-\[\#F58607\] { transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease; }
+        a.bg-\[\#F58607\]:hover { transform: translateY(-2px); }
       `}</style>
     </div>
   );
