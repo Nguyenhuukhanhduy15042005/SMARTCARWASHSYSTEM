@@ -10,6 +10,7 @@ router.use(verifyToken);
 
 router.get('/tier',               ctrl.getUserTier);
 router.get('/history',            ctrl.getPaymentHistory);
+router.get('/refundable',         ctrl.getRefundablePayments);
 router.get('/:id/refund-preview', ctrl.getRefundPreview);
 router.post('/',                  ctrl.createPayment);
 router.post('/:id/refund',        ctrl.refundPayment);

@@ -27,7 +27,6 @@ const getUserTier = async (req, res) => {
 
     res.json({
       tierID, tierName, needDeposit, forceDeposit, cancelCount,
-      // Cảnh báo cho frontend hiển thị
       forceDepositWarning: forceDeposit
         ? `🚨 Do bạn đã hủy ${cancelCount} lần trong 30 ngày, hạng ${tierName} của bạn phải đặt cọc 10% cho lần đặt lịch này.`
         : null
@@ -92,4 +91,58 @@ const confirmCashDeposit = async (req, res) => {
   } catch (err) { res.status(400).json({ message: err.message }); }
 };
 
-module.exports = { createPayment, vnpayReturn, getPaymentHistory, getRefundPreview, refundPayment, getUserTier, confirmCashDeposit };
+/**
+ * Lấy danh sách payment đủ điều kiện tạo yêu cầu hoàn tiền (Staff/Admin)
+ * GET /api/payments/refundable
+ * Điều kiện:
+ *   - Booking chưa hủy (Status != 5), không đang rửa (Status != 3), chưa hoàn thành (Status != 4)
+ *   - Chưa có REFUND_REQUEST đang Pending hoặc UnderReview
+ *   - Amount > 0 (có tiền để hoàn)
+ */
+const getRefundablePayments = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+
+const result = await pool.request().query(`
+  SELECT
+    p.PaymentID, p.BookingID, p.Amount, p.PaymentMethod, p.PaidAt,
+    b.Status      AS BookingStatus,
+    b.BookingDate, b.LicensePlate, b.VehicleType,
+    b.CustomerID,
+    u.FullName    AS CustomerName,
+    u.Email       AS CustomerEmail
+  FROM PAYMENT p
+  JOIN BOOKING b ON p.BookingID = b.BookingID
+  JOIN [USER] u  ON b.CustomerID = u.UserID
+  LEFT JOIN REFUND_REQUEST rr
+    ON rr.PaymentID = p.PaymentID
+    AND rr.Status IN ('Pending', 'UnderReview')
+  WHERE
+    (p.IsHiddenByUser IS NULL OR p.IsHiddenByUser = 0)
+    AND b.Status != 5
+    AND p.Amount > 0
+    AND rr.RefundID IS NULL
+  ORDER BY p.PaidAt DESC
+`);
+
+    res.json({
+      total: result.recordset.length,
+      data:  result.recordset
+    });
+
+  } catch (err) {
+    console.error('[getRefundablePayments]', err.message);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = {
+  createPayment,
+  vnpayReturn,
+  getPaymentHistory,
+  getRefundPreview,
+  refundPayment,
+  getUserTier,
+  confirmCashDeposit,
+  getRefundablePayments,  // ← MỚI
+};
