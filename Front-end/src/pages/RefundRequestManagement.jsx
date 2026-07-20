@@ -9,7 +9,20 @@ import Sidebar from "../components/Sidebar";
 import "./Payment.css";
 
 /* ============================================================================
-   API LAYER — kết nối backend thật
+   API LAYER
+   ----------------------------------------------------------------------------
+   Set USE_MOCK = false and API_BASE to your server to go live. Every function
+   mirrors the exact request/response shape of refundRequest.js. Attach the
+   admin JWT the same way verifyToken expects (Authorization: Bearer <token>).
+
+   Admin scope only: getRefundRequests, getRefundRequestById, reviewRefundRequest,
+   getRefundHistory. No access to createRefundRequest / review-start routes.
+
+   NOTE FOR BACKEND: reviewRefundRequest() in refundRequest.js currently only
+   allows action when Status === 'Pending'. The written spec (Staff moves to
+   UnderReview, then Admin reviews) needs that check changed to
+   Status === 'Pending' || Status === 'UnderReview', otherwise requests that
+   went through review-start will be rejected here with a 400.
 ============================================================================ */
 const USE_MOCK = false;
 const API_BASE = "/api/refund-requests";
@@ -32,7 +45,7 @@ async function apiFetch(path, options = {}) {
   return data;
 }
 
-/* ---------------------------- MOCK BACKEND (giữ lại để fallback) ---------- */
+/* ---------------------------- MOCK BACKEND -------------------------------- */
 let mockDb = [
   {
     RefundID: 1, PaymentID: 105, BookingID: 4990, Status: "Pending",
@@ -61,8 +74,7 @@ let mockDb = [
   {
     RefundID: 4, PaymentID: 108, BookingID: 4965, Status: "Rejected",
     RefundAmount: 0, RefundPercent: 0, Reason: "Khách đổi ý sau khi xe đã vào rửa",
-    Note: "Booking đã chuyển trạng thái đang rửa trước khi yêu cầu được tạo",
-    CreatedAt: new Date(Date.now() - 1000 * 60 * 60 * 120), UpdatedAt: new Date(Date.now() - 1000 * 60 * 60 * 118),
+    Note: "Booking đã chuyển trạng thái đang rửa trước khi yêu cầu được tạo", CreatedAt: new Date(Date.now() - 1000 * 60 * 60 * 120), UpdatedAt: new Date(Date.now() - 1000 * 60 * 60 * 118),
     CustomerName: "Ngô Bảo Châu", CustomerEmail: "chau.ngo@mail.com", RequestedByName: "Staff - Tùng", ApprovedByName: "Admin - Khánh",
     OriginalAmount: 180000, PaymentMethod: "cash", BookingDate: new Date(Date.now() - 1000 * 60 * 60 * 125),
     LicensePlate: "60D-555.66", VehicleType: "Sedan", BookingStatus: 4,
@@ -91,10 +103,8 @@ const mockApi = {
     await wait();
     const row = mockDb.find((r) => r.RefundID === Number(id));
     if (!row) throw new Error("Không tìm thấy yêu cầu hoàn tiền");
-    if (!["Pending", "UnderReview"].includes(row.Status))
-      throw new Error(`Yêu cầu đã được xử lý (${row.Status})`);
-    const finalAmount = refundAmount !== undefined && refundAmount !== ""
-      ? Number(refundAmount) : Number(row.RefundAmount);
+    if (!["Pending", "UnderReview"].includes(row.Status)) throw new Error(`Yêu cầu đã được xử lý (${row.Status})`);
+    const finalAmount = refundAmount !== undefined && refundAmount !== "" ? Number(refundAmount) : Number(row.RefundAmount);
     if (action === "approve" && finalAmount > Number(row.OriginalAmount)) {
       throw new Error(`Số tiền hoàn (${finalAmount.toLocaleString("vi-VN")}đ) không thể vượt quá số tiền đã trả (${Number(row.OriginalAmount).toLocaleString("vi-VN")}đ)`);
     }
@@ -110,37 +120,29 @@ const mockApi = {
         setTimeout(() => { row.Status = "Refunded"; row.UpdatedAt = new Date(); }, 1200);
       }, 1200);
     }
-    return {
-      message: action === "approve" ? "Đã duyệt hoàn tiền thành công" : "Đã từ chối yêu cầu hoàn tiền",
-      refundId: row.RefundID, status: row.Status, refundAmount: finalAmount, note: note || null,
-    };
+    return { message: action === "approve" ? "Đã duyệt hoàn tiền thành công" : "Đã từ chối yêu cầu hoàn tiền", refundId: row.RefundID, status: row.Status, refundAmount: finalAmount, note: note || null };
   },
   async history({ range = "30d" }) {
     await wait();
     const days = range === "7d" ? 7 : range === "90d" ? 90 : 30;
     const cutoff = Date.now() - days * 86400000;
-    const data = mockDb
-      .filter((r) => ["Approved", "Rejected", "RefundProcessing", "Refunded"].includes(r.Status)
-        && new Date(r.UpdatedAt).getTime() >= cutoff)
+    const data = mockDb.filter((r) => ["Approved", "Rejected", "RefundProcessing", "Refunded"].includes(r.Status) && new Date(r.UpdatedAt).getTime() >= cutoff)
       .sort((a, b) => new Date(b.UpdatedAt) - new Date(a.UpdatedAt));
     const approved = data.filter((r) => r.Status !== "Rejected");
     const rejected = data.filter((r) => r.Status === "Rejected");
     return {
       meta: { range, generatedAt: new Date() },
-      summary: {
-        totalRequests: data.length, approved: approved.length, rejected: rejected.length,
-        totalRefundAmount: approved.reduce((s, r) => s + Number(r.RefundAmount || 0), 0),
-      },
+      summary: { totalRequests: data.length, approved: approved.length, rejected: rejected.length, totalRefundAmount: approved.reduce((s, r) => s + Number(r.RefundAmount || 0), 0) },
       data,
     };
   },
 };
 
 const Api = {
-  list:    (q)       => USE_MOCK ? mockApi.list(q)       : apiFetch(`/?${new URLSearchParams(q)}`),
-  getById: (id)      => USE_MOCK ? mockApi.getById(id)   : apiFetch(`/${id}`),
-  review:  (id, body)=> USE_MOCK ? mockApi.review(id, body) : apiFetch(`/${id}/review`, { method: "PATCH", body: JSON.stringify(body) }),
-  history: (q)       => USE_MOCK ? mockApi.history(q)    : apiFetch(`/history?${new URLSearchParams(q)}`),
+  list: (q) => USE_MOCK ? mockApi.list(q) : apiFetch(`/?${new URLSearchParams(q)}`),
+  getById: (id) => USE_MOCK ? mockApi.getById(id) : apiFetch(`/${id}`),
+  review: (id, body) => USE_MOCK ? mockApi.review(id, body) : apiFetch(`/${id}/review`, { method: "PATCH", body: JSON.stringify(body) }),
+  history: (q) => USE_MOCK ? mockApi.history(q) : apiFetch(`/history?${new URLSearchParams(q)}`),
 };
 
 /* ============================================================================
@@ -156,9 +158,9 @@ const STATUS_META = {
 };
 const PIPELINE = ["Pending", "UnderReview", "Approved", "RefundProcessing", "Refunded"];
 
-const money  = (n) => `${Number(n || 0).toLocaleString("vi-VN")}đ`;
-const dt     = (d) => new Date(d).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-const dOnly  = (d) => new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+const money = (n) => `${Number(n || 0).toLocaleString("vi-VN")}đ`;
+const dt = (d) => new Date(d).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const dOnly = (d) => new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
 
 function StatusPill({ status }) {
   const m = STATUS_META[status] || { label: status, color: "#666" };
@@ -193,6 +195,20 @@ function Flow({ status }) {
     </div>
   );
 }
+
+function Toast({ toast }) {
+  if (!toast) return null;
+  return (
+    <div className={`toast ${toast.type}`}>
+      {toast.type === "error" ? <AlertTriangle size={16} /> : <Check size={16} />}
+      {toast.msg}
+    </div>
+  );
+}
+
+/* ============================================================================
+   MAIN APP — ADMIN
+============================================================================ */
 
 const RQ_DARK_CSS = `
   .rq-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
@@ -269,9 +285,7 @@ if (typeof document !== "undefined" && !document.getElementById("rq-dark")) {
   document.head.appendChild(s);
 }
 
-/* ============================================================================
-   MAIN APP — ADMIN
-============================================================================ */
+
 export default function RefundRequestManagement() {
   const [tab, setTab] = useState("list");
   const [rows, setRows] = useState([]);
@@ -303,11 +317,7 @@ export default function RefundRequestManagement() {
   const filteredRows = useMemo(() => {
     if (!search.trim()) return rows;
     const q = search.trim().toLowerCase();
-    return rows.filter((r) =>
-      r.CustomerName?.toLowerCase().includes(q) ||
-      r.LicensePlate?.toLowerCase().includes(q) ||
-      String(r.RefundID).includes(q)
-    );
+    return rows.filter((r) => r.CustomerName?.toLowerCase().includes(q) || r.LicensePlate?.toLowerCase().includes(q) || String(r.RefundID).includes(q));
   }, [rows, search]);
 
   const selected = rows.find((r) => r.RefundID === selectedId);
@@ -339,10 +349,16 @@ export default function RefundRequestManagement() {
 
           {/* TABS */}
           <div className="ph-filter-tabs" style={{ marginBottom: 24 }}>
-            <button className={`ph-tab ${tab === "list" ? "active" : ""}`} onClick={() => setTab("list")}>
+            <button
+              className={`ph-tab ${tab === "list" ? "active" : ""}`}
+              onClick={() => setTab("list")}
+            >
               📋 Danh sách
             </button>
-            <button className={`ph-tab ${tab === "history" ? "active" : ""}`} onClick={() => setTab("history")}>
+            <button
+              className={`ph-tab ${tab === "history" ? "active" : ""}`}
+              onClick={() => setTab("history")}
+            >
               📊 Lịch sử & báo cáo
             </button>
           </div>
@@ -357,18 +373,14 @@ export default function RefundRequestManagement() {
           )}
 
           {tab === "history" && <HistoryView notify={notify} />}
+
         </div>
 
         {selected && (
           <DetailDrawer
             row={selected}
             onClose={() => setSelectedId(null)}
-            onChanged={async (msg) => {
-              notify(msg);
-              await refreshList();
-              const fresh = await Api.getById(selected.RefundID);
-              setRows((p) => p.map((r) => r.RefundID === fresh.RefundID ? { ...r, ...fresh } : r));
-            }}
+            onChanged={async (msg) => { notify(msg); await refreshList(); const fresh = await Api.getById(selected.RefundID); setRows((p) => p.map((r) => r.RefundID === fresh.RefundID ? { ...r, ...fresh } : r)); }}
             onError={(msg) => notify(msg, "error")}
           />
         )}
@@ -391,24 +403,16 @@ function ListView({ rows, loading, statusFilter, setStatusFilter, search, setSea
   const statuses = ["", "Pending", "UnderReview", "Approved", "Rejected", "RefundProcessing", "Refunded"];
   return (
     <div>
-      <div className="rq-toolbar">
+      <div className="rq-toolbar" style={{ display:"flex", gap:10, marginBottom:16 }}>
         <div className="rq-search-box">
           <Search size={15} />
-          <input
-            placeholder="Tìm theo tên khách, biển số, mã yêu cầu…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <input placeholder="Tìm theo tên khách, biển số, mã yêu cầu…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </div>
-      <div className="rq-chip-row">
+      <div className="rq-chip-row" style={{ marginBottom: 16 }}>
         <Filter size={14} style={{ color: "var(--ink-faint)", alignSelf: "center", marginRight: 2 }} />
         {statuses.map((s) => (
-          <button
-            key={s || "all"}
-            className={`rq-chip ${statusFilter === s ? "active" : ""}`}
-            onClick={() => setStatusFilter(s)}
-          >
+          <button key={s || "all"} className={`rq-chip ${statusFilter === s ? "active" : ""}`} onClick={() => setStatusFilter(s)}>
             {s ? STATUS_META[s].label : "Tất cả"}
           </button>
         ))}
@@ -423,8 +427,7 @@ function ListView({ rows, loading, statusFilter, setStatusFilter, search, setSea
           <table className="rq-table">
             <thead>
               <tr>
-                <th>Mã</th><th>Khách hàng</th><th>Xe / Biển số</th>
-                <th>Số tiền hoàn</th><th>Trạng thái</th><th>Tạo lúc</th>
+                <th>Mã</th><th>Khách hàng</th><th>Xe / Biển số</th><th>Số tiền hoàn</th><th>Trạng thái</th><th>Tạo lúc</th>
               </tr>
             </thead>
             <tbody>
@@ -437,7 +440,7 @@ function ListView({ rows, loading, statusFilter, setStatusFilter, search, setSea
                   </td>
                   <td>
                     <div>{r.VehicleType}</div>
-                    <div className="rq-cust-sub">{r.LicensePlate}</div>
+                    <div className="cust-sub mono">{r.LicensePlate}</div>
                   </td>
                   <td>
                     <div className="rq-amt">{money(r.RefundAmount)}</div>
@@ -495,6 +498,7 @@ function HistoryView({ notify }) {
             <div className="rq-summary-card"><label>Bị từ chối</label><div className="val" style={{ color: "#B23A34" }}>{data.summary.rejected}</div></div>
             <div className="rq-summary-card accent"><label>Tổng tiền đã hoàn</label><div className="val">{money(data.summary.totalRefundAmount)}</div></div>
           </div>
+
           <div className="rq-table-wrap">
             {data.data.length === 0 ? (
               <div className="rq-empty"><HistoryIcon size={26} /><div>Không có dữ liệu trong khoảng thời gian này.</div></div>
@@ -509,7 +513,7 @@ function HistoryView({ notify }) {
                       <td className="rq-mono">#{r.RefundID}</td>
                       <td>
                         <div className="rq-cust-name">{r.CustomerName}</div>
-                        <div className="rq-cust-sub">{r.LicensePlate}</div>
+                        <div className="cust-sub mono">{r.LicensePlate}</div>
                       </td>
                       <td className="rq-amt">{money(r.RefundAmount)}</td>
                       <td><StatusPill status={r.Status} /></td>
@@ -581,7 +585,7 @@ function DetailDrawer({ row, onClose, onChanged, onError }) {
             <div className="rq-info-item"><label>Khách hàng</label><div className="val"><User size={13} />{row.CustomerName}</div></div>
             <div className="rq-info-item"><label>Email</label><div className="val">{row.CustomerEmail || "—"}</div></div>
             <div className="rq-info-item"><label>Xe</label><div className="val"><Car size={13} />{row.VehicleType}</div></div>
-            <div className="rq-info-item"><label>Biển số</label><div className="val">{row.LicensePlate}</div></div>
+            <div className="rq-info-item"><label>Biển số</label><div className="val mono">{row.LicensePlate}</div></div>
             <div className="rq-info-item"><label>Ngày đặt lịch</label><div className="val"><Calendar size={13} />{dOnly(row.BookingDate)}</div></div>
             <div className="rq-info-item"><label>Phương thức TT</label><div className="val"><CreditCard size={13} />{row.PaymentMethod === "cash" ? "Tiền mặt" : row.PaymentMethod?.toUpperCase()}</div></div>
             <div className="rq-info-item span2">
@@ -620,18 +624,10 @@ function DetailDrawer({ row, onClose, onChanged, onError }) {
               )}
               <div className="rq-field">
                 <label>Ghi chú {action === "reject" ? "(lý do từ chối)" : "(tuỳ chọn)"}</label>
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder={action === "reject" ? "Giải thích lý do từ chối cho khách…" : "Ghi chú nội bộ…"}
-                />
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={action === "reject" ? "Giải thích lý do từ chối cho khách…" : "Ghi chú nội bộ…"} />
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  className={`rq-btn ${action === "approve" ? "rq-btn-success" : "rq-btn-danger"}`}
-                  onClick={doReview} disabled={busy}
-                  style={{ flex: 1, justifyContent: "center" }}
-                >
+                <button className={`rq-btn ${action === "approve" ? "rq-btn-success" : "rq-btn-danger"}`} onClick={doReview} disabled={busy} style={{ flex: 1, justifyContent: "center" }}>
                   {busy ? <RotateCw size={14} className="rq-spin" /> : action === "approve" ? <Check size={14} /> : <X size={14} />}
                   {action === "approve" ? "Xác nhận duyệt" : "Xác nhận từ chối"}
                 </button>
@@ -643,11 +639,7 @@ function DetailDrawer({ row, onClose, onChanged, onError }) {
 
         {!reviewOpen && canReview && (
           <div className="rq-drawer-foot">
-            <button
-              className="rq-btn rq-btn-accent"
-              style={{ width: "100%", justifyContent: "center" }}
-              onClick={() => setReviewOpen(true)}
-            >
+            <button className="rq-btn rq-btn-accent" style={{ width: "100%", justifyContent: "center" }} onClick={() => setReviewOpen(true)}>
               <ShieldCheck size={14} /> Duyệt / Từ chối
             </button>
           </div>
@@ -656,3 +648,5 @@ function DetailDrawer({ row, onClose, onChanged, onError }) {
     </>
   );
 }
+
+/* ── Dark-theme overrides injected globally ── */
