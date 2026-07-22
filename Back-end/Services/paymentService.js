@@ -247,7 +247,7 @@ const confirmVNPay = async (query) => {
         .query('SELECT b.CustomerID, u.Email FROM BOOKING b JOIN [USER] u ON b.CustomerID = u.UserID WHERE b.BookingID = @bookingId');
       const user = userRes.recordset[0];
       if (user) {
-        const { createAndSendNotification } = require('../Services/notificationService');
+        const { createAndSendNotification } = require('./notificationService');
         await createAndSendNotification({
           userId: user.CustomerID,
           bookingId: bookingId,
@@ -273,7 +273,7 @@ const confirmVNPay = async (query) => {
         .query('SELECT b.CustomerID, u.Email FROM BOOKING b JOIN [USER] u ON b.CustomerID = u.UserID WHERE b.BookingID = @bookingId');
       const user = userRes.recordset[0];
       if (user) {
-        const { createAndSendNotification } = require('../Services/notificationService');
+        const { createAndSendNotification } = require('./notificationService');
         await createAndSendNotification({
           userId: user.CustomerID,
           bookingId: bookingId,
@@ -497,7 +497,7 @@ const refundPayment = async (paymentId) => {
       .input("userId", sql.Int, payment.CustomerID)
       .query("SELECT Email FROM [USER] WHERE UserID = @userId");
     const userEmail = userRes.recordset[0]?.Email;
-    const { createAndSendNotification } = require('../Services/notificationService');
+    const { createAndSendNotification } = require('./notificationService');
     await createAndSendNotification({
       userId: payment.CustomerID,
       bookingId: payment.BookingID,
