@@ -28,7 +28,7 @@ app.use(
 const authRouter = require("./routes/auth");
 const userRouter = require("./routes/user");
 const vehicleRouter = require("./routes/vehicle");
-const bookingRouter = require("./routes/booking");
+const bookingRouter = require("./routes/bookingRouter");
 const timeslotRouter = require("./routes/timeslot");
 const paymentRouter = require("./routes/paymentRouter");
 const promotionRouter = require("./routes/promotion");
