@@ -35,8 +35,12 @@ import "./Payment.css";
    bạn có thể đặt tên khác. Nếu sai, chỉ cần sửa 1 dòng PAYMENTS_ENDPOINT.
 ============================================================================ */
 const USE_MOCK = false;
-const API_BASE = "/api/refund-requests";
-const PAYMENTS_ENDPOINT = "/api/payments/refundable";
+// Dùng URL tuyệt đối trỏ thẳng backend (khớp với Payment.jsx) — tránh bị
+// Vite dev server (localhost:5173) nuốt request rồi trả 404 vì không có
+// route đó ở phía frontend.
+const BACKEND_ORIGIN = "http://localhost:5000";
+const API_BASE = `${BACKEND_ORIGIN}/api/refund-requests`;
+const PAYMENTS_ENDPOINT = `${BACKEND_ORIGIN}/api/payments/refundable`;
 
 function authHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("TOKEN") : null;

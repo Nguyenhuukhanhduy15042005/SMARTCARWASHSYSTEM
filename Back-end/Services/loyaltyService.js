@@ -8,12 +8,6 @@ const { poolPromise } = require("../db");
 /**
  * Tính điểm và cập nhật MEMBER_PROFILE + LOYALTY_TRANSACTION
  * Được gọi từ booking.js khi status chuyển sang 4 (Hoàn thành)
- *
- * Schema thực tế (smartcarwash_final_merged.sql):
- *   MEMBER_PROFILE: UserID, TierID, CurrentPoints, AccumulatedPoints, JoinDate
- *   LOYALTY_TIER:   TierID, TierName, RequiredP BookingID, TransactionType, Points, CreatedDate
- *points, DiscountRate, BookingWindow
- *   LOYALTY_TRANSACTION: TransactionID, UserID,
  * @param {number} userId         - UserID của khách hàng
  * @param {number} bookingId      - BookingID vừa hoàn thành
  * @param {number} paymentAmount  - FinalPrice của booking (VNĐ)
@@ -133,7 +127,7 @@ const processLoyaltyPoints = async (userId, bookingId, paymentAmount) => {
   } catch (error) {
     try {
       await transaction.rollback();
-    } catch (_) {}
+    } catch (_) { }
     console.error("[processLoyaltyPoints]", error);
     throw error;
   }

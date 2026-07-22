@@ -1,7 +1,6 @@
 const cron = require('node-cron');
 const { sql, poolPromise } = require('../db');
-const bookingRouter = require('../routes/booking');
-const processBookingStatusChange = bookingRouter.processBookingStatusChange;
+const { processBookingStatusChange } = require('../Services/bookingService');
 
 let isRunning = false;
 

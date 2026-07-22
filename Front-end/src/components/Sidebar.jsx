@@ -54,11 +54,6 @@ export default function Sidebar() {
         icon: "fa-solid fa-users-viewfinder",
       }, // <-- Thêm vào đây
       {
-        path: "/admin/surveys",
-        label: "Khảo sát",
-        icon: "fa-solid fa-clipboard-list",
-      },
-      {
         path: "/timeslots",
         label: "Bàn làm việc",
         icon: "fa-solid fa-car-side",

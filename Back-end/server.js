@@ -19,7 +19,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
     credentials: true,
   }),
 );
@@ -28,7 +28,7 @@ app.use(
 const authRouter = require("./routes/auth");
 const userRouter = require("./routes/user");
 const vehicleRouter = require("./routes/vehicle");
-const bookingRouter = require("./routes/booking");
+const bookingRouter = require("./routes/bookingRouter");
 const timeslotRouter = require("./routes/timeslot");
 const paymentRouter = require("./routes/paymentRouter");
 const promotionRouter = require("./routes/promotion");
@@ -36,7 +36,6 @@ const feedbackRouter = require("./routes/feedback");
 const loyaltyRouter = require("./routes/loyalty");
 const machineRouter = require("./routes/machine");
 const analyticsRouter = require("./routes/analytics");
-const surveyRouter = require("./routes/survey");
 
 // MOUNT ROUTERS
 app.use("/api/auth", authRouter);
@@ -50,7 +49,6 @@ app.use("/api/feedbacks", feedbackRouter);
 app.use("/api/loyalty", loyaltyRouter);
 app.use("/api/machines", machineRouter);
 app.use("/api/analytics", analyticsRouter);
-app.use("/api/surveys", surveyRouter);
 
 // Test Endpoint
 app.get("/api/test", (req, res) => {
