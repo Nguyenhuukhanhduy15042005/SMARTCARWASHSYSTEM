@@ -6,7 +6,7 @@ const {
   getLoyaltyTransactions,
   handleRedeem,
   getMyVouchers,
-} = require("./loyaltyController");
+} = require("../controllers/loyaltyController");
 
 router.get("/profile", getLoyaltyProfile);
 router.get("/transactions", getLoyaltyTransactions);

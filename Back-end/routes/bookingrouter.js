@@ -3,7 +3,7 @@
 const router = require("express").Router();
 
 const jwt = require("jsonwebtoken");
-const ctrl = require("./bookingcontroller");
+const ctrl = require("../controllers/bookingcontroller");
 
 const adminAuth = (req, res, next) => {
   const authHeader = req.headers["authorization"];
