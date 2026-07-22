@@ -26,8 +26,6 @@ import LoyaltyHistory from "./pages/LoyaltyHistory";
 import MachineDashboard from "./pages/MachineDashboard";
 // Trọng thêm mới: trang Thống kê Analytics dành cho Admin
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
-// Duy thêm mới: trang Khảo sát Survey dành cho Admin
-import SurveyDashboard from "./pages/SurveyDashboard";
 import BehaviorAnalytics from "./pages/BehaviorAnalytics";
 import RefundRequestManagement from "./pages/RefundRequestManagement";
 import RefundRequestStaff from "./pages/RefundRequestStaff";
@@ -187,15 +185,6 @@ function App() {
           element={
             <ProtectedRoute requiredRole="staff">
               <BehaviorAnalytics />
-            </ProtectedRoute>
-          }
-        />
-        {/* Duy thêm mới: Route trang Khảo sát Survey - chỉ Admin mới vào được */}
-        <Route
-          path="/admin/surveys"
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <SurveyDashboard />
             </ProtectedRoute>
           }
         />
