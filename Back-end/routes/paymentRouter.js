@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const verifyToken = require('../middleware/verifyToken');
-const ctrl = require('./paymentController');
+const ctrl = require('../controllers/paymentController');
 
 // VNPay return — KHÔNG cần auth (VNPay redirect về)
 router.get('/vnpay-return', ctrl.vnpayReturn);
