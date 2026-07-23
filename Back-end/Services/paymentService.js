@@ -16,12 +16,17 @@ const VNPAY_CONFIG = {
  * VNPay yêu cầu params phải được sort trước khi tạo chữ ký HMAC-SHA512.
  */
 function sortObject(obj) {
-  const sorted = {};
-  const keys = Object.keys(obj).sort();
-  for (const key of keys) {
-    if (obj[key] !== undefined && obj[key] !== null) {
-      sorted[key] = encodeURIComponent(String(obj[key])).replace(/%20/g, "+");
+  let sorted = {};
+  let str = [];
+  let key;
+  for (key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      str.push(encodeURIComponent(key));
     }
+  }
+  str.sort();
+  for (key = 0; key < str.length; key++) {
+    sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
   }
   return sorted;
 }
@@ -35,6 +40,7 @@ function sortObject(obj) {
  */
 const createVNPayUrl = (paymentId, amount, orderInfo, ipAddr) => {
   const date = moment(new Date()).format('YYYYMMDDHHmmss');
+  const expireDate = moment(new Date()).add(15, 'minutes').format('YYYYMMDDHHmmss');
   let cleanIp = ipAddr || '127.0.0.1';
   if (cleanIp === '::1' || cleanIp === '::ffff:127.0.0.1') cleanIp = '127.0.0.1';
   if (cleanIp.startsWith('::ffff:')) cleanIp = cleanIp.replace('::ffff:', '');
@@ -45,11 +51,19 @@ const createVNPayUrl = (paymentId, amount, orderInfo, ipAddr) => {
     .substring(0, 255);
 
   let vnp_Params = {
-    vnp_Version: '2.1.0', vnp_Command: 'pay',
-    vnp_TmnCode: VNPAY_CONFIG.tmnCode, vnp_Locale: 'vn', vnp_CurrCode: 'VND',
-    vnp_TxnRef: String(paymentId), vnp_OrderInfo: safeOrderInfo, vnp_OrderType: 'other',
+    vnp_Version: '2.1.0',
+    vnp_Command: 'pay',
+    vnp_TmnCode: VNPAY_CONFIG.tmnCode,
+    vnp_Locale: 'vn',
+    vnp_CurrCode: 'VND',
+    vnp_TxnRef: String(paymentId),
+    vnp_OrderInfo: safeOrderInfo,
+    vnp_OrderType: 'other',
     vnp_Amount: String(Math.round(amount) * 100),
-    vnp_ReturnUrl: VNPAY_CONFIG.returnUrl, vnp_IpAddr: cleanIp, vnp_CreateDate: date,
+    vnp_ReturnUrl: VNPAY_CONFIG.returnUrl,
+    vnp_IpAddr: cleanIp,
+    vnp_CreateDate: date,
+    vnp_ExpireDate: expireDate,
   };
 
   vnp_Params = sortObject(vnp_Params);
@@ -59,8 +73,8 @@ const createVNPayUrl = (paymentId, amount, orderInfo, ipAddr) => {
   vnp_Params['vnp_SecureHash'] = signed;
   const paymentUrl = VNPAY_CONFIG.url + '?' + querystring.stringify(vnp_Params, { encode: false });
 
-  console.log('SignData:', signData.substring(0, 100) + '...');
-  console.log('PaymentURL:', paymentUrl.substring(0, 120) + '...');
+  console.log('SignData:', signData);
+  console.log('PaymentURL:', paymentUrl);
   return paymentUrl;
 };
 
