@@ -2,6 +2,7 @@ const { sql, poolPromise } = require("../db");
 const { createAndSendNotification } = require("./notificationService");
 const jwt = require("jsonwebtoken");
 
+// Định dạng ngày giờ từ DB sang dạng YYYY-MM-DD và HH:MM
 const formatLocalDateTime = (dateInput) => {
     if (!dateInput) return { dateStr: "", timeStr: "" };
     const d = new Date(dateInput);
@@ -16,6 +17,7 @@ const formatLocalDateTime = (dateInput) => {
     };
 };
 
+// Ghi lịch sử hoạt động của đơn hàng vào bảng BOOKING_HISTORY (phục vụ vẽ timeline)
 const logBookingActivity = async (bookingId, activityType, description, clientPool = null) => {
     try {
         const pool = clientPool || (await poolPromise);
@@ -33,6 +35,9 @@ const logBookingActivity = async (bookingId, activityType, description, clientPo
     }
 };
 
+// Thuật toán gán máy rửa xe trống:
+// - Xe máy -> BIKE_WASHER, Ô tô -> CAR_WASHER
+// - Quét các lịch cùng ngày để tránh trùng giờ (cách nhau tối thiểu 30p)
 const getAvailableMachineForBooking = async (
     pool,
     bookingDate,
@@ -91,6 +96,10 @@ const getAvailableMachineForBooking = async (
     return null;
 };
 
+// Xử lý chuyển trạng thái đơn (State Machine):
+// - Status 3: Đổi máy rửa sang Bận (Status = 2)
+// - Status 4: Giải phóng máy rửa, tích điểm Loyalty (10k = 1đ), nâng hạng thành viên, thu tiền mặt phần còn thiếu
+// - Status 5: Giải phóng máy rửa, gửi email/in-app báo hủy đơn
 const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
     const statusInt = parseInt(nextStatus, 10);
     const bookingRes = await pool
@@ -136,7 +145,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
         await logBookingActivity(bookingId, activityType, statusDesc, pool);
     }
 
-    // Cập nhật trạng thái máy
+    // Cập nhật trạng thái bận/rảnh cho các máy rửa xe liên quan
     const detailRes = await pool
         .request()
         .input("bookingId", sql.Int, bookingId)
@@ -159,10 +168,10 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
         }
     }
 
-    // Trigger tích điểm & Tính toán Loyalty
+    // Tích điểm & Tính toán Loyalty cho khách khi đơn hoàn thành
     if (statusInt === 4) {
         const finalPrice = Number(booking.FinalPrice || booking.TotalPrice || 0);
-        const points = Math.floor(finalPrice / 10000); // tương ứng tỉ lệ 10.000đ = 1 điểm
+        const points = Math.floor(finalPrice / 10000); // 10.000đ = 1 điểm
 
         if (points > 0) {
             const txCheck = await pool
@@ -212,6 +221,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
                         VALUES (@userId, @bookingId, 'Accumulate', @points, GETDATE())
                     `);
 
+                // Tự động nâng hạng thành viên khi đủ điểm tích lũy
                 const tiersRes = await pool
                     .request()
                     .query(
@@ -230,7 +240,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
                         "UPDATE MEMBER_PROFILE SET TierID = @tierId WHERE UserID = @userId",
                     );
 
-                // Thông báo tích điểm thành công
+                // Gửi thông báo email và in-app chúc mừng tích điểm
                 const userRes = await pool.request()
                     .input("userId", sql.Int, customerId)
                     .query("SELECT Email FROM [USER] WHERE UserID = @userId");
@@ -246,6 +256,7 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
             }
         }
 
+        // Tự động thu tiền mặt nếu số tiền đã cọc ít hơn số tiền cuối cùng của hóa đơn
         const paymentSumRes = await pool
             .request()
             .input("bookingId", sql.Int, bookingId)
@@ -265,16 +276,14 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
         }
     }
 
-    // Gửi thông báo hủy đơn nếu Hủy (Status = 5)
+    // Gửi thông báo khi đơn bị hủy (Status = 5)
     if (statusInt === 5) {
         try {
-            // 1. Lấy email của khách hàng
             const userRes = await pool.request()
                 .input("userId", sql.Int, customerId)
                 .query("SELECT Email FROM [USER] WHERE UserID = @userId");
             const userEmail = userRes.recordset[0]?.Email;
 
-            // 2. Gửi thông báo In-App và Email xác nhận hủy đơn
             await createAndSendNotification({
                 userId: customerId,
                 bookingId: bookingId,
@@ -289,11 +298,11 @@ const processBookingStatusChange = async (bookingId, nextStatus, pool) => {
     }
 };
 
+// Lấy danh sách lịch đặt xe (Lọc theo từ khóa, ngày, trạng thái thanh toán)
 const getBookings = async (queryParameters, token) => {
     const pool = await poolPromise;
     let customerId = queryParameters.customerId;
 
-    // Giải mã token nếu có (để xác định nếu là Khách hàng đăng nhập)
     if (token && token !== 'mock-token' && token !== 'null' && token !== 'undefined') {
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey_placeholder');
@@ -374,6 +383,7 @@ const getBookings = async (queryParameters, token) => {
     return result.recordset;
 };
 
+// Lấy chi tiết đơn đặt lịch kèm danh sách ServiceID
 const getBookingById = async (id) => {
     const pool = await poolPromise;
     const result = await pool.request().input("bookingId", sql.Int, id).query(`
@@ -404,6 +414,10 @@ const getBookingById = async (id) => {
     return booking;
 };
 
+// Tạo lịch đặt xe mới cho khách:
+// - Kiểm tra số ngày đặt trước tối đa theo hạng (Bronze: 7 ngày, Silver: 10, Gold: 12, Platinum: 14)
+// - Kiểm tra máy trống, chặn spam (tối đa 2 đơn chờ), chặn trùng khung giờ
+// - Tạo đơn ở bảng BOOKING và BOOKING_DETAIL, ghi log, gửi thông báo chờ thanh toán
 const createBooking = async (body) => {
     const {
         CustomerID,
@@ -446,7 +460,6 @@ const createBooking = async (body) => {
 
     const pool = await poolPromise;
 
-    // 1. Truy vấn tên hạng thành viên của khách hàng
     const tierRes = await pool.request()
         .input("customerId", sql.Int, CustomerID)
         .query(`
@@ -478,7 +491,6 @@ const createBooking = async (body) => {
         throw new Error(`Hạng thành viên của bạn (${tierName}) chỉ được đặt lịch trước tối đa ${maxAdvanceDays} ngày!`);
     }
 
-    // Kiểm tra máy rửa khả dụng
     const assignedMachineId = await getAvailableMachineForBooking(
         pool,
         scheduledDate,
@@ -489,7 +501,6 @@ const createBooking = async (body) => {
         throw new Error("Máy/sàn rửa xe được chọn không phù hợp, đang bảo trì hoặc đã có lịch trong khung giờ này!");
     }
 
-    // Chặn spam booking
     const pendingCheck = await pool
         .request()
         .input("customerId", sql.Int, CustomerID)
@@ -500,7 +511,6 @@ const createBooking = async (body) => {
         throw new Error("Bạn đã có 2 lịch đặt xe đang chờ xử lý. Vui lòng hoàn tất hoặc hủy lịch cũ trước!");
     }
 
-    // Chặn trùng lặp khung giờ
     const clashCheck = await pool
         .request()
         .input("customerId", sql.Int, CustomerID)
@@ -578,6 +588,7 @@ const createBooking = async (body) => {
     };
 };
 
+// Cập nhật trạng thái đơn đặt xe
 const transitionStatus = async (id, nextStatus) => {
     const statusInt = parseInt(nextStatus, 10);
     if (isNaN(statusInt) || statusInt < 1 || statusInt > 5) {
@@ -587,6 +598,7 @@ const transitionStatus = async (id, nextStatus) => {
     await processBookingStatusChange(parseInt(id, 10), statusInt, pool);
 };
 
+// Lấy danh sách lịch đặt của 1 khách hàng cụ thể
 const getCustomerBookings = async (customerId) => {
     const pool = await poolPromise;
     const result = await pool.request().input("customerId", sql.Int, customerId)
@@ -603,6 +615,7 @@ const getCustomerBookings = async (customerId) => {
     return result.recordset;
 };
 
+// Ẩn lịch đặt khỏi lịch sử hiển thị của khách (IsHiddenByUser = 1, không xóa vật lý)
 const softDeleteBooking = async (bookingId, token) => {
     let userId = null;
     if (token && token !== "mock-token" && token !== "null" && token !== "undefined") {
@@ -638,6 +651,7 @@ const softDeleteBooking = async (bookingId, token) => {
         .query("UPDATE BOOKING SET IsHiddenByUser = 1 WHERE BookingID = @id");
 };
 
+// Áp dụng Voucher giảm giá vào hóa đơn (chỉ cho đơn chưa thanh toán)
 const applyVoucher = async (bookingId, memberPromoId, token) => {
     let userId = null;
     if (token && token !== "mock-token" && token !== "null" && token !== "undefined") {
@@ -723,6 +737,7 @@ const applyVoucher = async (bookingId, memberPromoId, token) => {
     };
 };
 
+// Admin lấy toàn bộ đơn đặt xe trên hệ thống (hỗ trợ lọc nâng cao)
 const getAdminAllBookings = async (queryParams) => {
     const pool = await poolPromise;
     const { status, vehicleType, search, fromDate, toDate } = queryParams;
@@ -798,6 +813,7 @@ const getAdminAllBookings = async (queryParams) => {
     return bookingsList;
 };
 
+// Admin xem chi tiết thông tin đơn đặt lịch
 const getAdminBookingById = async (id) => {
     const pool = await poolPromise;
     const result = await pool.request().input("id", sql.Int, id)
@@ -837,6 +853,7 @@ const getAdminBookingById = async (id) => {
     };
 };
 
+// Admin đặt lịch trực tiếp hộ khách hàng tại quầy
 const createAdminBooking = async (body) => {
     const {
         CustomerID,
@@ -903,6 +920,7 @@ const createAdminBooking = async (body) => {
     };
 };
 
+// Admin cập nhật nhanh trạng thái đơn hàng
 const updateAdminBookingStatus = async (id, status) => {
     const statusInt = parseInt(status, 10);
     if (isNaN(statusInt) || statusInt < 1 || statusInt > 5) {
@@ -912,6 +930,7 @@ const updateAdminBookingStatus = async (id, status) => {
     await processBookingStatusChange(parseInt(id, 10), statusInt, pool);
 };
 
+// Admin xóa vĩnh viễn đơn hàng (Dùng Transaction xóa các bảng phụ trước để tránh lỗi khóa ngoại)
 const deleteAdminBooking = async (bookingId) => {
     const pool = await poolPromise;
     const transaction = new sql.Transaction(pool);
@@ -931,6 +950,7 @@ const deleteAdminBooking = async (bookingId) => {
     }
 };
 
+// Lấy số liệu thống kê tổng hợp cho Admin Dashboard
 const getAdminDashboardStats = async () => {
     const pool = await poolPromise;
     const result = await pool.request().query(`
@@ -946,6 +966,7 @@ const getAdminDashboardStats = async () => {
     return result.recordset[0];
 };
 
+// Lấy dòng thời gian lịch sử thay đổi của đơn hàng
 const getBookingHistory = async (id) => {
     const pool = await poolPromise;
     const result = await pool
@@ -960,6 +981,7 @@ const getBookingHistory = async (id) => {
     return result.recordset;
 };
 
+// Nhân viên/Admin cập nhật biển số xe (Staff chỉ được sửa đơn của ngày hôm nay, trạng thái chờ/đang rửa)
 const updateLicensePlate = async (bookingId, licensePlate, user) => {
     if (!licensePlate || licensePlate.trim() === "") {
         throw new Error("Biển số xe không được trống.");
@@ -1023,6 +1045,7 @@ const updateLicensePlate = async (bookingId, licensePlate, user) => {
     return cleanPlate;
 };
 
+// Admin cập nhật toàn bộ thông tin đơn đặt lịch (Dùng Transaction cập nhật đồng thời User, Booking, Detail)
 const updateAdminBooking = async (bookingId, body) => {
     const {
         fullName,
