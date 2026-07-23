@@ -1,5 +1,6 @@
 const service = require("../Services/bookingService");
 
+// [GET] /api/bookings - Lấy danh sách booking theo bộ lọc (dành cho khách hàng hoặc nhân viên)
 const getAllBookings = async (req, res) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
@@ -11,6 +12,7 @@ const getAllBookings = async (req, res) => {
     }
 };
 
+// [GET] /api/bookings/:id - Lấy chi tiết thông tin một đơn đặt rửa xe theo BookingID
 const getBookingById = async (req, res) => {
     try {
         const booking = await service.getBookingById(parseInt(req.params.id, 10));
@@ -23,6 +25,7 @@ const getBookingById = async (req, res) => {
     }
 };
 
+// [POST] /api/bookings - Tạo đơn đặt rửa xe mới (Tự động phân bổ máy rửa và áp dụng voucher nếu có)
 const createBooking = async (req, res) => {
     try {
         const result = await service.createBooking(req.body);
@@ -41,6 +44,7 @@ const createBooking = async (req, res) => {
     }
 };
 
+// [PATCH] /api/bookings/:id/status - Chuyển trạng thái đơn rửa xe (Pending -> Confirmed -> Washing -> Completed)
 const transitionStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -55,6 +59,7 @@ const transitionStatus = async (req, res) => {
     }
 };
 
+// [GET] /api/bookings/customer/:customerId - Lấy lịch sử tất cả các đơn đặt xe của một khách hàng
 const getCustomerBookings = async (req, res) => {
     try {
         const bookings = await service.getCustomerBookings(req.params.customerId);
@@ -64,6 +69,7 @@ const getCustomerBookings = async (req, res) => {
     }
 };
 
+// [DELETE] /api/bookings/:id - Ẩn lịch đặt xe khỏi giao diện lịch sử cá nhân (Soft Delete)
 const deleteBooking = async (req, res) => {
     try {
         const token = req.headers.authorization?.split(" ")[1];
@@ -82,6 +88,7 @@ const deleteBooking = async (req, res) => {
     }
 };
 
+// [POST] /api/bookings/:id/apply-voucher - Áp dụng mã voucher giảm giá vào đơn đặt xe
 const applyVoucher = async (req, res) => {
     try {
         const token = req.headers.authorization?.split(" ")[1];
@@ -104,6 +111,7 @@ const applyVoucher = async (req, res) => {
     }
 };
 
+// [GET] /api/bookings/admin/all - Admin/Staff lấy toàn bộ danh sách booking trong hệ thống để quản lý
 const getAdminAllBookings = async (req, res) => {
     try {
         const bookings = await service.getAdminAllBookings(req.query);
@@ -113,6 +121,7 @@ const getAdminAllBookings = async (req, res) => {
     }
 };
 
+// [GET] /api/bookings/admin/:id - Admin xem chi tiết đầy đủ thông tin đơn hàng
 const getAdminBookingById = async (req, res) => {
     try {
         const booking = await service.getAdminBookingById(req.params.id);
@@ -125,6 +134,7 @@ const getAdminBookingById = async (req, res) => {
     }
 };
 
+// [POST] /api/bookings/admin - Admin/Staff tạo đơn đặt rửa xe trực tiếp tại quầy cho khách
 const createAdminBooking = async (req, res) => {
     try {
         const result = await service.createAdminBooking(req.body);
@@ -142,6 +152,7 @@ const createAdminBooking = async (req, res) => {
     }
 };
 
+// [PUT] /api/bookings/admin/:id/status - Admin/Staff cập nhật trạng thái đơn rửa xe
 const updateAdminBookingStatus = async (req, res) => {
     try {
         const { status } = req.body;
@@ -152,6 +163,7 @@ const updateAdminBookingStatus = async (req, res) => {
     }
 };
 
+// [DELETE] /api/bookings/admin/:id - Admin xóa vĩnh viễn đơn đặt xe khỏi CSDL
 const deleteAdminBooking = async (req, res) => {
     try {
         await service.deleteAdminBooking(req.params.id);
@@ -161,6 +173,7 @@ const deleteAdminBooking = async (req, res) => {
     }
 };
 
+// [GET] /api/bookings/admin/dashboard/stats - Thống kê tổng quan đơn hàng và trạng thái máy cho Admin Dashboard
 const getAdminDashboardStats = async (req, res) => {
     try {
         const stats = await service.getAdminDashboardStats();
@@ -170,6 +183,7 @@ const getAdminDashboardStats = async (req, res) => {
     }
 };
 
+// [GET] /api/bookings/:id/history - Xem lịch sử thay đổi trạng thái và nhật ký hoạt động (Audit Log) của đơn hàng
 const getBookingHistory = async (req, res) => {
     try {
         const history = await service.getBookingHistory(req.params.id);
@@ -179,6 +193,7 @@ const getBookingHistory = async (req, res) => {
     }
 };
 
+// [PUT] /api/bookings/:id/license-plate - Cập nhật biển số xe trước giờ rửa
 const updateLicensePlate = async (req, res) => {
     try {
         const cleanPlate = await service.updateLicensePlate(
@@ -202,6 +217,7 @@ const updateLicensePlate = async (req, res) => {
     }
 };
 
+// [PUT] /api/bookings/admin/:id - Admin/Staff chỉnh sửa toàn bộ thông tin đơn hàng (ngày giờ, dịch vụ, máy rửa)
 const updateAdminBooking = async (req, res) => {
     try {
         await service.updateAdminBooking(parseInt(req.params.id, 10), req.body);
