@@ -70,7 +70,7 @@ function SummaryCard({ icon, label, value, sub, color }) {
 }
 
 // ─── Component chính: AnalyticsDashboard ──────────────────────
-// Trọng thêm mới - Trang Analytics chỉ dành cho Admin
+// - Trang Analytics chỉ dành cho Admin
 export default function AnalyticsDashboard() {
   const [data, setData]       = useState(null);    // Dữ liệu trả về từ API
   const [loading, setLoading] = useState(true);    // Đang tải hay không

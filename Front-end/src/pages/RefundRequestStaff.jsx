@@ -516,6 +516,7 @@ function CreateView({ onCreated, onError }) {
   const [loadingPayments, setLoadingPayments] = useState(!USE_MOCK);
   const [paymentId, setPaymentId] = useState("");
   const [reason, setReason] = useState("");
+  const [incidentType, setIncidentType] = useState(""); // "" = hủy thường, có giá trị = sự cố cửa hàng
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -535,8 +536,14 @@ function CreateView({ onCreated, onError }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const isShopFault = incidentType !== "";
   const payment = payments.find((p) => String(p.PaymentID) === String(paymentId));
-  const proposal = payment ? computeProposal(payment) : null;
+  // Nếu sự cố cửa hàng → luôn 100%, bỏ qua bảng %
+  const proposal = payment
+    ? isShopFault
+      ? { isDeposit: false, refundPercent: 100, refundAmount: payment.Amount, hoursLeft: null }
+      : computeProposal(payment)
+    : null;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -544,10 +551,16 @@ function CreateView({ onCreated, onError }) {
     setSubmitting(true);
     setResult(null);
     try {
-      const res = await Api.create({ paymentId: Number(paymentId), reason: reason.trim() });
+      const res = await Api.create({
+        paymentId: Number(paymentId),
+        reason: reason.trim(),
+        initiatedBy: "staff",
+        incidentType: incidentType || null,
+      });
       setResult(res);
       onCreated(res.message);
       setReason("");
+      setIncidentType("");
     } catch (e2) {
       onError(e2.message);
     } finally {
@@ -565,6 +578,30 @@ function CreateView({ onCreated, onError }) {
       </div>
 
       <form onSubmit={submit}>
+        {/* Loại yêu cầu: Hủy thường hay Sự cố cửa hàng */}
+        <div className="rq-field">
+          <label>Loại yêu cầu</label>
+          <select value={incidentType} onChange={(e) => setIncidentType(e.target.value)}>
+            <option value="">👤 Khách hàng yêu cầu hủy</option>
+            <option value="machine_failure">🔧 Sự cố máy móc hư hỏng</option>
+            <option value="power_outage">⚡ Mất điện</option>
+            <option value="weather">🌧️ Thời tiết xấu</option>
+            <option value="other">⚠️ Sự cố khác</option>
+          </select>
+        </div>
+
+        {/* Badge cảnh báo nếu là sự cố cửa hàng */}
+        {isShopFault && (
+          <div style={{
+            display: "flex", gap: 8, alignItems: "flex-start",
+            background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)",
+            borderRadius: 8, padding: "10px 13px", marginBottom: 14, fontSize: 12.5, color: "#10b981",
+          }}>
+            <span>✅</span>
+            <span>Sự cố từ phía cửa hàng → hệ thống tự động đề xuất hoàn <strong>100%</strong> cho khách. Admin sẽ xác nhận cuối cùng.</span>
+          </div>
+        )}
+
         <div className="rq-field">
           <label>Giao dịch thanh toán</label>
           <select value={paymentId} onChange={(e) => setPaymentId(e.target.value)} disabled={loadingPayments}>
@@ -586,8 +623,13 @@ function CreateView({ onCreated, onError }) {
             <div className="row"><span>Booking</span><span>#{payment.BookingID} · {dOnly(payment.BookingDate)}</span></div>
             <div className="row"><span>Số tiền đã trả</span><span>{money(payment.Amount)}</span></div>
             <div className="row"><span>Phương thức</span><span>{payment.PaymentMethod === "cash" ? "Tiền mặt (cọc)" : "VNPay"}</span></div>
-            <div className="row"><span>% hoàn đề xuất</span><span>{proposal.isDeposit ? "0% (tiền cọc mất khi hủy)" : `${proposal.refundPercent}%`}</span></div>
-            <div className="row"><span>Số tiền hoàn đề xuất</span><span>{money(proposal.refundAmount)}</span></div>
+            <div className="row">
+              <span>% hoàn đề xuất</span>
+              <span style={{ color: proposal.refundPercent === 100 ? "#10b981" : proposal.refundPercent === 0 ? "#ef4444" : "#f59e0b", fontWeight: 700 }}>
+                {isShopFault ? "100% (sự cố cửa hàng)" : proposal.isDeposit ? "0% (tiền cọc mất khi hủy)" : `${proposal.refundPercent}%`}
+              </span>
+            </div>
+            <div className="row"><span>Số tiền hoàn đề xuất</span><span style={{ fontWeight: 700 }}>{money(proposal.refundAmount)}</span></div>
           </div>
         )}
 
