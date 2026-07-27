@@ -8,7 +8,6 @@ const getUserTier = async (req, res) => {
     const tierID = await service.getUserTier(userId);
     const tierName = { 1: 'Bronze', 2: 'Silver', 3: 'Gold', 4: 'Platinum' }[tierID] || 'Bronze';
 
-    // Đếm số lần hủy trong 30 ngày
     const pool = await poolPromise;
     const cancelResult = await pool.request()
       .input('userId', sql.Int, userId)
@@ -20,7 +19,6 @@ const getUserTier = async (req, res) => {
           AND BookingDate >= DATEADD(DAY, -30, GETDATE())
       `);
     const cancelCount = cancelResult.recordset[0].CancelCount || 0;
-
     // Gold/Platinum hủy >= 3 lần → bắt cọc
     const forceDeposit = (tierID === 3 || tierID === 4) && cancelCount >= 3;
     const needDeposit = tierID === 1 || tierID === 2 || forceDeposit;
@@ -77,11 +75,18 @@ const getRefundPreview = async (req, res) => {
   } catch (err) { res.status(400).json({ message: err.message }); }
 };
 
+/**
+ * Customer tự hủy booking qua PaymentHistory
+ * POST /api/payments/:id/refund { reason }
+ * → Tạo REFUND_REQUEST chờ Admin duyệt (không hủy ngay)
+ */
 const refundPayment = async (req, res) => {
   try {
-    const result = await service.refundPayment(Number(req.params.id));
-    res.json(result);
-  } catch (err) { res.status(400).json({ message: err.message }); }
+    const { createRefundFromCustomer } = require('./refundRequest');
+    return await createRefundFromCustomer(req, res);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
 };
 
 const confirmCashDeposit = async (req, res) => {
@@ -103,27 +108,27 @@ const getRefundablePayments = async (req, res) => {
   try {
     const pool = await poolPromise;
 
-const result = await pool.request().query(`
-  SELECT
-    p.PaymentID, p.BookingID, p.Amount, p.PaymentMethod, p.PaidAt,
-    b.Status      AS BookingStatus,
-    b.BookingDate, b.LicensePlate, b.VehicleType,
-    b.CustomerID,
-    u.FullName    AS CustomerName,
-    u.Email       AS CustomerEmail
-  FROM PAYMENT p
-  JOIN BOOKING b ON p.BookingID = b.BookingID
-  JOIN [USER] u  ON b.CustomerID = u.UserID
-  LEFT JOIN REFUND_REQUEST rr
-    ON rr.PaymentID = p.PaymentID
-    AND rr.Status IN ('Pending', 'UnderReview')
-  WHERE
-    (p.IsHiddenByUser IS NULL OR p.IsHiddenByUser = 0)
-    AND b.Status != 5
-    AND p.Amount > 0
-    AND rr.RefundID IS NULL
-  ORDER BY p.PaidAt DESC
-`);
+    const result = await pool.request().query(`
+      SELECT
+        p.PaymentID, p.BookingID, p.Amount, p.PaymentMethod, p.PaidAt,
+        b.Status      AS BookingStatus,
+        b.BookingDate, b.LicensePlate, b.VehicleType,
+        b.CustomerID,
+        u.FullName    AS CustomerName,
+        u.Email       AS CustomerEmail
+      FROM PAYMENT p
+      JOIN BOOKING b ON p.BookingID = b.BookingID
+      JOIN [USER] u  ON b.CustomerID = u.UserID
+      LEFT JOIN REFUND_REQUEST rr
+        ON rr.PaymentID = p.PaymentID
+        AND rr.Status IN ('Pending', 'UnderReview')
+      WHERE
+        (p.IsHiddenByUser IS NULL OR p.IsHiddenByUser = 0)
+        AND b.Status != 5
+        AND p.Amount > 0
+        AND rr.RefundID IS NULL
+      ORDER BY p.PaidAt DESC
+    `);
 
     res.json({
       total: result.recordset.length,
@@ -144,5 +149,5 @@ module.exports = {
   refundPayment,
   getUserTier,
   confirmCashDeposit,
-  getRefundablePayments,  // ← MỚI
+  getRefundablePayments,
 };
