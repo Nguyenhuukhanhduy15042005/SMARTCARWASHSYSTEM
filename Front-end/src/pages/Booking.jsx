@@ -397,8 +397,7 @@ export default function Booking() {
 
         if (usableMachines.length === 0) {
           setFetchError(
-            `Không tìm thấy máy/sàn đang hoạt động cho ${
-              vehicleType === "BIKE" ? "xe máy" : "ô tô"
+            `Không tìm thấy máy/sàn đang hoạt động cho ${vehicleType === "BIKE" ? "xe máy" : "ô tô"
             }.`,
           );
         }

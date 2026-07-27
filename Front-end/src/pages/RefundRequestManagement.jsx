@@ -553,6 +553,8 @@ function DetailDrawer({ row, onClose, onChanged, onError }) {
     setBusy(true);
     try {
       const res = await Api.review(row.RefundID, { action, refundAmount: Number(amount), note: note.trim() || undefined });
+      // Refresh notification bell ngay sau khi Admin duyệt/từ chối
+      window.dispatchEvent(new Event("noti:refresh"));
       await onChanged(res.message);
       setReviewOpen(false);
     } catch (e) { onError(e.message); } finally { setBusy(false); }
@@ -588,6 +590,39 @@ function DetailDrawer({ row, onClose, onChanged, onError }) {
             <div className="rq-info-item"><label>Biển số</label><div className="val mono">{row.LicensePlate}</div></div>
             <div className="rq-info-item"><label>Ngày đặt lịch</label><div className="val"><Calendar size={13} />{dOnly(row.BookingDate)}</div></div>
             <div className="rq-info-item"><label>Phương thức TT</label><div className="val"><CreditCard size={13} />{row.PaymentMethod === "cash" ? "Tiền mặt" : row.PaymentMethod?.toUpperCase()}</div></div>
+
+            {/* Badge nguồn yêu cầu */}
+            <div className="rq-info-item span2">
+              <label>Nguồn yêu cầu</label>
+              <div className="val">
+                {row.InitiatedBy === "staff" ? (
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    background: "rgba(249,115,22,0.12)", color: "#fb923c",
+                    border: "1px solid rgba(249,115,22,0.25)",
+                    borderRadius: 999, padding: "3px 10px", fontSize: 12, fontWeight: 700,
+                  }}>
+                    🔧 Sự cố cửa hàng
+                    {row.IncidentType && ` · ${{
+                      machine_failure: "Máy hư",
+                      power_outage: "Mất điện",
+                      weather: "Thời tiết",
+                      other: "Khác",
+                    }[row.IncidentType] || row.IncidentType}`}
+                  </span>
+                ) : (
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    background: "rgba(99,102,241,0.12)", color: "#818cf8",
+                    border: "1px solid rgba(99,102,241,0.25)",
+                    borderRadius: 999, padding: "3px 10px", fontSize: 12, fontWeight: 700,
+                  }}>
+                    👤 Khách hàng yêu cầu
+                  </span>
+                )}
+              </div>
+            </div>
+
             <div className="rq-info-item span2">
               <label>Lý do yêu cầu</label>
               <div className="val" style={{ fontWeight: 400 }}>{row.Reason}</div>

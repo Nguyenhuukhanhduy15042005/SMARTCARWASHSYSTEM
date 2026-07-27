@@ -281,6 +281,7 @@ export default function Payment() {
         amount: currentFinalPrice,
       }, { headers: { Authorization: `Bearer ${getToken()}` } });
 
+      // chuyển hướng đến trang thanh toán 
       if (res.data.paymentUrl) {
         showToast("Đang chuyển hướng đến cổng thanh toán...", "success");
         setTimeout(() => window.location.href = res.data.paymentUrl, 1200);

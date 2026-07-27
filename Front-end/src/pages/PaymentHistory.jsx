@@ -23,6 +23,7 @@ export default function PaymentHistory() {
   const [refundModal, setRefundModal] = useState(null);   // { payment, preview: null | {...} }
   const [previewLoading, setPreviewLoading] = useState(false);
   const [refunding, setRefunding] = useState(false);
+  const [refundReason, setRefundReason] = useState("");
 
   const [toast, setToast] = useState(null);
   const [filter, setFilter] = useState("all");
@@ -78,24 +79,33 @@ export default function PaymentHistory() {
 
   const handleRefund = async () => {
     if (!refundModal) return;
-
+    if (!refundReason.trim()) {
+      showToast("Vui lòng nhập lý do hủy", "error");
+      return;
+    }
     setRefunding(true);
     try {
-      const res = await axios.post(
-        `${API_BASE}/payments/${refundModal.payment.PaymentID}/refund`,
-        {},
+      // Gửi lên BE tạo REFUND_REQUEST (Pending) — không xử lý luôn
+      await axios.post(
+        `${API_BASE}/refund-requests`,
+        {
+          paymentId: refundModal.payment.PaymentID,
+          reason: refundReason.trim(),
+          initiatedBy: "customer",
+        },
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
-      const data = res.data;
-      const msg = data.refundAmount > 0
-        ? `Hủy thành công! Hoàn ${data.refundPercent}% = ${data.refundAmount.toLocaleString("vi-VN")}đ.`
-        : "Đã hủy thành công (không hoàn tiền).";
-      const extra = [data.nextCancelInfo, data.forceDepositWarning].filter(Boolean).join(" ");
-      showToast(extra ? `${msg} ${extra}` : msg, "success", extra ? 7000 : 3500);
+      showToast(
+        "Yêu cầu hủy đã được gửi! Chúng tôi sẽ xem xét và phản hồi sớm nhất có thể.",
+        "success"
+      );
+      // Refresh notification bell ngay lập tức
+      window.dispatchEvent(new Event("noti:refresh"));
       fetchHistory();
       setRefundModal(null);
+      setRefundReason("");
     } catch (err) {
-      showToast(err.response?.data?.message || "Hoàn tiền thất bại", "error");
+      showToast(err.response?.data?.message || "Gửi yêu cầu thất bại", "error");
     } finally {
       setRefunding(false);
     }
@@ -318,12 +328,24 @@ export default function PaymentHistory() {
                 </div>
               ) : (
                 <div className="ph-modal-note">
-                  ⚠️ Booking sẽ bị huỷ sau khi xác nhận.
+                  ⚠️ Yêu cầu sẽ được gửi đến Admin để xét duyệt. Booking chưa bị hủy ngay.
                 </div>
               )}
 
+              {/* Ô nhập lý do hủy */}
+              <p className="ph-modal-label" style={{ marginBottom: 6 }}>Lý do hủy *</p>
+              <textarea
+                className="ph-modal-textarea"
+                rows={3}
+                placeholder="Nhập lý do hủy booking..."
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                disabled={refunding}
+                style={{ marginBottom: 16 }}
+              />
+
               <div className="ph-modal-actions">
-                <button className="ph-modal-cancel" onClick={() => setRefundModal(null)} disabled={refunding}>
+                <button className="ph-modal-cancel" onClick={() => { setRefundModal(null); setRefundReason(""); }} disabled={refunding}>
                   {refundModal.blocked ? "Giữ lịch" : "Quay lại"}
                 </button>
                 <button

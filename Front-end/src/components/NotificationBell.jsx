@@ -134,11 +134,11 @@ export default function NotificationBell() {
       PAYMENT:  "fa-solid fa-credit-card",
       CANCEL:   "fa-solid fa-circle-xmark",
       LOYALTY:  "fa-solid fa-star",
+      REFUND:   "fa-solid fa-money-bill-transfer",
     };
     return icons[type] || "fa-solid fa-bell";
   };
 
-  // Màu sắc theo loại thông báo (CSS class)
   const getTypeClass = (type) => {
     const classes = {
       REMINDER: "type-reminder",
@@ -146,6 +146,7 @@ export default function NotificationBell() {
       PAYMENT:  "type-payment",
       CANCEL:   "type-cancel",
       LOYALTY:  "type-loyalty",
+      REFUND:   "type-payment",
     };
     return classes[type] || "type-default";
   };
