@@ -18,12 +18,15 @@ const getPaymentInfo = async (pool, paymentId) => {
 };
 
 // ── Helper: gửi notification + email ─────────────────────────────────────────
-const sendNotif = async (pool, userId, bookingId, title, message, type = 'CANCEL') => {
+const sendNotif = async (pool, userId, bookingId, title, message, type = 'CANCEL', sendEmail = false) => {
   try {
-    const userRes = await pool.request()
-      .input('uid', sql.Int, userId)
-      .query('SELECT Email FROM [USER] WHERE UserID = @uid');
-    const userEmail = userRes.recordset[0]?.Email;
+    let userEmail = null;
+    if (sendEmail) {
+      const userRes = await pool.request()
+        .input('uid', sql.Int, userId)
+        .query('SELECT Email FROM [USER] WHERE UserID = @uid');
+      userEmail = userRes.recordset[0]?.Email;
+    }
     const { createAndSendNotification } = require('../Services/notificationService');
     await createAndSendNotification({ userId, bookingId, title, message, type, userEmail: userEmail || null });
   } catch (e) {
@@ -40,7 +43,7 @@ const cancelBookingActions = async (pool, bookingId) => {
       UPDATE MEMBER_PROMOTION SET IsUsed = 0
         WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
       UPDATE MACHINE SET Status = 1
-        WHERE MachineID = (SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId);
+        WHERE MachineID IN (SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId);
     `);
 };
 
@@ -273,9 +276,11 @@ const startReview = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy yêu cầu hoàn tiền' });
     }
 
-    if (rr.recordset[0].Status !== 'Pending') {
+    const refundReq = rr.recordset[0];
+
+    if (refundReq.Status !== 'Pending') {
       return res.status(400).json({
-        message: `Chỉ có thể chuyển từ Pending (hiện tại: ${rr.recordset[0].Status})`
+        message: `Chỉ có thể chuyển từ Pending (hiện tại: ${refundReq.Status})`
       });
     }
 
@@ -286,6 +291,27 @@ const startReview = async (req, res) => {
         SET Status = 'UnderReview', UpdatedAt = GETDATE()
         WHERE RefundID = @refundId
       `);
+
+    // 1. Noti Customer (In-App only)
+    await sendNotif(pool, refundReq.CustomerID, refundReq.BookingID,
+      '🔍 Yêu cầu hoàn tiền đang được xem xét',
+      `Yêu cầu hoàn tiền cho lịch BK-${refundReq.BookingID} của bạn đang được xem xét và phê duyệt.`
+    );
+
+    // 2. Noti Admin (In-App only)
+    try {
+      const adminList = await pool.request()
+        .query(`SELECT UserID FROM [USER] WHERE RoleID = 1`);
+      for (const admin of adminList.recordset) {
+        await sendNotif(pool, admin.UserID, refundReq.BookingID,
+          '🔔 Yêu cầu hoàn tiền chờ duyệt',
+          `Yêu cầu hoàn tiền cho BK-${refundReq.BookingID} đã được chuyển sang trạng thái chờ Admin duyệt.`,
+          'PAYMENT'
+        );
+      }
+    } catch (e) {
+      console.error('[AdminNoti]', e.message);
+    }
 
     res.json({ message: 'Đã chuyển sang UnderReview', refundId, status: 'UnderReview' });
 
@@ -441,8 +467,12 @@ const reviewRefundRequest = async (req, res) => {
     const rr = await pool.request()
       .input('refundId', sql.Int, refundId)
       .query(`
-        SELECT rr.*, p.Amount AS OriginalAmount, p.PaymentMethod,
-               b.CustomerID, b.Status AS BookingStatus, b.BookingID
+        SELECT 
+          rr.RefundID, rr.PaymentID, rr.BookingID, rr.CustomerID, rr.RequestedBy,
+          rr.ApprovedBy, rr.RefundAmount, rr.RefundPercent, rr.Reason, rr.Status,
+          rr.Note, rr.InitiatedBy, rr.IncidentType, rr.CreatedAt, rr.UpdatedAt,
+          p.Amount AS OriginalAmount, p.PaymentMethod,
+          b.Status AS BookingStatus
         FROM REFUND_REQUEST rr
         JOIN PAYMENT p ON rr.PaymentID = p.PaymentID
         JOIN BOOKING b ON rr.BookingID = b.BookingID
@@ -465,65 +495,64 @@ const reviewRefundRequest = async (req, res) => {
       ? Number(refundAmount)
       : Number(refundReq.RefundAmount);
 
-    if (action === 'approve' && finalRefundAmount > Number(refundReq.OriginalAmount)) {
-      return res.status(400).json({
-        message: `Số tiền hoàn (${finalRefundAmount.toLocaleString('vi-VN')}đ) không thể vượt quá số tiền đã trả (${Number(refundReq.OriginalAmount).toLocaleString('vi-VN')}đ)`
-      });
-    }
+    const finalRefundPercent = refundReq.OriginalAmount > 0
+      ? Math.min(100, Math.round((finalRefundAmount / Number(refundReq.OriginalAmount)) * 100))
+      : 0;
 
     if (action === 'approve') {
-      // Bước 1: Approved
+      if (finalRefundAmount > Number(refundReq.OriginalAmount)) {
+        return res.status(400).json({
+          message: `Số tiền hoàn (${finalRefundAmount.toLocaleString('vi-VN')}đ) không thể vượt quá số tiền đã trả (${Number(refundReq.OriginalAmount).toLocaleString('vi-VN')}đ)`
+        });
+      }
+
+      // Bước 1: Cập nhật trạng thái REFUND_REQUEST thành Approved
       await pool.request()
-        .input('refundId',     sql.Int,           refundId)
-        .input('approvedBy',   sql.Int,           approvedBy)
-        .input('refundAmount', sql.Decimal(12,2), finalRefundAmount)
-        .input('note',         sql.NVarChar(500), note || null)
+        .input('refundId',      sql.Int,           refundId)
+        .input('approvedBy',    sql.Int,           approvedBy)
+        .input('refundAmount',  sql.Decimal(12,2), finalRefundAmount)
+        .input('refundPercent', sql.Int,           finalRefundPercent)
+        .input('note',          sql.NVarChar(500), note || null)
         .query(`
           UPDATE REFUND_REQUEST SET
-            Status       = 'Approved',
-            ApprovedBy   = @approvedBy,
-            RefundAmount = @refundAmount,
-            Note         = @note,
-            UpdatedAt    = GETDATE()
+            Status        = 'Approved',
+            ApprovedBy    = @approvedBy,
+            RefundAmount  = @refundAmount,
+            RefundPercent = @refundPercent,
+            Note          = @note,
+            UpdatedAt     = GETDATE()
           WHERE RefundID = @refundId
         `);
 
-      // Bước 2: Nếu booking CHƯA hủy (nguồn Staff/sự cố) → hủy booking
+      // Bước 2: Hủy booking nếu chưa hủy
       if (refundReq.BookingStatus !== 5) {
         await cancelBookingActions(pool, refundReq.BookingID);
       }
 
-      // Bước 3: LUÔN soft delete payment để frontend không còn hiện "Đã thanh toán"
+      // Bước 3: Soft delete payment
       await pool.request()
         .input('paymentId', sql.Int, refundReq.PaymentID)
         .query(`UPDATE PAYMENT SET IsHiddenByUser = 1 WHERE PaymentID = @paymentId`);
 
-      // Bước 4: RefundProcessing → Refunded
-      await pool.request()
-        .input('refundId', sql.Int, refundId)
-        .query(`
-          UPDATE REFUND_REQUEST SET Status = 'RefundProcessing', UpdatedAt = GETDATE()
-          WHERE RefundID = @refundId;
-          UPDATE REFUND_REQUEST SET Status = 'Refunded', UpdatedAt = GETDATE()
-          WHERE RefundID = @refundId;
-        `);
-
-      // Bước 5: Noti #2 — Admin duyệt → báo khách ra quầy nhận tiền
+      // Bước 4: Gửi thông báo đến khách hàng (Gửi cả In-App + Email)
       await sendNotif(
         pool,
         refundReq.CustomerID,
         refundReq.BookingID,
         '✅ Yêu cầu hoàn tiền đã được duyệt',
-        `Yêu cầu hoàn tiền ${refundReq.RefundPercent}% (${finalRefundAmount.toLocaleString('vi-VN')}đ) cho lịch BK-${refundReq.BookingID} đã được duyệt. Vui lòng đến quầy thanh toán để nhận lại tiền mặt.`
+        `Yêu cầu hoàn tiền cho lịch BK-${refundReq.BookingID} đã được duyệt. Số tiền: ${finalRefundAmount.toLocaleString('vi-VN')}đ. Vui lòng nhận tại quầy.`,
+        'CANCEL',
+        true
       );
 
       return res.json({
-        message: 'Đã duyệt và hoàn tiền thành công',
+        message: 'Đã duyệt yêu cầu hoàn tiền. Chờ Staff xác nhận hoàn tiền mặt.',
         refundId,
-        status: 'Refunded',
+        status: 'Approved',
         refundAmount: finalRefundAmount,
         note: note || null
       });
+
 
     } else {
       // REJECT
