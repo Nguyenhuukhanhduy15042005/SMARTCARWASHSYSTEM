@@ -8,36 +8,8 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import "./Payment.css";
 
-/* ============================================================================
-   API LAYER
-   ----------------------------------------------------------------------------
-   Set USE_MOCK = false and API_BASE to your server to go live. Every function
-   mirrors the exact request/response shape of refundRequest.js. Attach the
-   staff JWT the same way verifyToken expects (Authorization: Bearer <token>).
 
-   Staff scope only: createRefundRequest, getRefundRequests, getRefundRequestById,
-   startReview. No access to reviewRefundRequest or getRefundHistory routes.
-
-   NOTE FOR BACKEND: createRefundRequest() ở server phải chặn tạo trùng khi
-   payment đã có refund request ở trạng thái Pending HOẶC UnderReview (không
-   chỉ Pending), tương tự điều kiện đã sửa trong mockApi.create() bên dưới.
-   Nếu không, staff có thể tạo 2 yêu cầu song song cho cùng 1 payment trong
-   lúc yêu cầu đầu đang chờ Admin xem xét.
-
-   ĐÃ NỐI DATA THẬT: USE_MOCK = false. Token JWT được đọc từ localStorage
-   key "TOKEN" (đúng key mà AuthContext.jsx đang lưu khi login), gắn vào
-   header Authorization: Bearer <token> cho mọi request.
-
-   CHỖ CẦN BẠN XÁC NHẬN LẠI: endpoint lấy danh sách "giao dịch đủ điều kiện
-   hoàn tiền" cho dropdown ở tab Tạo yêu cầu đang tạm để là
-   GET /api/payments/refundable (biến PAYMENTS_ENDPOINT bên dưới) — đây là
-   endpoint mình đoán theo quy ước đặt tên của refund-requests, backend của
-   bạn có thể đặt tên khác. Nếu sai, chỉ cần sửa 1 dòng PAYMENTS_ENDPOINT.
-============================================================================ */
 const USE_MOCK = false;
-// Dùng URL tuyệt đối trỏ thẳng backend (khớp với Payment.jsx) — tránh bị
-// Vite dev server (localhost:5173) nuốt request rồi trả 404 vì không có
-// route đó ở phía frontend.
 const BACKEND_ORIGIN = "http://localhost:5000";
 const API_BASE = `${BACKEND_ORIGIN}/api/refund-requests`;
 const PAYMENTS_ENDPOINT = `${BACKEND_ORIGIN}/api/payments/refundable`;
@@ -203,12 +175,12 @@ const Api = {
    DESIGN TOKENS / HELPERS
 ============================================================================ */
 const STATUS_META = {
-  Pending:          { label: "Chờ duyệt",      color: "#B8732A", step: 0 },
-  UnderReview:      { label: "Đang xem xét",   color: "#3E6B96", step: 1 },
-  Approved:         { label: "Đã duyệt",       color: "#2F7D5E", step: 2 },
+  Pending: { label: "Chờ duyệt", color: "#B8732A", step: 0 },
+  UnderReview: { label: "Đang xem xét", color: "#3E6B96", step: 1 },
+  Approved: { label: "Đã duyệt", color: "#2F7D5E", step: 2 },
   RefundProcessing: { label: "Đang hoàn tiền", color: "#6B5B95", step: 3 },
-  Refunded:         { label: "Đã hoàn tiền",   color: "#1F5C43", step: 4 },
-  Rejected:         { label: "Từ chối",        color: "#B23A34", step: -1 },
+  Refunded: { label: "Đã hoàn tiền", color: "#1F5C43", step: 4 },
+  Rejected: { label: "Từ chối", color: "#B23A34", step: -1 },
 };
 const PIPELINE = ["Pending", "UnderReview", "Approved", "RefundProcessing", "Refunded"];
 

@@ -8,22 +8,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import "./Payment.css";
 
-/* ============================================================================
-   API LAYER
-   ----------------------------------------------------------------------------
-   Set USE_MOCK = false and API_BASE to your server to go live. Every function
-   mirrors the exact request/response shape of refundRequest.js. Attach the
-   admin JWT the same way verifyToken expects (Authorization: Bearer <token>).
 
-   Admin scope only: getRefundRequests, getRefundRequestById, reviewRefundRequest,
-   getRefundHistory. No access to createRefundRequest / review-start routes.
-
-   NOTE FOR BACKEND: reviewRefundRequest() in refundRequest.js currently only
-   allows action when Status === 'Pending'. The written spec (Staff moves to
-   UnderReview, then Admin reviews) needs that check changed to
-   Status === 'Pending' || Status === 'UnderReview', otherwise requests that
-   went through review-start will be rejected here with a 400.
-============================================================================ */
 const USE_MOCK = false;
 const API_BASE = "/api/refund-requests";
 
@@ -149,12 +134,12 @@ const Api = {
    DESIGN TOKENS / HELPERS
 ============================================================================ */
 const STATUS_META = {
-  Pending:          { label: "Chờ duyệt",      color: "#B8732A", step: 0 },
-  UnderReview:      { label: "Đang xem xét",   color: "#3E6B96", step: 1 },
-  Approved:         { label: "Đã duyệt",       color: "#2F7D5E", step: 2 },
+  Pending: { label: "Chờ duyệt", color: "#B8732A", step: 0 },
+  UnderReview: { label: "Đang xem xét", color: "#3E6B96", step: 1 },
+  Approved: { label: "Đã duyệt", color: "#2F7D5E", step: 2 },
   RefundProcessing: { label: "Đang hoàn tiền", color: "#6B5B95", step: 3 },
-  Refunded:         { label: "Đã hoàn tiền",   color: "#1F5C43", step: 4 },
-  Rejected:         { label: "Từ chối",        color: "#B23A34", step: -1 },
+  Refunded: { label: "Đã hoàn tiền", color: "#1F5C43", step: 4 },
+  Rejected: { label: "Từ chối", color: "#B23A34", step: -1 },
 };
 const PIPELINE = ["Pending", "UnderReview", "Approved", "RefundProcessing", "Refunded"];
 
@@ -403,7 +388,7 @@ function ListView({ rows, loading, statusFilter, setStatusFilter, search, setSea
   const statuses = ["", "Pending", "UnderReview", "Approved", "Rejected", "RefundProcessing", "Refunded"];
   return (
     <div>
-      <div className="rq-toolbar" style={{ display:"flex", gap:10, marginBottom:16 }}>
+      <div className="rq-toolbar" style={{ display: "flex", gap: 10, marginBottom: 16 }}>
         <div className="rq-search-box">
           <Search size={15} />
           <input placeholder="Tìm theo tên khách, biển số, mã yêu cầu…" value={search} onChange={(e) => setSearch(e.target.value)} />

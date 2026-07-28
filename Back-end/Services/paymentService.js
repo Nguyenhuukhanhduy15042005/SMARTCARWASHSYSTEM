@@ -279,7 +279,7 @@ const confirmVNPay = async (query) => {
     await pool.request().input('bookingId', sql.Int, bookingId).query(`
       UPDATE BOOKING SET Status = 5 WHERE BookingID = @bookingId;
       UPDATE MEMBER_PROMOTION SET IsUsed = 0 WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
-      UPDATE MACHINE SET Status = 1 WHERE MachineID = (SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId);
+      UPDATE MACHINE SET Status = 1 WHERE MachineID IN (SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId);
     `);
     try {
       const userRes = await pool.request()
@@ -498,7 +498,7 @@ const refundPayment = async (paymentId) => {
     UPDATE MEMBER_PROMOTION SET IsUsed = 0
     WHERE MemberPromoID = (SELECT MemberPromoID FROM BOOKING WHERE BookingID = @bookingId);
     UPDATE MACHINE SET Status = 1 
-    WHERE MachineID = (SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId);
+    WHERE MachineID IN (SELECT MachineID FROM BOOKING_DETAIL WHERE BookingID = @bookingId);
   `);
 
   // Soft delete payment — giữ lại record để cancelCount đếm đúng qua BOOKING.Status=5
