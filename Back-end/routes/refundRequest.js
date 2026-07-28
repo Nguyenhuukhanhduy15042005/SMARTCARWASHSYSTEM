@@ -78,19 +78,16 @@ const createRefundFromCustomer = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy payment' });
     }
 
-    // Chỉ cho phép chính chủ
     if (payment.CustomerID !== customerId) {
       return res.status(403).json({ message: 'Bạn không có quyền tạo yêu cầu này' });
     }
 
-    // Booking phải đã bị hủy rồi mới được khiếu nại
     if (payment.BookingStatus !== 5) {
       return res.status(400).json({
         message: 'Chỉ có thể yêu cầu xem xét hoàn tiền sau khi booking đã bị hủy'
       });
     }
 
-    // Kiểm tra đã có đơn Pending/UnderReview chưa
     const existing = await pool.request()
       .input('paymentId', sql.Int, paymentId)
       .query(`
@@ -102,11 +99,9 @@ const createRefundFromCustomer = async (req, res) => {
       return res.status(400).json({ message: 'Đã có yêu cầu đang được xử lý cho payment này' });
     }
 
-    // refundPercent = 0 vì đây là khiếu nại (Admin sẽ quyết định)
     const refundPercent = 0;
     const refundAmount  = 0;
 
-    // Tạo REFUND_REQUEST
     const insertResult = await pool.request()
       .input('paymentId',     sql.Int,           paymentId)
       .input('bookingId',     sql.Int,           payment.BookingID)
@@ -127,13 +122,13 @@ const createRefundFromCustomer = async (req, res) => {
 
     const refundId = insertResult.recordset[0].RefundID;
 
-    // Noti Customer
+    // Noti #1 — Customer
     await sendNotif(pool, customerId, payment.BookingID,
       '📨 Yêu cầu xem xét hoàn tiền đã được gửi',
       `Yêu cầu xem xét hoàn tiền (BK-${payment.BookingID}) đã được ghi nhận. Admin sẽ xem xét và phản hồi sớm nhất có thể.`
     );
 
-    // Noti tất cả Staff/Admin
+    // Noti Staff/Admin
     try {
       const staffList = await pool.request()
         .query(`SELECT UserID FROM [USER] WHERE RoleID IN (1, 2)`);
@@ -167,7 +162,12 @@ const createRefundFromCustomer = async (req, res) => {
    POST /api/refund-requests
    Body: { paymentId, reason, incidentType }
    → RefundPercent = 100% tự động (lỗi từ phía shop)
-   → Noti Customer ngay
+
+   Noti #1 (Staff tạo) — bắn ngay cho Customer:
+     ⚠️ Lịch hẹn của bạn bị ảnh hưởng bởi sự cố
+     Lịch rửa xe BK-XXX bị hủy do sự cố: [loại]. 
+     Chúng tôi đang xử lý hoàn tiền 100% (XXXđ) cho bạn.
+
    Auth: Staff hoặc Admin
 ============================================================================ */
 const createRefundFromStaff = async (req, res) => {
@@ -194,7 +194,6 @@ const createRefundFromStaff = async (req, res) => {
       return res.status(400).json({ message: 'Booking đã bị hủy trước đó' });
     }
 
-    // Kiểm tra đã có yêu cầu Pending/UnderReview chưa
     const existing = await pool.request()
       .input('paymentId', sql.Int, paymentId)
       .query(`
@@ -206,12 +205,10 @@ const createRefundFromStaff = async (req, res) => {
       return res.status(400).json({ message: 'Đã có yêu cầu hoàn tiền đang được xử lý' });
     }
 
-    // Sự cố từ phía shop → hoàn 100% bất kể lịch sử khách
     const refundPercent = 100;
     const refundAmount  = Number(payment.Amount);
     const fullReason    = `[${incident}] ${reason}`;
 
-    // Tạo REFUND_REQUEST
     const insertResult = await pool.request()
       .input('paymentId',     sql.Int,           paymentId)
       .input('bookingId',     sql.Int,           payment.BookingID)
@@ -234,7 +231,7 @@ const createRefundFromStaff = async (req, res) => {
 
     const refundId = insertResult.recordset[0].RefundID;
 
-    // Noti Customer ngay
+    // Noti #1 — Staff tạo yêu cầu → bắn ngay cho Customer
     await sendNotif(pool, payment.CustomerID, payment.BookingID,
       '⚠️ Lịch hẹn của bạn bị ảnh hưởng bởi sự cố',
       `Lịch rửa xe BK-${payment.BookingID} bị hủy do sự cố: ${incident}. Chúng tôi đang xử lý hoàn tiền 100% (${refundAmount.toLocaleString('vi-VN')}đ) cho bạn.`
@@ -416,20 +413,18 @@ const getRefundRequestById = async (req, res) => {
    Body: { action: 'approve' | 'reject', refundAmount?, note? }
    Auth: Admin only
 
-   Khi APPROVE:
-     → Status = Approved → RefundProcessing → Refunded
-     → Nếu booking chưa hủy: hủy booking, nhả voucher, giải phóng máy, soft delete payment
-     → Nếu booking đã hủy (customer khiếu nại): chỉ ghi nhận hoàn tiền
-     → Noti Customer
+   Khi APPROVE — 3 noti theo luồng:
+     Noti #1 (đã có khi Staff tạo): ⚠️ Lịch hẹn bị ảnh hưởng [giữ nguyên]
+     Noti #2 (thêm mới ở đây):     ✅ Yêu cầu hoàn tiền đã được duyệt → ra quầy nhận
+     Noti #3 (khi Staff confirm):   💵 Đã hoàn tiền thành công
+
+   Nếu booking CHƯA hủy (sự cố Staff): hủy booking + nhả voucher + giải phóng máy
+   LUÔN soft delete payment (IsHiddenByUser=1) để frontend không hiện "Đã thanh toán"
 
    Khi REJECT:
      → Status = Rejected
      → Booking giữ nguyên
      → Noti Customer kèm lý do
-
-   Lưu ý: Admin có thể điều chỉnh refundAmount
-     - Không vượt quá số tiền đã trả
-     - Kể cả tiền cọc / vi phạm chính sách Admin vẫn có thể duyệt ngoại lệ
 ============================================================================ */
 const reviewRefundRequest = async (req, res) => {
   try {
@@ -494,15 +489,16 @@ const reviewRefundRequest = async (req, res) => {
         `);
 
       // Bước 2: Nếu booking CHƯA hủy (nguồn Staff/sự cố) → hủy booking
-      // Nếu booking ĐÃ hủy (nguồn Customer khiếu nại) → bỏ qua bước này
       if (refundReq.BookingStatus !== 5) {
         await cancelBookingActions(pool, refundReq.BookingID);
-        await pool.request()
-          .input('paymentId', sql.Int, refundReq.PaymentID)
-          .query(`UPDATE PAYMENT SET IsHiddenByUser = 1 WHERE PaymentID = @paymentId`);
       }
 
-      // Bước 3: RefundProcessing → Refunded
+      // Bước 3: LUÔN soft delete payment để frontend không còn hiện "Đã thanh toán"
+      await pool.request()
+        .input('paymentId', sql.Int, refundReq.PaymentID)
+        .query(`UPDATE PAYMENT SET IsHiddenByUser = 1 WHERE PaymentID = @paymentId`);
+
+      // Bước 4: RefundProcessing → Refunded
       await pool.request()
         .input('refundId', sql.Int, refundId)
         .query(`
@@ -512,13 +508,13 @@ const reviewRefundRequest = async (req, res) => {
           WHERE RefundID = @refundId;
         `);
 
-      // Bước 4: Noti Customer
+      // Bước 5: Noti #2 — Admin duyệt → báo khách ra quầy nhận tiền
       await sendNotif(
         pool,
         refundReq.CustomerID,
         refundReq.BookingID,
         '✅ Yêu cầu hoàn tiền đã được duyệt',
-        `Yêu cầu hoàn tiền (BK-${refundReq.BookingID}) đã được Admin phê duyệt. Số tiền hoàn: ${finalRefundAmount.toLocaleString('vi-VN')}đ. Vui lòng nhận tại quầy.`
+        `Yêu cầu hoàn tiền ${refundReq.RefundPercent}% (${finalRefundAmount.toLocaleString('vi-VN')}đ) cho lịch BK-${refundReq.BookingID} đã được duyệt. Vui lòng đến quầy thanh toán để nhận lại tiền mặt.`
       );
 
       return res.json({
@@ -670,13 +666,80 @@ const getRefundHistory = async (req, res) => {
   }
 };
 
+/* ============================================================================
+   [9] Staff xác nhận đã hoàn tiền mặt cho khách tại quầy
+   PATCH /api/refund-requests/:id/confirm-refunded
+   Auth: Staff hoặc Admin
+
+   Điều kiện: Status phải là 'Approved'
+
+   Noti #3 — Staff xác nhận đã trả tiền mặt:
+     💵 Đã hoàn tiền thành công
+     Bạn đã nhận XXXđ tiền hoàn cho lịch BK-XXX. Cảm ơn bạn đã ghé cửa hàng.
+============================================================================ */
+const confirmRefunded = async (req, res) => {
+  try {
+    const refundId = Number(req.params.id);
+    const pool = await poolPromise;
+
+    const rr = await pool.request()
+      .input('refundId', sql.Int, refundId)
+      .query(`
+        SELECT rr.*, b.CustomerID, b.BookingID
+        FROM REFUND_REQUEST rr
+        JOIN BOOKING b ON rr.BookingID = b.BookingID
+        WHERE rr.RefundID = @refundId
+      `);
+
+    if (!rr.recordset.length) {
+      return res.status(404).json({ message: 'Không tìm thấy yêu cầu hoàn tiền' });
+    }
+
+    const refundReq = rr.recordset[0];
+
+    if (refundReq.Status !== 'Approved') {
+      return res.status(400).json({
+        message: `Chỉ xác nhận được khi đã Approved (hiện tại: ${refundReq.Status})`
+      });
+    }
+
+    await pool.request()
+      .input('refundId', sql.Int, refundId)
+      .query(`
+        UPDATE REFUND_REQUEST
+        SET Status = 'Refunded', UpdatedAt = GETDATE()
+        WHERE RefundID = @refundId
+      `);
+
+    // Noti #3 — Staff xác nhận đã trả tiền mặt
+    await sendNotif(
+      pool,
+      refundReq.CustomerID,
+      refundReq.BookingID,
+      '💵 Đã hoàn tiền thành công',
+      `Bạn đã nhận ${Number(refundReq.RefundAmount).toLocaleString('vi-VN')}đ tiền hoàn cho lịch BK-${refundReq.BookingID}. Cảm ơn bạn đã ghé cửa hàng.`
+    );
+
+    res.json({
+      message: 'Đã xác nhận hoàn tiền mặt thành công',
+      refundId,
+      status: 'Refunded'
+    });
+
+  } catch (err) {
+    console.error('[confirmRefunded]', err.message);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
-  createRefundFromCustomer,   // POST /api/refund-requests/appeal     ← Customer khiếu nại sau khi bị 0%
-  createRefundFromStaff,      // POST /api/refund-requests             ← Staff/sự cố
+  createRefundFromCustomer,   // POST /api/refund-requests/appeal        ← Customer khiếu nại
+  createRefundFromStaff,      // POST /api/refund-requests               ← Staff/sự cố
   startReview,                // PATCH /api/refund-requests/:id/review-start
   getRefundRequests,          // GET  /api/refund-requests
   getRefundRequestById,       // GET  /api/refund-requests/:id
-  reviewRefundRequest,        // PATCH /api/refund-requests/:id/review ← Admin duyệt/từ chối
+  reviewRefundRequest,        // PATCH /api/refund-requests/:id/review   ← Admin duyệt/từ chối
   getRefundablePayments,      // GET  /api/refund-requests/refundable
   getRefundHistory,           // GET  /api/refund-requests/history
+  confirmRefunded,            // PATCH /api/refund-requests/:id/confirm-refunded ← Staff xác nhận
 };
