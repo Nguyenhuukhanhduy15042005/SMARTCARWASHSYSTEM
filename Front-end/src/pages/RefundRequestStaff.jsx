@@ -546,6 +546,7 @@ function ListView({ rows, loading, statusFilter, setStatusFilter, search, setSea
 
 /* ============================================================================
    PAYMENT COMBOBOX — dropdown chọn giao dịch có ô tìm kiếm
+   (Search chỉ theo BookingID + tên khách + biển số — bỏ PaymentID theo yêu cầu)
 ============================================================================ */
 function PaymentCombobox({ payments, loading, value, onChange }) {
   const [open, setOpen] = useState(false);
@@ -569,14 +570,13 @@ function PaymentCombobox({ payments, loading, value, onChange }) {
     const q = query.trim().toLowerCase().replace(/^#/, "");
     if (!q) return payments;
     return payments.filter((p) =>
-      String(p.PaymentID).toLowerCase().includes(q) ||
       String(p.BookingID ?? "").toLowerCase().includes(q) ||
       p.CustomerName?.toLowerCase().includes(q) ||
       p.LicensePlate?.toLowerCase().includes(q)
     );
   }, [payments, query]);
 
-  const label = (p) => `#${p.PaymentID} · Đơn #${p.BookingID} · ${p.CustomerName} · ${p.LicensePlate} · ${money(p.Amount)} (${p.PaymentMethod})`;
+  const label = (p) => `Đơn #${p.BookingID} · ${p.CustomerName} · ${p.LicensePlate} · ${money(p.Amount)} (${p.PaymentMethod})`;
 
   return (
     <div className="rq-combo" ref={wrapRef}>
@@ -598,7 +598,7 @@ function PaymentCombobox({ payments, loading, value, onChange }) {
             <Search size={14} />
             <input
               autoFocus
-              placeholder="Tìm theo mã, tên khách, biển số…"
+              placeholder="Tìm theo mã đơn, tên khách, biển số…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -613,10 +613,9 @@ function PaymentCombobox({ payments, loading, value, onChange }) {
                   className={`rq-combo-item ${String(p.PaymentID) === String(value) ? "active" : ""}`}
                   onClick={() => { onChange(String(p.PaymentID)); setOpen(false); setQuery(""); }}
                 >
-                  <span className="rq-combo-item-id">#{p.PaymentID}</span>
+                  <span className="rq-combo-item-id">#{p.BookingID}</span>
                   <span className="rq-combo-item-name-wrap">
                     <span className="rq-combo-item-name">{p.CustomerName}</span>
-                    <span className="rq-combo-item-sub">Đơn #{p.BookingID}</span>
                   </span>
                   <span className="rq-combo-item-plate">{p.LicensePlate}</span>
                   <span className="rq-combo-item-amt">{money(p.Amount)}</span>
@@ -784,7 +783,7 @@ function DetailDrawer({ row, onClose, onChanged, onError }) {
   const [busy, setBusy] = useState(false);
   const [confirmModal, setConfirmModal] = useState(false);
   const canStartReview = row.Status === "Pending";
-  const canConfirmRefunded = false; // Theo luồng mới: Admin approve = Refunded luôn
+  const canConfirmRefunded = row.Status === "Approved"; // Staff xác nhận thủ công đã trả tiền mặt tại quầy
 
   const doStartReview = async () => {
     setBusy(true);
