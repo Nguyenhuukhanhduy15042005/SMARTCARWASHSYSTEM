@@ -76,14 +76,13 @@ const getRefundPreview = async (req, res) => {
 };
 
 /**
- * Customer tự hủy booking qua PaymentHistory
+ * Customer tự hủy booking qua PaymentHistory — xử lý luôn theo bảng %
  * POST /api/payments/:id/refund { reason }
- * → Tạo REFUND_REQUEST chờ Admin duyệt (không hủy ngay)
  */
 const refundPayment = async (req, res) => {
   try {
-    const { createRefundFromCustomer } = require('./refundRequest');
-    return await createRefundFromCustomer(req, res);
+    const result = await service.refundPayment(Number(req.params.id));
+    res.json(result);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

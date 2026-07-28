@@ -684,4 +684,3 @@ function DetailDrawer({ row, onClose, onChanged, onError }) {
   );
 }
 
-/* ── Dark-theme overrides injected globally ── */

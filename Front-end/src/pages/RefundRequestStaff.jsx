@@ -175,6 +175,15 @@ const mockApi = {
     row.UpdatedAt = new Date();
     return { message: "Đã chuyển sang UnderReview, chờ Admin duyệt", refundId: row.RefundID, status: "UnderReview" };
   },
+  async confirmRefunded(id) {
+    await wait();
+    const row = mockDb.find((r) => r.RefundID === Number(id));
+    if (!row) throw new Error("Không tìm thấy yêu cầu hoàn tiền");
+    if (row.Status !== "Approved") throw new Error(`Chỉ xác nhận được khi đã Approved (hiện tại: ${row.Status})`);
+    row.Status = "Refunded";
+    row.UpdatedAt = new Date();
+    return { message: "Đã xác nhận hoàn tiền mặt thành công", refundId: row.RefundID, status: "Refunded" };
+  },
   async listPayments() {
     await wait(200);
     return { data: MOCK_PAYMENTS };
@@ -186,6 +195,7 @@ const Api = {
   getById: (id) => USE_MOCK ? mockApi.getById(id) : apiFetch(`/${id}`),
   create: (body) => USE_MOCK ? mockApi.create(body) : apiFetch(`/`, { method: "POST", body: JSON.stringify(body) }),
   startReview: (id) => USE_MOCK ? mockApi.startReview(id) : apiFetch(`/${id}/review-start`, { method: "PATCH" }),
+  confirmRefunded: (id) => USE_MOCK ? mockApi.confirmRefunded(id) : apiFetch(`/${id}/confirm-refunded`, { method: "PATCH" }),
   listPayments: () => USE_MOCK ? mockApi.listPayments() : apiFetchUrl(PAYMENTS_ENDPOINT),
 };
 
@@ -324,6 +334,32 @@ const RQ_DARK_CSS = `
   .rq-result-card.zero{border-color:rgba(249,115,22,0.3);background:rgba(249,115,22,0.08)}
   .rq-spin{animation:rqSpin .9s linear infinite}
   @keyframes rqSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  .rq-combo{position:relative}
+  .rq-combo-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:9px 11px;font-size:13.5px;color:#e2e8f0;background:rgba(255,255,255,0.06);cursor:pointer;text-align:left}
+  .rq-combo-trigger:hover{border-color:rgba(255,255,255,0.22)}
+  .rq-combo-trigger:disabled{opacity:.5;cursor:not-allowed}
+  .rq-combo-trigger-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rq-combo-placeholder{color:#64748b}
+  .rq-combo-chevron{transition:transform .15s;color:#64748b;flex-shrink:0}
+  .rq-combo-chevron.open{transform:rotate(90deg)}
+  .rq-combo-dropdown{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#1e293b;border:1px solid rgba(255,255,255,0.12);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.45);z-index:20;overflow:hidden}
+  .rq-combo-search{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.08);color:#64748b}
+  .rq-combo-search input{border:none;outline:none;background:transparent;font-size:13px;width:100%;color:#e2e8f0}
+  .rq-combo-search input::placeholder{color:#64748b}
+  .rq-combo-list{max-height:260px;overflow-y:auto}
+  .rq-combo-item{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:12.5px;color:#cbd5e1;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .rq-combo-item:last-child{border-bottom:none}
+  .rq-combo-item:hover{background:rgba(255,255,255,0.06)}
+  .rq-combo-item.active{background:rgba(249,115,22,0.12)}
+  .rq-combo-item-id{font-family:monospace;color:#94a3b8;font-weight:600;flex-shrink:0}
+  .rq-combo-item-name{font-weight:600;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+  .rq-combo-item-name-wrap{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
+  .rq-combo-item-name-wrap .rq-combo-item-name{flex:none}
+  .rq-combo-item-sub{font-size:10.5px;color:#64748b}
+  .rq-combo-item-plate{color:#94a3b8;font-family:monospace;flex-shrink:0}
+  .rq-combo-item-amt{font-family:monospace;font-weight:600;color:#f1f5f9;flex-shrink:0}
+  .rq-combo-item-method{font-size:10px;color:#64748b;text-transform:uppercase;flex-shrink:0}
+  .rq-combo-empty{padding:20px;text-align:center;color:#64748b;font-size:12.5px}
 `;
 
 if (typeof document !== "undefined") {
@@ -509,6 +545,93 @@ function ListView({ rows, loading, statusFilter, setStatusFilter, search, setSea
 }
 
 /* ============================================================================
+   PAYMENT COMBOBOX — dropdown chọn giao dịch có ô tìm kiếm
+============================================================================ */
+function PaymentCombobox({ payments, loading, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const wrapRef = React.useRef(null);
+
+  const selected = payments.find((p) => String(p.PaymentID) === String(value));
+
+  React.useEffect(() => {
+    function onClickOutside(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase().replace(/^#/, "");
+    if (!q) return payments;
+    return payments.filter((p) =>
+      String(p.PaymentID).toLowerCase().includes(q) ||
+      String(p.BookingID ?? "").toLowerCase().includes(q) ||
+      p.CustomerName?.toLowerCase().includes(q) ||
+      p.LicensePlate?.toLowerCase().includes(q)
+    );
+  }, [payments, query]);
+
+  const label = (p) => `#${p.PaymentID} · Đơn #${p.BookingID} · ${p.CustomerName} · ${p.LicensePlate} · ${money(p.Amount)} (${p.PaymentMethod})`;
+
+  return (
+    <div className="rq-combo" ref={wrapRef}>
+      <button
+        type="button"
+        className="rq-combo-trigger"
+        disabled={loading}
+        onClick={() => { setOpen((o) => !o); setQuery(""); }}
+      >
+        <span className={`rq-combo-trigger-label ${selected ? "" : "rq-combo-placeholder"}`}>
+          {loading ? "Đang tải danh sách giao dịch…" : selected ? label(selected) : "— Chọn giao dịch —"}
+        </span>
+        <ChevronRight size={14} className={`rq-combo-chevron ${open ? "open" : ""}`} />
+      </button>
+
+      {open && !loading && (
+        <div className="rq-combo-dropdown">
+          <div className="rq-combo-search">
+            <Search size={14} />
+            <input
+              autoFocus
+              placeholder="Tìm theo mã, tên khách, biển số…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <div className="rq-combo-list">
+            {filtered.length === 0 ? (
+              <div className="rq-combo-empty">Không tìm thấy giao dịch phù hợp.</div>
+            ) : (
+              filtered.map((p) => (
+                <div
+                  key={p.PaymentID}
+                  className={`rq-combo-item ${String(p.PaymentID) === String(value) ? "active" : ""}`}
+                  onClick={() => { onChange(String(p.PaymentID)); setOpen(false); setQuery(""); }}
+                >
+                  <span className="rq-combo-item-id">#{p.PaymentID}</span>
+                  <span className="rq-combo-item-name-wrap">
+                    <span className="rq-combo-item-name">{p.CustomerName}</span>
+                    <span className="rq-combo-item-sub">Đơn #{p.BookingID}</span>
+                  </span>
+                  <span className="rq-combo-item-plate">{p.LicensePlate}</span>
+                  <span className="rq-combo-item-amt">{money(p.Amount)}</span>
+                  <span className="rq-combo-item-method">{p.PaymentMethod === "cash" ? "Cash" : p.PaymentMethod}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================================
    CREATE VIEW
 ============================================================================ */
 function CreateView({ onCreated, onError }) {
@@ -604,14 +727,12 @@ function CreateView({ onCreated, onError }) {
 
         <div className="rq-field">
           <label>Giao dịch thanh toán</label>
-          <select value={paymentId} onChange={(e) => setPaymentId(e.target.value)} disabled={loadingPayments}>
-            <option value="">{loadingPayments ? "Đang tải danh sách giao dịch…" : "— Chọn giao dịch —"}</option>
-            {payments.map((p) => (
-              <option key={p.PaymentID} value={p.PaymentID}>
-                #{p.PaymentID} · {p.CustomerName} · {p.LicensePlate} · {money(p.Amount)} ({p.PaymentMethod})
-              </option>
-            ))}
-          </select>
+          <PaymentCombobox
+            payments={payments}
+            loading={loadingPayments}
+            value={paymentId}
+            onChange={setPaymentId}
+          />
           {!loadingPayments && payments.length === 0 && (
             <div className="hint">Không có giao dịch nào đủ điều kiện tạo yêu cầu hoàn tiền.</div>
           )}
@@ -661,13 +782,25 @@ function CreateView({ onCreated, onError }) {
 ============================================================================ */
 function DetailDrawer({ row, onClose, onChanged, onError }) {
   const [busy, setBusy] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(false);
   const canStartReview = row.Status === "Pending";
+  const canConfirmRefunded = false; // Theo luồng mới: Admin approve = Refunded luôn
 
   const doStartReview = async () => {
     setBusy(true);
     try {
       const res = await Api.startReview(row.RefundID);
       await onChanged(res.message);
+    } catch (e) { onError(e.message); } finally { setBusy(false); }
+  };
+
+  const doConfirmRefunded = async () => {
+    setBusy(true);
+    try {
+      const res = await Api.confirmRefunded(row.RefundID);
+      window.dispatchEvent(new Event("noti:refresh"));
+      await onChanged(res.message);
+      setConfirmModal(false);
     } catch (e) { onError(e.message); } finally { setBusy(false); }
   };
 
@@ -688,6 +821,26 @@ function DetailDrawer({ row, onClose, onChanged, onError }) {
 
         <div className="rq-drawer-body">
           <Flow status={row.Status} />
+
+          {/* Banner Approved — nhắc Staff cần hoàn tiền mặt */}
+          {canConfirmRefunded && (
+            <div style={{
+              display: "flex", gap: 10, alignItems: "flex-start",
+              background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)",
+              borderRadius: 10, padding: "12px 14px", marginBottom: 16,
+            }}>
+              <span style={{ fontSize: 20 }}>💵</span>
+              <div>
+                <p style={{ fontSize: 13.5, fontWeight: 700, color: "#10b981", margin: "0 0 3px" }}>
+                  Yêu cầu đã được Admin duyệt!
+                </p>
+                <p style={{ fontSize: 12.5, color: "#6ee7b7", margin: 0 }}>
+                  Vui lòng hoàn <strong>{money(row.RefundAmount)}</strong> tiền mặt cho khách tại quầy,
+                  sau đó bấm xác nhận bên dưới.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="rq-amount-box">
             <div className="rq-amount-row"><span>Số tiền hoàn đề xuất</span><span className="big">{money(row.RefundAmount)}</span></div>
@@ -723,6 +876,7 @@ function DetailDrawer({ row, onClose, onChanged, onError }) {
           </div>
         </div>
 
+        {/* Footer: nút theo từng trạng thái */}
         {canStartReview && (
           <div className="rq-drawer-foot">
             <button className="rq-btn rq-btn-accent" style={{ width: "100%", justifyContent: "center" }} onClick={doStartReview} disabled={busy}>
@@ -731,7 +885,57 @@ function DetailDrawer({ row, onClose, onChanged, onError }) {
             </button>
           </div>
         )}
+
+        {canConfirmRefunded && (
+          <div className="rq-drawer-foot">
+            <button
+              className="rq-btn rq-btn-success"
+              style={{ width: "100%", justifyContent: "center" }}
+              onClick={() => setConfirmModal(true)}
+              disabled={busy}
+            >
+              <Check size={14} />
+              Xác nhận đã hoàn tiền mặt cho khách
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Modal xác nhận hoàn tiền mặt */}
+      {confirmModal && (
+        <div className="rq-drawer-overlay" style={{ zIndex: 50 }} onClick={() => !busy && setConfirmModal(false)}>
+          <div style={{
+            position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+            background: "#1e293b", border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 14, padding: "28px 28px 24px", width: "min(420px,90vw)", zIndex: 51,
+          }} onClick={(e) => e.stopPropagation()}>
+            <p style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", marginBottom: 8 }}>
+              💵 Xác nhận hoàn tiền mặt
+            </p>
+            <p style={{ fontSize: 13.5, color: "#94a3b8", marginBottom: 16 }}>
+              Bạn xác nhận đã trả <strong style={{ color: "#10b981" }}>{money(row.RefundAmount)}</strong> tiền mặt
+              cho khách <strong style={{ color: "#f1f5f9" }}>{row.CustomerName}</strong> tại quầy?
+            </p>
+            <div style={{
+              background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)",
+              borderRadius: 8, padding: "10px 13px", fontSize: 12.5, color: "#6ee7b7", marginBottom: 20,
+            }}>
+              Sau khi xác nhận, khách sẽ nhận được thông báo "Đã hoàn tiền thành công". Hành động này không thể hoàn tác.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button className="rq-btn rq-btn-outline" style={{ flex: 1, justifyContent: "center" }}
+                onClick={() => setConfirmModal(false)} disabled={busy}>
+                Huỷ
+              </button>
+              <button className="rq-btn rq-btn-success" style={{ flex: 2, justifyContent: "center" }}
+                onClick={doConfirmRefunded} disabled={busy}>
+                {busy ? <RotateCw size={14} className="rq-spin" /> : <Check size={14} />}
+                {busy ? "Đang xử lý..." : "Xác nhận đã hoàn tiền"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
