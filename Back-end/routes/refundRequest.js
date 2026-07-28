@@ -122,11 +122,13 @@ const createRefundFromCustomer = async (req, res) => {
 
     const refundId = insertResult.recordset[0].RefundID;
 
+    // Noti #1 — Customer
     await sendNotif(pool, customerId, payment.BookingID,
       '📨 Yêu cầu xem xét hoàn tiền đã được gửi',
       `Yêu cầu xem xét hoàn tiền (BK-${payment.BookingID}) đã được ghi nhận. Admin sẽ xem xét và phản hồi sớm nhất có thể.`
     );
 
+    // Noti Staff/Admin
     try {
       const staffList = await pool.request()
         .query(`SELECT UserID FROM [USER] WHERE RoleID IN (1, 2)`);
@@ -160,7 +162,12 @@ const createRefundFromCustomer = async (req, res) => {
    POST /api/refund-requests
    Body: { paymentId, reason, incidentType }
    → RefundPercent = 100% tự động (lỗi từ phía shop)
-   → Noti Customer ngay
+
+   Noti #1 (Staff tạo) — bắn ngay cho Customer:
+     ⚠️ Lịch hẹn của bạn bị ảnh hưởng bởi sự cố
+     Lịch rửa xe BK-XXX bị hủy do sự cố: [loại]. 
+     Chúng tôi đang xử lý hoàn tiền 100% (XXXđ) cho bạn.
+
    Auth: Staff hoặc Admin
 ============================================================================ */
 const createRefundFromStaff = async (req, res) => {
@@ -224,6 +231,7 @@ const createRefundFromStaff = async (req, res) => {
 
     const refundId = insertResult.recordset[0].RefundID;
 
+    // Noti #1 — Staff tạo yêu cầu → bắn ngay cho Customer
     await sendNotif(pool, payment.CustomerID, payment.BookingID,
       '⚠️ Lịch hẹn của bạn bị ảnh hưởng bởi sự cố',
       `Lịch rửa xe BK-${payment.BookingID} bị hủy do sự cố: ${incident}. Chúng tôi đang xử lý hoàn tiền 100% (${refundAmount.toLocaleString('vi-VN')}đ) cho bạn.`
@@ -405,11 +413,13 @@ const getRefundRequestById = async (req, res) => {
    Body: { action: 'approve' | 'reject', refundAmount?, note? }
    Auth: Admin only
 
-   Khi APPROVE:
-     → Status = Approved → RefundProcessing → Refunded
-     → Nếu booking CHƯA hủy (sự cố Staff): hủy booking + nhả voucher + giải phóng máy
-     → LUÔN soft delete payment (IsHiddenByUser=1) để frontend không hiện "Đã thanh toán"
-     → Noti Customer
+   Khi APPROVE — 3 noti theo luồng:
+     Noti #1 (đã có khi Staff tạo): ⚠️ Lịch hẹn bị ảnh hưởng [giữ nguyên]
+     Noti #2 (thêm mới ở đây):     ✅ Yêu cầu hoàn tiền đã được duyệt → ra quầy nhận
+     Noti #3 (khi Staff confirm):   💵 Đã hoàn tiền thành công
+
+   Nếu booking CHƯA hủy (sự cố Staff): hủy booking + nhả voucher + giải phóng máy
+   LUÔN soft delete payment (IsHiddenByUser=1) để frontend không hiện "Đã thanh toán"
 
    Khi REJECT:
      → Status = Rejected
@@ -498,13 +508,13 @@ const reviewRefundRequest = async (req, res) => {
           WHERE RefundID = @refundId;
         `);
 
-      // Bước 5: Noti Customer
+      // Bước 5: Noti #2 — Admin duyệt → báo khách ra quầy nhận tiền
       await sendNotif(
         pool,
         refundReq.CustomerID,
         refundReq.BookingID,
         '✅ Yêu cầu hoàn tiền đã được duyệt',
-        `Yêu cầu hoàn tiền (BK-${refundReq.BookingID}) đã được Admin phê duyệt. Số tiền hoàn: ${finalRefundAmount.toLocaleString('vi-VN')}đ. Vui lòng nhận tại quầy.`
+        `Yêu cầu hoàn tiền ${refundReq.RefundPercent}% (${finalRefundAmount.toLocaleString('vi-VN')}đ) cho lịch BK-${refundReq.BookingID} đã được duyệt. Vui lòng đến quầy thanh toán để nhận lại tiền mặt.`
       );
 
       return res.json({
@@ -662,8 +672,10 @@ const getRefundHistory = async (req, res) => {
    Auth: Staff hoặc Admin
 
    Điều kiện: Status phải là 'Approved'
-   → Status = Refunded
-   → Noti Customer: "Đã hoàn tiền thành công"
+
+   Noti #3 — Staff xác nhận đã trả tiền mặt:
+     💵 Đã hoàn tiền thành công
+     Bạn đã nhận XXXđ tiền hoàn cho lịch BK-XXX. Cảm ơn bạn đã ghé cửa hàng.
 ============================================================================ */
 const confirmRefunded = async (req, res) => {
   try {
@@ -699,12 +711,13 @@ const confirmRefunded = async (req, res) => {
         WHERE RefundID = @refundId
       `);
 
+    // Noti #3 — Staff xác nhận đã trả tiền mặt
     await sendNotif(
       pool,
       refundReq.CustomerID,
       refundReq.BookingID,
-      '✅ Hoàn tiền thành công',
-      `Số tiền ${Number(refundReq.RefundAmount).toLocaleString('vi-VN')}đ đã được hoàn trả cho bạn tại quầy. Cảm ơn bạn đã sử dụng dịch vụ!`
+      '💵 Đã hoàn tiền thành công',
+      `Bạn đã nhận ${Number(refundReq.RefundAmount).toLocaleString('vi-VN')}đ tiền hoàn cho lịch BK-${refundReq.BookingID}. Cảm ơn bạn đã ghé cửa hàng.`
     );
 
     res.json({
