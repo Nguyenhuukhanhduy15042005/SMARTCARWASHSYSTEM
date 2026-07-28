@@ -14,5 +14,6 @@ router.post('/',                  ctrl.createRefundFromStaff);    // Staff/Admin
 router.post('/appeal',            ctrl.createRefundFromCustomer); // Customer khiếu nại sau 0%
 router.patch('/:id/review-start', ctrl.startReview);             // Staff → UnderReview
 router.patch('/:id/review',       ctrl.reviewRefundRequest);      // Admin duyệt/từ chối
+router.patch('/:id/confirm-refunded', ctrl.confirmRefunded); // Staff xác nhận hoàn tiền mặt
 
 module.exports = router;
